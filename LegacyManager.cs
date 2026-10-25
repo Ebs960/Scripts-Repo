@@ -85,6 +85,7 @@ public class LegacyManager : MonoBehaviour
         civ.activeLegacies.Add(legacy);
         ApplyLegacyBonuses(civ, legacy);
         RefreshGovernorOpinions(civ);
+        civ.RefreshFactionSatisfaction();
 
         OnLegacyPromoted?.Invoke(civ, legacy);
         Debug.Log($"[LegacyManager] {civ.civData?.civName} promoted legacy '{legacy.legacyName}'");
@@ -102,6 +103,7 @@ public class LegacyManager : MonoBehaviour
         civ.activeLegacies.Remove(legacy);
         RemoveLegacyBonuses(civ, legacy);
         RefreshGovernorOpinions(civ);
+        civ.RefreshFactionSatisfaction();
 
         OnLegacyDemoted?.Invoke(civ, legacy);
         Debug.Log($"[LegacyManager] {civ.civData?.civName} demoted legacy '{legacy.legacyName}'");

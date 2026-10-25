@@ -166,6 +166,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
             foreach (var demand in bloc.ActiveDemands)
             {
                 if (demand == null) continue;
+                if (demand.category == FactionProposalCategory.CooperativeRequest) continue;
                 string sourceKey = $"FactionDemand|{civ.civData?.civName ?? civ.name}|{bloc.FactionName}|{demand.type}|{demand.issuedTurn}";
                 if (HasActiveEvent(sourceKey)) continue;
 
@@ -180,6 +181,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                     createdTurn = currentTurn,
                     expiryTurn = demand.issuedTurn + demand.expiryTurns,
                     factionName = bloc.FactionName,
+                    factionProposalId = demand.proposalId,
                     factionDemandType = demand.type.ToString(),
                     issuedTurn = demand.issuedTurn,
                     targetGovernorId = demand.targetGovernor?.Id ?? -1,
@@ -195,7 +197,13 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                     options = new List<PoliticalEventOption>
                     {
                         new PoliticalEventOption { optionId = "accept", label = "Accept", summary = "Concede to the faction demand." },
-                        new PoliticalEventOption { optionId = "refuse", label = "Refuse", summary = "Risk grievances or open rebellion." },
+                        new PoliticalEventOption
+                        {
+                            optionId = "refuse",
+                            label = demand.category == FactionProposalCategory.HostileDemand ? "Refuse" : "Decline",
+                            summary = demand.category == FactionProposalCategory.HostileDemand
+                                ? "Risk grievances or open rebellion." : "Decline this petition without hostile escalation.",
+                        },
                     }
                 });
             }
@@ -385,7 +393,10 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         if (!Enum.TryParse(record.factionDemandType, out FactionDemandType demandType))
             return true;
 
-        var demand = bloc.ActiveDemands.FirstOrDefault(d => d != null && d.type == demandType && d.issuedTurn == record.issuedTurn);
+        var demand = bloc.ActiveDemands.FirstOrDefault(d => d != null
+            && (!string.IsNullOrWhiteSpace(record.factionProposalId)
+                ? d.proposalId == record.factionProposalId
+                : d.type == demandType && d.issuedTurn == record.issuedTurn));
         if (demand == null) return true;
 
         bool accepted = option.optionId == "accept";
@@ -509,7 +520,10 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         var bloc = civ.nobleFactions.FirstOrDefault(f => f != null && f.FactionName == record.factionName);
         if (bloc == null) return;
         if (!Enum.TryParse(record.factionDemandType, out FactionDemandType demandType)) return;
-        var demand = bloc.ActiveDemands.FirstOrDefault(d => d != null && d.type == demandType && d.issuedTurn == record.issuedTurn);
+        var demand = bloc.ActiveDemands.FirstOrDefault(d => d != null
+            && (!string.IsNullOrWhiteSpace(record.factionProposalId)
+                ? d.proposalId == record.factionProposalId
+                : d.type == demandType && d.issuedTurn == record.issuedTurn));
         if (demand == null) return;
         civ.ResolveFactionDemand(bloc, demand, false, currentTurn);
     }
@@ -568,9 +582,19 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         return Resources.LoadAll<GovernmentData>("").FirstOrDefault(g => g != null && g.name == assetName);
     }
 
+    private static BuildingData ResolveBuildingByName(string assetName)
+        => string.IsNullOrEmpty(assetName) ? null
+            : ResourceCache.GetAllBuildings().FirstOrDefault(building => building != null && building.name == assetName);
+
+    private static ReligionData ResolveReligionByName(string assetName)
+        => string.IsNullOrEmpty(assetName) ? null
+            : ResourceCache.GetAllReligionData().FirstOrDefault(religion => religion != null && religion.name == assetName);
+
     private static bool DemandMatchesEvent(FactionDemand demand, PoliticalEventRecord record)
     {
-        if (demand == null || record == null || demand.issuedTurn != record.issuedTurn) return false;
+        if (demand == null || record == null) return false;
+        if (!string.IsNullOrWhiteSpace(record.factionProposalId)) return demand.proposalId == record.factionProposalId;
+        if (demand.issuedTurn != record.issuedTurn) return false;
         return Enum.TryParse(record.factionDemandType, out FactionDemandType eventType) && demand.type == eventType;
     }
 
@@ -584,7 +608,8 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                 && record.targetCivName == civName && record.factionName == faction.FactionName)
             .OrderBy(record => record.createdTurn).ThenBy(record => record.id))
         {
-            bool matches = activeDemand != null && DemandMatchesEvent(activeDemand, record);
+            bool matches = activeDemand != null && activeDemand.category != FactionProposalCategory.CooperativeRequest
+                && DemandMatchesEvent(activeDemand, record);
             if (matches && !keptMatchingEvent)
             {
                 keptMatchingEvent = true;
@@ -599,15 +624,27 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
     [Serializable]
     private class PoliticalFactionDemandState
     {
+        public string proposalId;
+        public FactionProposalCategory category;
+        public FactionProposalState state;
+        public FactionProposalObjective objective;
         public string type;
         public string description;
         public int issuedTurn;
         public int expiryTurns;
+        public int acceptedTurn = -1;
+        public int deadlineTurn = -1;
+        public int progress;
+        public int requiredProgress = 1;
+        public float satisfactionReward;
+        public float satisfactionFailurePenalty;
         public int targetGovernorId;
         // Exact demand targets by asset name so the same policy/government is
         // reconnected after load (never regenerated).
         public string targetPolicyName;
         public string targetGovernmentName;
+        public string targetBuildingName;
+        public string targetReligionName;
     }
 
     [Serializable]
@@ -615,6 +652,12 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
     {
         public string factionName;
         public string alignment;
+        public bool hasSatisfaction;
+        public float satisfaction;
+        public int nextProposalTurn;
+        public string religiousIdentityName;
+        public bool hasReligiousState;
+        public ReligiousFactionGoal religiousGoal;
         public bool isInRebellion;
         public List<int> memberGovernorIds = new List<int>();
         public List<PoliticalFactionDemandState> activeDemands = new List<PoliticalFactionDemandState>();
@@ -667,6 +710,12 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                     {
                         factionName = bloc.FactionName,
                         alignment = bloc.Alignment.ToString(),
+                        hasSatisfaction = true,
+                        satisfaction = bloc.Satisfaction,
+                        nextProposalTurn = bloc.NextProposalTurn,
+                        religiousIdentityName = bloc.ReligiousIdentity != null ? bloc.ReligiousIdentity.name : null,
+                        hasReligiousState = true,
+                        religiousGoal = bloc.ReligiousGoal,
                         isInRebellion = bloc.IsInRebellion,
                     };
                     factionState.memberGovernorIds.AddRange(bloc.Members.Where(m => m != null).Select(m => m.Id));
@@ -676,13 +725,25 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                         if (demand == null) continue;
                         factionState.activeDemands.Add(new PoliticalFactionDemandState
                         {
+                            proposalId = demand.proposalId,
+                            category = demand.category,
+                            state = demand.state,
+                            objective = demand.objective,
                             type = demand.type.ToString(),
                             description = demand.description,
                             issuedTurn = demand.issuedTurn,
                             expiryTurns = demand.expiryTurns,
+                            acceptedTurn = demand.acceptedTurn,
+                            deadlineTurn = demand.deadlineTurn,
+                            progress = demand.progress,
+                            requiredProgress = demand.requiredProgress,
+                            satisfactionReward = demand.satisfactionReward,
+                            satisfactionFailurePenalty = demand.satisfactionFailurePenalty,
                             targetGovernorId = demand.targetGovernor?.Id ?? -1,
                             targetPolicyName = demand.targetPolicy != null ? demand.targetPolicy.name : null,
                             targetGovernmentName = demand.targetGovernment != null ? demand.targetGovernment.name : null,
+                            targetBuildingName = demand.targetBuilding != null ? demand.targetBuilding.name : null,
+                            targetReligionName = demand.targetReligion != null ? demand.targetReligion.name : null,
                         });
                     }
 
@@ -756,7 +817,10 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                 var founder = civ.governors.FirstOrDefault(g => g != null && g.Id == factionState.memberGovernorIds[0]);
                 if (founder == null) continue;
 
-                var bloc = new FactionBloc(factionState.factionName, alignment, founder);
+                var religiousIdentity = ResolveReligionByName(factionState.religiousIdentityName);
+                var religiousGoal = factionState.hasReligiousState
+                    ? factionState.religiousGoal : ReligiousFactionGoal.DemandTolerance;
+                var bloc = new FactionBloc(factionState.factionName, alignment, founder, religiousIdentity, religiousGoal);
                 for (int i = 1; i < factionState.memberGovernorIds.Count; i++)
                 {
                     var member = civ.governors.FirstOrDefault(g => g != null && g.Id == factionState.memberGovernorIds[i]);
@@ -784,13 +848,27 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                     var targetGov = civ.governors.FirstOrDefault(g => g != null && g.Id == demandState.targetGovernorId);
                     restoredDemand = new FactionDemand
                     {
+                        proposalId = string.IsNullOrWhiteSpace(demandState.proposalId)
+                            ? $"{factionState.factionName}|{demandState.issuedTurn}|{demandType}" : demandState.proposalId,
+                        category = demandState.category,
+                        state = demandState.state,
+                        objective = demandState.objective,
                         type = demandType,
                         description = demandState.description,
                         issuedTurn = demandState.issuedTurn,
                         expiryTurns = demandState.expiryTurns,
+                        acceptedTurn = demandState.acceptedTurn,
+                        deadlineTurn = demandState.deadlineTurn > 0
+                            ? demandState.deadlineTurn : demandState.issuedTurn + Mathf.Max(1, demandState.expiryTurns),
+                        progress = demandState.progress,
+                        requiredProgress = Mathf.Max(1, demandState.requiredProgress),
+                        satisfactionReward = demandState.satisfactionReward,
+                        satisfactionFailurePenalty = demandState.satisfactionFailurePenalty,
                         targetGovernor = targetGov,
                         targetPolicy = ResolvePolicyByName(demandState.targetPolicyName),
                         targetGovernment = ResolveGovernmentByName(demandState.targetGovernmentName),
+                        targetBuilding = ResolveBuildingByName(demandState.targetBuildingName),
+                        targetReligion = ResolveReligionByName(demandState.targetReligionName),
                     };
                     bloc.ActiveDemands.Add(restoredDemand);
                 }
@@ -800,9 +878,15 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                     Debug.LogWarning($"[PoliticalEventManager] Migrated faction '{bloc.FactionName}' to one active demand. " +
                         $"Kept the earliest valid demand; retired {legacyDemandCount} legacy demand(s) and {retiredEvents} duplicate/orphan event(s).");
 
+                float restoredSatisfaction = factionState.hasSatisfaction ? factionState.satisfaction
+                    : Mathf.Clamp(50f + bloc.Members.Where(member => member != null)
+                        .Select(member => member.Opinion).DefaultIfEmpty(0f).Average() * 0.1f, 25f, 75f);
+                bloc.RestorePoliticalState(restoredSatisfaction, factionState.nextProposalTurn);
+
                 bloc.RestoreRebellionState(factionState.isInRebellion);
                 civ.nobleFactions.Add(bloc);
             }
+            civ.RestoreFactionRuntimeBindings();
         }
     }
 }

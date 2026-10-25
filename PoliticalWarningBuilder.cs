@@ -47,7 +47,9 @@ public static class PoliticalWarningBuilder
                 foreach (var bloc in civ.nobleFactions)
                 {
                     if (bloc == null) continue;
-                    demands += bloc.ActiveDemands?.Count ?? 0;
+                    demands += bloc.ActiveDemands?.Count(demand => demand != null
+                        && demand.category == FactionProposalCategory.HostileDemand
+                        && demand.state == FactionProposalState.Offered) ?? 0;
                     if (bloc.IsInRebellion) rebelFactions++;
                 }
             if (rebelFactions > 0)

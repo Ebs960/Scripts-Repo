@@ -76,6 +76,9 @@ public class LegacyData : ScriptableObject
     [Tooltip("Personality-based multipliers on the above biases")]
     public PersonalityBiasMultiplier[] personalityMultipliers;
 
+    [Tooltip("Optional ongoing satisfaction effects on matching factions while this Legacy is promoted.")]
+    public FactionAffinity[] factionAffinities;
+
     // ─────────────────────────────────────────────
     //  Inner types (keeps everything in one file)
     // ─────────────────────────────────────────────
@@ -107,6 +110,13 @@ public class LegacyData : ScriptableObject
         public PersonalityTrait trait;
         [Tooltip("Multiplier on all opinion biases for governors with this trait. 1.5 = 50% stronger, 0.5 = 50% weaker")]
         public float multiplier = 1f;
+    }
+
+    [System.Serializable]
+    public class FactionAffinity
+    {
+        public FactionAlignment alignment;
+        [Range(-20f, 20f)] public float satisfactionModifier;
     }
 }
 

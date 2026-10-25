@@ -755,6 +755,7 @@ public class Civilization : MonoBehaviour
     // --- Noble Factions ---
     /// <summary>Active noble factions that have formed within this civilization.</summary>
     public List<FactionBloc> nobleFactions = new List<FactionBloc>();
+    private readonly HashSet<City> factionBuildingSubscriptions = new HashSet<City>();
     
     [Header("City Cap")]
     [Tooltip("Base maximum number of cities this civilization may own. Set to 0 for Paleolithic nomads.")]
@@ -1281,10 +1282,7 @@ public class Civilization : MonoBehaviour
         royalCouncil.Add(gov);
         gov.IsOnCouncil = true;
         gov.ClearGrievance(GrievanceSource.CouncilSeatDenied);
-        gov.AddOpinionModifier("Granted Council Seat", 20f, -1);
-
-        // If this governor was in a faction, they may leave it now
-        gov.Faction?.RemoveMember(gov);
+        gov.SetOpinionModifier("Granted Council Seat", 20f, -1);
         CouncilMembershipChanged?.Invoke(this);
         return true;
     }
@@ -1384,53 +1382,57 @@ public class Civilization : MonoBehaviour
 
     // ── Noble Factions ────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Per-turn faction logic: form new factions, invite angry governors, generate demands.
-    /// Call from BeginTurn after governor opinion ticks have run.
-    /// </summary>
+    /// <summary>Maintains persistent interest groups, satisfaction, proposals, and AI responses.</summary>
     public void ProcessFactionTick(int currentTurn)
     {
         if (currentGovernment != null && currentGovernment.suppressConventionalPolitics) return;
-        // 1. Invite unaffiliated angry governors into existing or new factions
+        EnsureFactionBuildingSubscriptions();
+
+        foreach (var bloc in nobleFactions.Where(faction => faction != null).ToList())
+        {
+            bloc.UpdateSatisfaction(this);
+            if (!bloc.ProcessProposalDeadline(currentTurn)) continue;
+            UIManager.Instance?.ShowNotification($"A promise to {bloc.FactionName} was not fulfilled in time.");
+            PoliticalEventManager.Instance?.ReconcileFactionDemandEvents(this, bloc);
+        }
+
+        bool mayFoundFaction = currentTurn % FactionBloc.FormationIntervalTurns == 0
+            && nobleFactions.Count < FactionBloc.MaximumFactionsPerCivilization;
         foreach (var gov in governors)
         {
-            if (gov == null || gov.IsOnCouncil || gov.Faction != null) continue;
-            if (gov.Opinion > 10f) continue;  // Content governors don't join blocs
-
-            // Try existing faction
+            if (gov == null || gov.Faction != null || gov.IsInRebellion) continue;
             FactionBloc joined = null;
             foreach (var bloc in nobleFactions)
             {
-                if (bloc.CanJoin(gov)) { bloc.AddMember(gov); joined = bloc; break; }
+                if (!bloc.CanJoin(gov)) continue;
+                bloc.AddMember(gov);
+                joined = bloc;
+                break;
             }
 
-            // Found a new faction if no existing one fits and this governor is angry enough
-            if (joined == null && gov.AmbitionScore > 50 && gov.Opinion < -10f)
-            {
-                var alignment = DetermineAlignment(gov);
-                string name = $"The {gov.Name} Faction";
-                var newBloc = new FactionBloc(name, alignment, gov);
-                nobleFactions.Add(newBloc);
-            }
+            if (joined != null || !mayFoundFaction) continue;
+            var alignment = DetermineAlignment(gov);
+            int compatible = governors.Count(other => other != null && other != gov && other.Faction == null
+                && IsCompatibleFounderPair(gov, other, alignment));
+            if (gov.PowerRank < FactionBloc.IndependentFounderPower && compatible == 0) continue;
+            nobleFactions.Add(new FactionBloc($"The {gov.Name} Faction", alignment, gov,
+                alignment == FactionAlignment.Religious ? gov.PersonalReligion : null));
+            mayFoundFaction = nobleFactions.Count < FactionBloc.MaximumFactionsPerCivilization;
         }
 
-        // 2. Dissolve factions that have too few members or are no longer angry
         for (int i = nobleFactions.Count - 1; i >= 0; i--)
         {
             var bloc = nobleFactions[i];
-            if (bloc.Members.Count == 0 ||
-                (bloc.Members.Count == 1 && bloc.Leader?.Opinion > 30f))
-            {
-                foreach (var m in bloc.Members) m.Faction = null;
-                nobleFactions.RemoveAt(i);
-            }
+            if (bloc != null && bloc.Members.Count > 0 && bloc.ComputePower() >= FactionBloc.MinimumMemberRelevance) continue;
+            if (bloc != null) foreach (var member in bloc.Members) if (member != null) member.Faction = null;
+            nobleFactions.RemoveAt(i);
         }
 
-        // 3. Factions with high power generate demands (concrete targets chosen by the preference scorer)
-        foreach (var bloc in nobleFactions)
+        foreach (var bloc in nobleFactions.ToList())
         {
-            if (bloc.ActiveDemands.Count == 0 && bloc.ComputePower() > 10f)
+            if (bloc.ActiveDemands.Count == 0 && bloc.ComputePower() >= FactionBloc.MinimumProposalPower)
                 bloc.GenerateDemand(this, currentTurn);
+            if (!isPlayerControlled) ProcessAiFactionProposal(bloc, currentTurn);
         }
         FactionsChanged?.Invoke(this);
     }
@@ -1462,6 +1464,19 @@ public class Civilization : MonoBehaviour
         if (bloc == null || demand == null)
         {
             result.failureReason = "Invalid demand.";
+            return result;
+        }
+
+        if (demand.category == FactionProposalCategory.CooperativeRequest)
+        {
+            if (demand.state != FactionProposalState.Offered)
+            {
+                result.failureReason = "This request is already in progress.";
+                return result;
+            }
+            bloc.ResolveDemand(demand, accepted, this, currentTurn);
+            result.success = true;
+            FactionsChanged?.Invoke(this);
             return result;
         }
 
@@ -1561,14 +1576,108 @@ public class Civilization : MonoBehaviour
         return result;
     }
 
-    private static FactionAlignment DetermineAlignment(Governor gov)
+    public static FactionAlignment DetermineAlignment(Governor gov)
     {
-        if (gov.HasPersonality(PersonalityTrait.Zealous))    return FactionAlignment.Religious;
-        if (gov.specialization == Governor.Specialization.Economic) return FactionAlignment.Mercantile;
-        if (gov.AmbitionScore > 70 && gov.Opinion < -30f)   return FactionAlignment.Separatist;
-        if (gov.HasPersonality(PersonalityTrait.Ambitious))  return FactionAlignment.Independent;
+        if (gov == null) return FactionAlignment.Conservative;
+        if ((gov.HasPersonality(PersonalityTrait.Zealous) || gov.specialization == Governor.Specialization.Religious)
+            && gov.PersonalReligion != null && !gov.HasPersonality(PersonalityTrait.Cynical)) return FactionAlignment.Religious;
+        if (gov.Opinion < -20f && gov.TotalGrievances() >= 3
+            && (gov.HasPersonality(PersonalityTrait.Ambitious) || gov.AmbitionScore > 50)) return FactionAlignment.Separatist;
+        if (gov.specialization == Governor.Specialization.Economic || gov.HasPersonality(PersonalityTrait.Greedy)) return FactionAlignment.Mercantile;
+        if ((gov.specialization == Governor.Specialization.Scientific || gov.specialization == Governor.Specialization.Cultural
+            || gov.specialization == Governor.Specialization.Industrial)
+            && !gov.HasPersonality(PersonalityTrait.Content) && !gov.HasPersonality(PersonalityTrait.Loyal)) return FactionAlignment.Reformist;
+        if (gov.HasPersonality(PersonalityTrait.Ambitious) || gov.specialization == Governor.Specialization.Military) return FactionAlignment.Independent;
         return FactionAlignment.Conservative;
     }
+
+    private static bool IsCompatibleFounderPair(Governor founder, Governor candidate, FactionAlignment alignment)
+    {
+        if (founder == null || candidate == null) return false;
+        if (alignment == FactionAlignment.Religious)
+            return founder.PersonalReligion != null && founder.PersonalReligion == candidate.PersonalReligion;
+        return DetermineAlignment(candidate) == alignment;
+    }
+
+    private void ProcessAiFactionProposal(FactionBloc bloc, int currentTurn)
+    {
+        var proposal = bloc?.ActiveDemands.FirstOrDefault();
+        if (proposal == null) return;
+        if (proposal.state == FactionProposalState.Accepted)
+        {
+            if (proposal.objective == FactionProposalObjective.AdoptPolicy && proposal.targetPolicy != null
+                && PolicyManager.Instance != null && !activePolicies.Contains(proposal.targetPolicy)
+                && PolicyManager.Instance.EvaluatePolicy(this, proposal.targetPolicy).canAdopt)
+                PolicyManager.Instance.AdoptPolicy(this, proposal.targetPolicy);
+            return;
+        }
+        if (proposal.state != FactionProposalState.Offered) return;
+        if (proposal.category == FactionProposalCategory.CooperativeRequest)
+        {
+            if (proposal.objective == FactionProposalObjective.AdoptPolicy)
+            {
+                bool feasible = proposal.targetPolicy != null && PolicyManager.Instance != null
+                    && PolicyManager.Instance.EvaluatePolicy(this, proposal.targetPolicy).canAdopt;
+                ResolveFactionDemandDetailed(bloc, proposal, feasible, currentTurn);
+                if (feasible) PolicyManager.Instance.AdoptPolicy(this, proposal.targetPolicy);
+                return;
+            }
+            bool queued = false;
+            if (proposal.targetBuilding != null && proposal.targetBuilding.AreRequirementsMet(this))
+                foreach (var city in bloc.Members.Where(member => member != null).SelectMany(member => member.Cities)
+                    .Where(city => city != null && city.owner == this).Distinct())
+                {
+                    if (!city.QueueProduction(proposal.targetBuilding)) continue;
+                    queued = true;
+                    break;
+                }
+            ResolveFactionDemandDetailed(bloc, proposal, queued, currentTurn);
+            return;
+        }
+
+        bool accept = bloc.Stance != FactionStance.Hostile && bloc.ComputePower() >= FactionBloc.AiProposalInfluence;
+        var resolution = ResolveFactionDemandDetailed(bloc, proposal, accept, currentTurn);
+        if (accept && !resolution.success)
+            ResolveFactionDemandDetailed(bloc, proposal, false, currentTurn);
+    }
+
+    private void EnsureFactionBuildingSubscriptions()
+    {
+        foreach (var city in factionBuildingSubscriptions.Where(city => city == null || city.owner != this).ToList())
+        {
+            if (city != null) city.OnBuildingCompleted -= HandleFactionBuildingCompleted;
+            factionBuildingSubscriptions.Remove(city);
+        }
+        foreach (var city in cities.Where(city => city != null && city.owner == this))
+        {
+            if (!factionBuildingSubscriptions.Add(city)) continue;
+            city.OnBuildingCompleted += HandleFactionBuildingCompleted;
+        }
+    }
+
+    private void HandleFactionBuildingCompleted(City city, BuildingData building)
+    {
+        foreach (var bloc in nobleFactions.Where(faction => faction != null).OrderByDescending(faction => faction.ComputePower()))
+        {
+            if (!bloc.TryCompleteBuildingRequest(this, city, building, turnCount)) continue;
+            UIManager.Instance?.ShowNotification($"{bloc.FactionName} is satisfied that its construction request was fulfilled.");
+            PoliticalEventManager.Instance?.ReconcileFactionDemandEvents(this, bloc);
+            FactionsChanged?.Invoke(this);
+            break;
+        }
+    }
+
+    public float GetFactionSupportLoyaltyBonus(Governor governor)
+        => governor?.Faction != null && governor.Faction.Members.Contains(governor)
+            ? governor.Faction.GetSupportLoyaltyBonus() : 0f;
+
+    public void RefreshFactionSatisfaction()
+    {
+        foreach (var bloc in nobleFactions.Where(faction => faction != null)) bloc.UpdateSatisfaction(this);
+        FactionsChanged?.Invoke(this);
+    }
+
+    public void RestoreFactionRuntimeBindings() => EnsureFactionBuildingSubscriptions();
 
     // ── Policy / Government reaction hooks ───────────────────────────────────
 
@@ -3858,12 +3967,25 @@ public class Civilization : MonoBehaviour
             activePolicies.Add(p);
             ApplyPolicyBonuses(p); // Apply bonuses when adopted
             RecalculateCachedYieldRates();
+            HandleFactionPolicyAdopted(p);
             OnPolicyAdopted?.Invoke(this, p);
             TradeNetworkManager.Instance?.NotifyCivilizationTradeModifiersChanged(this);
             // TODO: UI update, notifications
             return true;
         }
         return false;
+    }
+
+    private void HandleFactionPolicyAdopted(PolicyData policy)
+    {
+        foreach (var bloc in nobleFactions.Where(faction => faction != null).OrderByDescending(faction => faction.ComputePower()))
+        {
+            if (!bloc.TryCompletePolicyRequest(this, policy, turnCount)) continue;
+            UIManager.Instance?.ShowNotification($"{bloc.FactionName} is satisfied that its reform request was fulfilled.");
+            PoliticalEventManager.Instance?.ReconcileFactionDemandEvents(this, bloc);
+            FactionsChanged?.Invoke(this);
+            break;
+        }
     }
 
     // New method to apply bonuses from a single policy
@@ -6802,6 +6924,9 @@ return true;
 
     void OnDestroy()
     {
+        foreach (var city in factionBuildingSubscriptions)
+            if (city != null) city.OnBuildingCompleted -= HandleFactionBuildingCompleted;
+        factionBuildingSubscriptions.Clear();
         try { CivilizationManager.Instance?.UnregisterCiv(this); } catch { }
         try { TurnManager.Instance?.UnregisterCivilization(this); } catch { }
         try { relations?.Clear(); } catch { }

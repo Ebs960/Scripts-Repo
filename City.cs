@@ -984,6 +984,7 @@ if (UIManager.Instance != null)
             // Opinion itself is ticked once per turn by Civilization.TickGovernorPolitics;
             // here we only READ the already-computed value.
             governorBonus += governor.GetLoyaltyContribution();
+            governorBonus += owner.GetFactionSupportLoyaltyBonus(governor);
         }
 
         if (isCapital)

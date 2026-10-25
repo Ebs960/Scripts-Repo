@@ -247,7 +247,8 @@ public sealed class GovernmentPoliticsUI : GovernmentScreenBase
             $"Alignment: {selectedFaction.Alignment}\n" +
             $"Leader: {(selectedFaction.Leader != null ? GovernmentPresentation.FormatGovernorName(civ, selectedFaction.Leader) : "None")}\n" +
             $"Political Power: {selectedFaction.ComputePower():0.#}\n" +
-            $"Members: {selectedFaction.Members.Count(member => member != null)}" + religion + "\n" +
+            $"Members: {selectedFaction.Members.Count(member => member != null)}\n" +
+            $"Satisfaction: {selectedFaction.Satisfaction:0}% ({selectedFaction.Stance})" + religion + "\n" +
             $"Rebellion: {(selectedFaction.IsInRebellion ? "IN OPEN REBELLION" : "No")}");
 
         selectedDemand = selectedFaction.ActiveDemands?.FirstOrDefault(demand => demand != null);
@@ -268,13 +269,23 @@ public sealed class GovernmentPoliticsUI : GovernmentScreenBase
     private void RefreshSelectedDemand()
     {
         bool hasDemand = selectedDemand != null;
+        bool cooperative = hasDemand && selectedDemand.category == FactionProposalCategory.CooperativeRequest;
+        bool inProgress = cooperative && selectedDemand.state == FactionProposalState.Accepted;
+        string heading = cooperative ? "Current Request" : selectedDemand?.category == FactionProposalCategory.Petition ? "Current Petition" : "Current Demand";
+        string deadline = hasDemand
+            ? $"{Mathf.Max(0, selectedDemand.deadlineTurn - PoliticalActionRules.CurrentTurn)} turn(s) remaining"
+            : string.Empty;
+        string reward = cooperative ? $"\nReward: +{selectedDemand.satisfactionReward:0} faction satisfaction" : string.Empty;
         GovernmentUiUtil.SetText(factionDemandText, hasDemand
-            ? $"Current Demand: {selectedDemand.description}\nExpires: turn {selectedDemand.issuedTurn + selectedDemand.expiryTurns}"
-            : "No outstanding demands.");
+            ? $"{heading}:\n{selectedDemand.description}\nStatus: {(inProgress ? "In Progress" : "Awaiting Response")}\nDeadline: {deadline}{reward}"
+            : "This faction has no outstanding demands.");
         string failure = null;
         if (hasDemand) demandFailures.TryGetValue(selectedDemand, out failure);
         GovernmentUiUtil.SetText(factionStatusText, failure);
-        SetDemandControls(hasDemand);
+        GovernmentUiUtil.SetText(demandAcceptButton != null ? demandAcceptButton.GetComponentInChildren<TMP_Text>(true) : null, "ACCEPT");
+        GovernmentUiUtil.SetText(demandRefuseButton != null ? demandRefuseButton.GetComponentInChildren<TMP_Text>(true) : null,
+            cooperative || selectedDemand?.category == FactionProposalCategory.Petition ? "DECLINE" : "REFUSE");
+        SetDemandControls(hasDemand && !inProgress);
     }
 
     private void SetDemandControls(bool available)
@@ -308,6 +319,11 @@ public sealed class GovernmentPoliticsUI : GovernmentScreenBase
     private void RequestRefuseSelectedDemand()
     {
         if (selectedFaction == null || selectedDemand == null) return;
+        if (selectedDemand.category != FactionProposalCategory.HostileDemand)
+        {
+            ResolveSelectedDemand(false);
+            return;
+        }
         if (panel == null)
         {
             ResolveSelectedDemand(false);

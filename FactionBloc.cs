@@ -10,6 +10,10 @@ using System.Linq;
 [System.Serializable]
 public class FactionDemand
 {
+    public string proposalId;
+    public FactionProposalCategory category = FactionProposalCategory.HostileDemand;
+    public FactionProposalState state = FactionProposalState.Offered;
+    public FactionProposalObjective objective;
     public FactionDemandType type;
     public string description;
     /// <summary>Policy to revoke or adopt, when relevant.</summary>
@@ -24,6 +28,13 @@ public class FactionDemand
     public int issuedTurn;
     /// <summary>After this many turns of no response the faction escalates.</summary>
     public int expiryTurns = 5;
+    public int acceptedTurn = -1;
+    public int deadlineTurn = -1;
+    public int progress;
+    public int requiredProgress = 1;
+    public float satisfactionReward;
+    public float satisfactionFailurePenalty;
+    public BuildingData targetBuilding;
 }
 
 /// <summary>
@@ -33,6 +44,20 @@ public class FactionDemand
 /// </summary>
 public class FactionBloc
 {
+    public const float SupportiveThreshold = 70f;
+    public const float NeutralThreshold = 40f;
+    public const float DissatisfiedThreshold = 20f;
+    public const float MinimumMemberRelevance = 2f;
+    public const int CooperativeRequestDeadlineTurns = 10;
+    public const int HostileDemandDeadlineTurns = 5;
+    public const int ProposalCooldownTurns = 8;
+    public const int FormationIntervalTurns = 3;
+    public const int MaximumFactionsPerCivilization = 4;
+    public const float IndependentFounderPower = 8f;
+    public const float MinimumProposalPower = 4f;
+    public const float AiProposalInfluence = 6f;
+    private const float SatisfactionTrendPerTurn = 2f;
+
     // ── Identity ──────────────────────────────────────────────────────────────
     public string FactionName { get; private set; }
     public FactionAlignment Alignment { get; private set; }
@@ -46,6 +71,12 @@ public class FactionBloc
     // ── State ─────────────────────────────────────────────────────────────────
     public bool IsInRebellion { get; private set; }
     public List<FactionDemand> ActiveDemands { get; private set; } = new List<FactionDemand>();
+    public float Satisfaction { get; private set; }
+    public int NextProposalTurn { get; private set; }
+    public FactionStance Stance => Satisfaction >= SupportiveThreshold ? FactionStance.Supportive
+        : Satisfaction >= NeutralThreshold ? FactionStance.Neutral
+        : Satisfaction >= DissatisfiedThreshold ? FactionStance.Dissatisfied
+        : FactionStance.Hostile;
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -59,28 +90,31 @@ public class FactionBloc
         Leader = founder;
         Members.Add(founder);
         founder.Faction = this;
+        Satisfaction = InitialSatisfaction(founder);
     }
 
     // ── Membership ────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Returns true if this governor's alignment and opinion makes them a compatible candidate.
-    /// A governor can join if they share the alignment (or are Independent) and Opinion < 20.
+    /// Returns true when this governor has sufficient relevance and shares the faction's interests.
     /// </summary>
     public bool CanJoin(Governor gov)
     {
         if (gov == null || gov.Faction != null) return false;
-        if (gov.IsOnCouncil) return false;           // Seated governors rarely join opposition factions
-        if (gov.Opinion > 20f) return false;         // Content governors don't scheme
-        // Alignment compatibility
+        if (gov.PowerRank < MinimumMemberRelevance && !gov.HasPersonality(PersonalityTrait.Ambitious)) return false;
         return Alignment switch
         {
             FactionAlignment.Religious  => gov.PersonalReligion != null && gov.PersonalReligion == ReligiousIdentity
-                && !gov.HasPersonality(PersonalityTrait.Cynical)
-                && (gov.HasPersonality(PersonalityTrait.Zealous) || gov.Grievances.ContainsKey(GrievanceSource.ReligionForced)),
-            FactionAlignment.Separatist => gov.Opinion < -30f && gov.AmbitionScore > 50,
-            FactionAlignment.Mercantile => gov.specialization == Governor.Specialization.Economic,
-            _                           => gov.AmbitionScore > 30,
+                && !gov.HasPersonality(PersonalityTrait.Cynical),
+            FactionAlignment.Separatist => gov.Opinion < -20f && (gov.AmbitionScore > 50 || gov.TotalGrievances() >= 2),
+            FactionAlignment.Mercantile => gov.specialization == Governor.Specialization.Economic || gov.HasPersonality(PersonalityTrait.Greedy),
+            FactionAlignment.Reformist => gov.specialization == Governor.Specialization.Scientific
+                || gov.specialization == Governor.Specialization.Cultural || gov.specialization == Governor.Specialization.Industrial,
+            FactionAlignment.Conservative => gov.HasPersonality(PersonalityTrait.Content)
+                || gov.HasPersonality(PersonalityTrait.Loyal) || gov.HasPersonality(PersonalityTrait.Honest),
+            FactionAlignment.Independent => gov.HasPersonality(PersonalityTrait.Ambitious)
+                || gov.specialization == Governor.Specialization.Military,
+            _ => false,
         };
     }
 
@@ -105,17 +139,48 @@ public class FactionBloc
     // ── Power ─────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Faction power = sum of member PowerRank scores, modified by average anger.
-    /// Higher power means greater pressure on the player.
+    /// Faction power is institutional influence and does not depend on satisfaction.
     /// </summary>
     public float ComputePower()
     {
+        return Members.Where(member => member != null).Sum(member => Mathf.Max(1, member.PowerRank));
+    }
+
+    public float ComputePoliticalThreat()
+    {
         if (Members.Count == 0) return 0f;
-        float rankSum = Members.Sum(m => m.PowerRank);
-        float avgOpinion = Members.Average(m => m.Opinion);
-        // Angry governors punch above their weight; content governors do nothing
-        float angerMult = Mathf.Lerp(2f, 0.1f, (avgOpinion + 100f) / 200f);
-        return rankSum * angerMult;
+        float dissatisfaction = (100f - Satisfaction) / 100f;
+        float grievances = Members.Where(member => member != null).Sum(member => member.TotalGrievances());
+        float readiness = Members.Count(member => member != null && member.IsRebellionReady());
+        float separatist = Alignment == FactionAlignment.Separatist ? ComputePower() * 0.25f : 0f;
+        return ComputePower() * dissatisfaction + grievances * 0.75f + readiness * 3f + separatist;
+    }
+
+    public float GetSupportLoyaltyBonus()
+        => Stance == FactionStance.Supportive ? Mathf.Clamp(ComputePower() * 0.15f, 0f, 5f) : 0f;
+
+    public void AdjustSatisfaction(float amount)
+        => Satisfaction = Mathf.Clamp(Satisfaction + amount, 0f, 100f);
+
+    public void UpdateSatisfaction(Civilization civ)
+    {
+        if (civ == null || Members.Count == 0) return;
+        float averageOpinion = Members.Where(member => member != null).Select(member => member.Opinion).DefaultIfEmpty(50f).Average();
+        float grievances = Members.Where(member => member != null).Sum(member => member.TotalGrievances());
+        float target = 50f + Mathf.Clamp((averageOpinion - 25f) * 0.15f, -10f, 10f) - Mathf.Clamp(grievances, 0f, 15f);
+        if (civ.currentGovernment != null)
+            target += Mathf.Clamp(PoliticalPreferenceScorer.ScoreGovernmentForFaction(civ.currentGovernment, this, civ) * 0.1f, -10f, 10f);
+        if (civ.activePolicies != null && civ.activePolicies.Count > 0)
+            target += Mathf.Clamp(civ.activePolicies.Where(policy => policy != null)
+                .Select(policy => PoliticalPreferenceScorer.ScorePolicyForFaction(policy, this, civ)).DefaultIfEmpty().Average() * 0.05f, -8f, 8f);
+        target += LegacyAffinity(civ);
+        Satisfaction = Mathf.MoveTowards(Satisfaction, Mathf.Clamp(target, 0f, 100f), SatisfactionTrendPerTurn);
+    }
+
+    public void RestorePoliticalState(float satisfaction, int nextProposalTurn)
+    {
+        Satisfaction = Mathf.Clamp(satisfaction, 0f, 100f);
+        NextProposalTurn = Mathf.Max(0, nextProposalTurn);
     }
 
     // ── Demands ───────────────────────────────────────────────────────────────
@@ -134,14 +199,90 @@ public class FactionBloc
     /// </summary>
     public FactionDemand GenerateDemand(Civilization civ, int currentTurn)
     {
-        if (civ == null || ActiveDemands.Count > 0) return null;
+        if (civ == null || ActiveDemands.Count > 0 || currentTurn < NextProposalTurn) return null;
 
-        var demand = BuildDemandForAlignment(civ, currentTurn);
+        var demand = Stance == FactionStance.Supportive
+            ? BuildCooperativeRequest(civ, currentTurn)
+            : BuildDemandForAlignment(civ, currentTurn);
         if (demand == null) return null;
+
+        demand.proposalId = string.IsNullOrWhiteSpace(demand.proposalId)
+            ? $"{FactionName}|{currentTurn}|{demand.type}" : demand.proposalId;
+        if (demand.category == FactionProposalCategory.HostileDemand && Stance != FactionStance.Hostile)
+            demand.category = FactionProposalCategory.Petition;
+        demand.deadlineTurn = demand.deadlineTurn >= 0 ? demand.deadlineTurn : currentTurn + demand.expiryTurns;
 
         ActiveDemands.Add(demand);
         return demand;
     }
+
+    private FactionDemand BuildCooperativeRequest(Civilization civ, int currentTurn)
+    {
+        if (Alignment == FactionAlignment.Reformist || Alignment == FactionAlignment.Mercantile)
+        {
+            var policy = FindBestAdoptablePolicy(civ, out float score,
+                Alignment == FactionAlignment.Mercantile ? p => p.goldModifier > 0f || p.domesticTradeModifier > 0f || p.foreignTradeModifier > 0f : null);
+            if (policy == null || score < MinPolicyDemandScore) return null;
+            return new FactionDemand
+            {
+                category = FactionProposalCategory.CooperativeRequest,
+                state = FactionProposalState.Offered,
+                objective = FactionProposalObjective.AdoptPolicy,
+                type = FactionDemandType.AdoptPolicy,
+                description = $"Adopt {policy.policyName}, a reform supported by our members.",
+                issuedTurn = currentTurn,
+                expiryTurns = CooperativeRequestDeadlineTurns,
+                deadlineTurn = currentTurn + CooperativeRequestDeadlineTurns,
+                targetPolicy = policy,
+                satisfactionReward = 12f,
+                satisfactionFailurePenalty = 8f,
+            };
+        }
+        if (Alignment != FactionAlignment.Religious) return null;
+        var governedCities = Members.Where(member => member != null).SelectMany(member => member.Cities)
+            .Where(city => city != null && city.owner == civ).Distinct().ToList();
+        if (governedCities.Count == 0) return null;
+        var building = ResourceCache.GetAllBuildings()
+            .Where(candidate => candidate != null && candidate.isFaithBuilding && candidate.AreRequirementsMet(civ))
+            .Where(candidate => governedCities.Any(city => city.builtBuildings == null
+                || !city.builtBuildings.Any(entry => entry.data == candidate)))
+            .Where(candidate => governedCities.All(city => city.productionQueue == null
+                || !city.productionQueue.Any(entry => entry?.data == candidate)))
+            .OrderBy(candidate => candidate.productionCost).ThenBy(candidate => candidate.buildingName)
+            .FirstOrDefault();
+        if (building == null) return null;
+        return new FactionDemand
+        {
+            category = FactionProposalCategory.CooperativeRequest,
+            state = FactionProposalState.Offered,
+            objective = FactionProposalObjective.ConstructBuilding,
+            type = FactionDemandType.ConstructFaithBuilding,
+            description = $"Construct {building.buildingName} in a city governed by one of our members.",
+            issuedTurn = currentTurn,
+            expiryTurns = CooperativeRequestDeadlineTurns,
+            deadlineTurn = currentTurn + CooperativeRequestDeadlineTurns,
+            targetBuilding = building,
+            targetReligion = ReligiousIdentity,
+            satisfactionReward = 15f,
+            satisfactionFailurePenalty = 10f,
+        };
+    }
+
+    private float LegacyAffinity(Civilization civ)
+    {
+        if (civ.activeLegacies == null) return 0f;
+        float affinity = 0f;
+        foreach (var legacy in civ.activeLegacies)
+        {
+            if (legacy?.factionAffinities == null) continue;
+            foreach (var entry in legacy.factionAffinities)
+                if (entry != null && entry.alignment == Alignment) affinity += entry.satisfactionModifier * 0.5f;
+        }
+        return Mathf.Clamp(affinity, -10f, 10f);
+    }
+
+    private static float InitialSatisfaction(Governor founder)
+        => Mathf.Clamp(50f + (founder?.Opinion ?? 0f) * 0.15f - (founder?.TotalGrievances() ?? 0) * 2f, 25f, 75f);
 
     private FactionDemand BuildDemandForAlignment(Civilization civ, int currentTurn)
     {
@@ -442,26 +583,56 @@ public class FactionBloc
     /// </summary>
     public bool ResolveDemand(FactionDemand demand, bool accepted, Civilization civ, int currentTurn)
     {
-        ActiveDemands.Remove(demand);
-
-        if (accepted)
+        if (demand == null || !ActiveDemands.Contains(demand)) return false;
+        if (demand.category == FactionProposalCategory.CooperativeRequest)
         {
-            // Acceptance improves opinion for all members
-            foreach (var m in Members)
-                m.AddOpinionModifier("Demand Accepted", 15f, 20);
+            if (accepted)
+            {
+                demand.state = FactionProposalState.Accepted;
+                demand.acceptedTurn = currentTurn;
+                demand.deadlineTurn = currentTurn + Mathf.Max(1, demand.expiryTurns);
+                AdjustSatisfaction(1f);
+            }
+            else
+            {
+                demand.state = FactionProposalState.Declined;
+                ActiveDemands.Remove(demand);
+                AdjustSatisfaction(-1f);
+                NextProposalTurn = currentTurn + ProposalCooldownTurns;
+            }
             return false;
         }
 
-        // Refusal: grievances + escalation check
+        ActiveDemands.Remove(demand);
+        demand.state = accepted ? FactionProposalState.Completed : FactionProposalState.Declined;
+        NextProposalTurn = currentTurn + ProposalCooldownTurns;
+
+        if (accepted)
+        {
+            foreach (var m in Members)
+                m.SetOpinionModifier("Faction Proposal Fulfilled", demand.category == FactionProposalCategory.Petition ? 8f : 15f, 20);
+            AdjustSatisfaction(demand.category == FactionProposalCategory.Petition ? 6f : 10f);
+            return false;
+        }
+
+        if (demand.category == FactionProposalCategory.Petition)
+        {
+            foreach (var member in Members)
+                member.SetOpinionModifier("Faction Petition Declined", -3f, 12);
+            AdjustSatisfaction(-4f);
+            return false;
+        }
+
         foreach (var m in Members)
         {
             m.AddGrievance(GrievanceSource.OverruledDecision);
-            m.AddOpinionModifier("Demand Refused", -20f, 30);
+            m.SetOpinionModifier("Demand Refused", -20f, 30);
         }
+        AdjustSatisfaction(-15f);
 
-        // Separatist or very powerful factions trigger rebellion
-        bool rebelsNow = Alignment == FactionAlignment.Separatist ||
-                         (ComputePower() > 15f && Members.All(m => m.IsRebellionReady()));
+        bool rebellionReady = Members.Any(member => member != null && member.IsRebellionReady());
+        bool rebelsNow = Stance == FactionStance.Hostile && rebellionReady
+            && (ComputePoliticalThreat() >= 15f || Alignment == FactionAlignment.Separatist);
 
         if (rebelsNow)
         {
@@ -469,11 +640,67 @@ public class FactionBloc
             return true;
         }
 
-        // Generate a harder follow-up demand
-        if (Alignment == FactionAlignment.Separatist && ActiveDemands.Count == 0)
-            GenerateDemand(civ, currentTurn);
-
         return false;
+    }
+
+    public bool TryCompleteBuildingRequest(Civilization civ, City city, BuildingData building, int currentTurn)
+    {
+        var proposal = ActiveDemands.FirstOrDefault(demand => demand != null
+            && demand.category == FactionProposalCategory.CooperativeRequest
+            && demand.state == FactionProposalState.Accepted
+            && demand.objective == FactionProposalObjective.ConstructBuilding);
+        if (proposal == null || city == null || building == null || city.owner != civ) return false;
+        if (proposal.targetBuilding != building || !building.isFaithBuilding) return false;
+        if (!Members.Any(member => member != null && member.Cities.Contains(city))) return false;
+
+        proposal.progress = Mathf.Min(proposal.requiredProgress, proposal.progress + 1);
+        if (proposal.progress < proposal.requiredProgress) return false;
+        proposal.state = FactionProposalState.Completed;
+        ActiveDemands.Remove(proposal);
+        AdjustSatisfaction(proposal.satisfactionReward);
+        foreach (var member in Members)
+            member.SetOpinionModifier("Faction Request Fulfilled", 5f, 15);
+        NextProposalTurn = currentTurn + ProposalCooldownTurns;
+        return true;
+    }
+
+    public bool TryCompletePolicyRequest(Civilization civ, PolicyData policy, int currentTurn)
+    {
+        var proposal = ActiveDemands.FirstOrDefault(demand => demand != null
+            && demand.category == FactionProposalCategory.CooperativeRequest
+            && demand.state == FactionProposalState.Accepted
+            && demand.objective == FactionProposalObjective.AdoptPolicy);
+        if (proposal == null || policy == null || proposal.targetPolicy != policy) return false;
+        proposal.progress = proposal.requiredProgress;
+        proposal.state = FactionProposalState.Completed;
+        ActiveDemands.Remove(proposal);
+        AdjustSatisfaction(proposal.satisfactionReward);
+        foreach (var member in Members)
+            member.SetOpinionModifier("Faction Request Fulfilled", 5f, 15);
+        NextProposalTurn = currentTurn + ProposalCooldownTurns;
+        return true;
+    }
+
+    public bool ProcessProposalDeadline(int currentTurn)
+    {
+        var proposal = ActiveDemands.FirstOrDefault();
+        if (proposal == null || proposal.category != FactionProposalCategory.CooperativeRequest
+            || currentTurn <= proposal.deadlineTurn) return false;
+        if (proposal.state == FactionProposalState.Offered)
+        {
+            proposal.state = FactionProposalState.Declined;
+            ActiveDemands.Remove(proposal);
+            NextProposalTurn = currentTurn + ProposalCooldownTurns;
+            return false;
+        }
+        if (proposal.state != FactionProposalState.Accepted) return false;
+        proposal.state = FactionProposalState.Failed;
+        ActiveDemands.Remove(proposal);
+        AdjustSatisfaction(-Mathf.Abs(proposal.satisfactionFailurePenalty));
+        foreach (var member in Members)
+            member.SetOpinionModifier("Faction Promise Broken", -5f, 20);
+        NextProposalTurn = currentTurn + ProposalCooldownTurns;
+        return true;
     }
 
     // ── Rebellion ─────────────────────────────────────────────────────────────

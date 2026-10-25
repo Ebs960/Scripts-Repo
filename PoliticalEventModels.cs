@@ -64,6 +64,7 @@ public class PoliticalEventRecord
 
     public PoliticalActorRef primaryActor = new PoliticalActorRef();
     public string factionName;
+    public string factionProposalId;
     public string subjectCivName;
     public string factionDemandType;
     public int issuedTurn;

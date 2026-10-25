@@ -67,6 +67,38 @@ public enum FactionDemandType
     RecognizeSuccessor,    // Acknowledge a succession claim
     ReturnTerritory,       // Re-assign a previously reassigned city back to the faction leader
     DeclareIndependence,   // Separatist ultimatum before rebellion
+    ConstructFaithBuilding,
+}
+
+public enum FactionProposalCategory
+{
+    HostileDemand,
+    CooperativeRequest,
+    Petition,
+}
+
+public enum FactionProposalState
+{
+    Offered,
+    Accepted,
+    Completed,
+    Declined,
+    Failed,
+}
+
+public enum FactionProposalObjective
+{
+    None,
+    ConstructBuilding,
+    AdoptPolicy,
+}
+
+public enum FactionStance
+{
+    Hostile,
+    Dissatisfied,
+    Neutral,
+    Supportive,
 }
 
 public enum ReligiousFactionGoal
