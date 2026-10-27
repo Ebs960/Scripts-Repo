@@ -31,13 +31,18 @@ public static class GovernmentPresentation
     {
         switch (area)
         {
-            case PolicyArea.Law: return "Law & Justice";
+            case PolicyArea.Administration: return "Administration";
+            case PolicyArea.MilitarySecurity: return "Military & Security";
+            case PolicyArea.LawJustice: return "Law & Justice";
             case PolicyArea.CivilRights: return "Civil Rights";
-            case PolicyArea.Digital: return "Digital Policy";
-            case PolicyArea.Synthetic: return "Synthetic Life";
-            case PolicyArea.Space: return "Space & Planetary";
-            case PolicyArea.Unassigned: return "Unassigned";
-            default: return area.ToString();
+            case PolicyArea.LaborSocialOrder: return "Labor & Social Order";
+            case PolicyArea.EconomyTrade: return "Economy & Trade";
+            case PolicyArea.InfrastructureLand: return "Infrastructure & Land";
+            case PolicyArea.Education: return "Education";
+            case PolicyArea.Religion: return "Religion";
+            case PolicyArea.WelfareHealth: return "Welfare & Health";
+            case PolicyArea.AdvancedTechnology: return "Advanced Technology";
+            default: return "Unassigned";
         }
     }
     public const string DefaultGovernorSingular = "Governor";

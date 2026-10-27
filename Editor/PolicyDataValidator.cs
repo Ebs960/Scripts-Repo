@@ -27,6 +27,8 @@ public static class PolicyDataValidator
                 Error(path, "policy must require at least one technology or culture.", ref errors, policy);
             if (policy.policyPointCost <= 0) Error(path, "policyPointCost must be positive.", ref errors, policy);
             if (policy.policyArea == PolicyArea.Unassigned) Error(path, "policyArea must be assigned.", ref errors, policy);
+            else if (!System.Enum.IsDefined(typeof(PolicyArea), policy.policyArea))
+                Error(path, $"policyArea {(int)policy.policyArea} is a retired area; run Tools/Data Migration/Migrate Policy Areas.", ref errors, policy);
             if (policy.icon == null) { Debug.LogWarning($"[Policy Validation] {path}: icon is not assigned.", policy); warnings++; }
             if (names.TryGetValue(identity, out string existing)) Error(path, $"duplicate identity '{identity}' (also {existing}).", ref errors, policy);
             else names[identity] = path;
@@ -46,9 +48,12 @@ public static class PolicyDataValidator
                 {
                     if (required != null && Contains(policy.incompatiblePolicies, required))
                         Error(path, $"'{required.name}' is both required and incompatible.", ref errors, policy);
-                    if (required != null && required.policyArea == policy.policyArea && !Contains(policy.supersedesPolicies, required))
-                        Error(path, "A policy cannot permanently require another policy in the same Policy Area, because only one policy in that area can remain active.", ref errors, policy);
+                    if (required != null && Contains(required.incompatiblePolicies, policy))
+                        Error(path, $"'{required.name}' is required but declares this policy incompatible.", ref errors, policy);
                 }
+            int sameArea = CountSimultaneousSameArea(policy);
+            if (sameArea > PolicyManager.MaxActivePoliciesPerArea)
+                Error(path, $"requirements need {sameArea} simultaneously active {GovernmentPresentation.PolicyAreaDisplayName(policy.policyArea)} policies, but an area holds at most {PolicyManager.MaxActivePoliciesPerArea}.", ref errors, policy);
             ValidateReferences(policy.unlockedGovernorTraits, "unlockedGovernorTraits", path, policy, ref errors);
             if (policy.religiousRequirementGroups == null) continue;
             for (int i = 0; i < policy.religiousRequirementGroups.Length; i++)
@@ -85,6 +90,28 @@ public static class PolicyDataValidator
 
     public static bool HasRequiredPolicyCycle(PolicyData policy)
         => policy != null && HasRequiredCycle(policy, policy, new HashSet<PolicyData>());
+
+    /// <summary>
+    /// Same-area policies that must be active together with <paramref name="policy"/>: the policy itself plus its
+    /// transitive ongoing requirements, excluding prerequisites each requirer supersedes on adoption.
+    /// </summary>
+    public static int CountSimultaneousSameArea(PolicyData policy)
+    {
+        if (policy == null) return 0;
+        var together = new HashSet<PolicyData>();
+        var pending = new Stack<PolicyData>();
+        pending.Push(policy);
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+            if (current == null || !together.Add(current) || current.requiredPolicies == null) continue;
+            foreach (var required in current.requiredPolicies)
+                if (required != null && !Contains(current.supersedesPolicies, required)) pending.Push(required);
+        }
+        int count = 0;
+        foreach (var member in together) if (member.policyArea == policy.policyArea) count++;
+        return count;
+    }
 
     private static bool HasRequiredCycle(PolicyData root, PolicyData current, HashSet<PolicyData> visiting)
     {

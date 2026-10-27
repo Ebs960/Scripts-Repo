@@ -23,7 +23,7 @@ public class PolicyNameButtonUI : MonoBehaviour
 
         var state = evaluation != null ? evaluation.State : PolicyListState.Locked;
         Sprite stateMarker = state == PolicyListState.Active ? activeMarker
-            : state == PolicyListState.Available ? availableMarker : lockedMarker;
+            : state == PolicyListState.Locked ? lockedMarker : availableMarker;
         SetMarker(stateMarkerImage, stateMarker);
         SetMarker(selectedMarkerImage, selected ? selectedMarker : null);
         GovernmentUiUtil.SetClick(button, () => onClick?.Invoke(policy));

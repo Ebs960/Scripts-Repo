@@ -1,11 +1,44 @@
 using UnityEngine;
 
+// Values are serialized as integers; each kept value matches the legacy area it absorbed, so never renumber.
+// Retired legacy values (6, 8, 9, 13, 15, 16, 18, 19, 20) are remapped by PolicyAreaMigration.
 public enum PolicyArea
 {
     Unassigned = 0,
-    Administration, Military, Law, CivilRights, Labor, Slavery, Economy, Trade,
-    Agriculture, Infrastructure, Education, Religion, Security, Welfare, Environment,
-    Colonial, Digital, Synthetic, Genetics, Space
+    Administration = 1,
+    [InspectorName("Military & Security")] MilitarySecurity = 2,
+    [InspectorName("Law & Justice")] LawJustice = 3,
+    [InspectorName("Civil Rights")] CivilRights = 4,
+    [InspectorName("Labor & Social Order")] LaborSocialOrder = 5,
+    [InspectorName("Economy & Trade")] EconomyTrade = 7,
+    [InspectorName("Infrastructure & Land")] InfrastructureLand = 10,
+    Education = 11,
+    Religion = 12,
+    [InspectorName("Welfare & Health")] WelfareHealth = 14,
+    [InspectorName("Advanced Technology")] AdvancedTechnology = 17,
+}
+
+/// <summary>Maps retired legacy PolicyArea integers onto the consolidated areas.</summary>
+public static class PolicyAreaLegacyMap
+{
+    /// <summary>Returns the consolidated area for a raw serialized value; Space (20) needs a per-policy decision and returns Unassigned.</summary>
+    public static PolicyArea Map(int legacyValue)
+    {
+        switch (legacyValue)
+        {
+            case 6: return PolicyArea.LaborSocialOrder;      // Slavery
+            case 8: return PolicyArea.EconomyTrade;          // Trade
+            case 9: return PolicyArea.InfrastructureLand;    // Agriculture
+            case 13: return PolicyArea.MilitarySecurity;     // Security
+            case 15: return PolicyArea.InfrastructureLand;   // Environment
+            case 16: return PolicyArea.Administration;       // Colonial
+            case 18: return PolicyArea.AdvancedTechnology;   // Synthetic
+            case 19: return PolicyArea.AdvancedTechnology;   // Genetics
+            case 20: return PolicyArea.Unassigned;           // Space
+            default:
+                return System.Enum.IsDefined(typeof(PolicyArea), legacyValue) ? (PolicyArea)legacyValue : PolicyArea.Unassigned;
+        }
+    }
 }
 
 [System.Serializable]

@@ -60,15 +60,6 @@ public class GovernmentPanel : MonoBehaviour
     [Header("Confirmation")]
     [SerializeField] private PoliticalConfirmDialog confirmDialogUI;
 
-    private static readonly PolicyArea[] DashboardAreaOrder =
-    {
-        PolicyArea.Administration, PolicyArea.Military, PolicyArea.Law, PolicyArea.CivilRights,
-        PolicyArea.Slavery, PolicyArea.Labor, PolicyArea.Economy, PolicyArea.Trade,
-        PolicyArea.Agriculture, PolicyArea.Infrastructure, PolicyArea.Education, PolicyArea.Religion,
-        PolicyArea.Security, PolicyArea.Welfare, PolicyArea.Environment, PolicyArea.Colonial,
-        PolicyArea.Digital, PolicyArea.Synthetic, PolicyArea.Genetics, PolicyArea.Space,
-    };
-
     private readonly List<GovernorSummaryRowUI> governorRows = new List<GovernorSummaryRowUI>();
     private readonly List<VassalSummaryRowUI> vassalRows = new List<VassalSummaryRowUI>();
     private readonly List<PolicyAreaDropdownUI> policyRows = new List<PolicyAreaDropdownUI>();
@@ -348,40 +339,44 @@ public class GovernmentPanel : MonoBehaviour
     {
         float scroll = GovernmentUiUtil.CaptureScroll(policiesScroll);
         var manager = PolicyManager.Instance;
-        foreach (var row in policyRows) if (row != null) Destroy(row.gameObject);
-        policyRows.Clear();
         if (manager != null && policiesRoot != null && policyAreaDropdownPrefab != null)
         {
-            foreach (var area in DashboardAreaOrder)
+            GovernmentUiUtil.FillList(policiesRoot, policyAreaDropdownPrefab, policyRows,
+                PolicyManager.PolicyAreaOrder, (row, area) =>
             {
-                var row = Instantiate(policyAreaDropdownPrefab, policiesRoot);
-                policyRows.Add(row);
                 row.Bind(civ, area, manager, policyTooltip, RequestPolicyAdoption, RequestPolicyRepeal);
-            }
+            });
         }
+        else foreach (var row in policyRows) if (row != null) row.gameObject.SetActive(false);
         GovernmentUiUtil.RestoreScroll(policiesScroll, scroll);
     }
 
-    private void RequestPolicyAdoption(PolicyData target)
+    private void RequestPolicyAdoption(PolicyData target, PolicyData replacement)
     {
         var manager = PolicyManager.Instance;
-        var evaluation = manager?.EvaluatePolicy(civ, target);
+        var evaluation = manager?.EvaluatePolicy(civ, target, replacement);
         if (target == null || evaluation == null || !evaluation.canAdopt) return;
-        var oldName = evaluation.replacedAreaPolicy != null
-            ? GovernmentPresentation.NameOf(evaluation.replacedAreaPolicy) : "No Policy";
+        var removed = new List<PolicyData>(evaluation.supersededActivePolicies);
+        if (evaluation.selectedReplacement != null) removed.Add(evaluation.selectedReplacement);
+        var oldName = removed.Count > 0 ? string.Join(", ", removed.Select(GovernmentPresentation.NameOf)) : "No Policy";
         var lines = PoliticalEffectSummaryBuilder.BuildPolicyEffects(target);
         lines.AddRange(PoliticalEffectSummaryBuilder.BuildGovernorReactionLines(target.governorOpinionEffects));
         foreach (var requirement in PoliticalEffectSummaryBuilder.BuildPolicyRequirements(civ, target))
             lines.Add(new PoliticalEffectLine { label = "Requirement", value = $"{(requirement.met ? "Met" : "Missing")}: {requirement.label}", harmful = !requirement.met });
+        foreach (var policy in removed)
+            foreach (var faction in PolicyManager.GetFactionsFavoringPolicy(civ, policy))
+                lines.Add(new PoliticalEffectLine { label = "Faction", value = $"{faction.FactionName} favors {GovernmentPresentation.NameOf(policy)}", harmful = true });
         AddPolicyRelations(lines, target);
         RequestConfirmation(new PoliticalConfirmRequest
         {
-            title = $"Adopt {GovernmentPresentation.NameOf(target)}?",
-            description = $"Replacing: {oldName}\n\nCurrent:\n{oldName}\n\nNew:\n{GovernmentPresentation.NameOf(target)}\n\nPolicy Points:\n-{target.policyPointCost}\n\nThe old policy is not refunded.",
+            title = evaluation.selectedReplacement != null
+                ? $"Adopt {GovernmentPresentation.NameOf(target)}, replacing {GovernmentPresentation.NameOf(evaluation.selectedReplacement)}?"
+                : $"Adopt {GovernmentPresentation.NameOf(target)}?",
+            description = $"Replacing: {oldName}\n\nNew:\n{GovernmentPresentation.NameOf(target)}\n\nPolicy Points:\n-{target.policyPointCost}\n\nReplaced policies are not refunded.",
             icon = target.icon,
             confirmLabel = "Adopt",
             lines = lines,
-            onConfirm = () => { manager.AdoptPolicy(civ, target); RefreshAllVisible(); },
+            onConfirm = () => { manager.AdoptPolicy(civ, target, replacement); RefreshAllVisible(); },
         });
     }
 
@@ -391,7 +386,7 @@ public class GovernmentPanel : MonoBehaviour
         RequestConfirmation(new PoliticalConfirmRequest
         {
             title = $"Repeal {GovernmentPresentation.NameOf(target)}?",
-            description = "The area will have No Policy. Repealing does not refund policy points and requires the normal council approval.",
+            description = "Only this policy is removed; any other policy in the area stays active. Repealing does not refund policy points and requires the normal council approval.",
             icon = target.icon,
             confirmLabel = "Repeal",
             onConfirm = () => { PolicyManager.Instance.RevokePolicy(civ, target); RefreshAllVisible(); },

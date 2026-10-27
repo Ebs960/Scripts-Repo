@@ -644,6 +644,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
         public string targetPolicyName;
         public string targetGovernmentName;
         public string targetBuildingName;
+        public string replacementPolicyName;
         public string targetReligionName;
     }
 
@@ -743,6 +744,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                             targetPolicyName = demand.targetPolicy != null ? demand.targetPolicy.name : null,
                             targetGovernmentName = demand.targetGovernment != null ? demand.targetGovernment.name : null,
                             targetBuildingName = demand.targetBuilding != null ? demand.targetBuilding.name : null,
+                            replacementPolicyName = demand.replacementPolicy != null ? demand.replacementPolicy.name : null,
                             targetReligionName = demand.targetReligion != null ? demand.targetReligion.name : null,
                         });
                     }
@@ -868,6 +870,7 @@ public class PoliticalEventManager : MonoBehaviour, ISaveGameParticipant
                         targetPolicy = ResolvePolicyByName(demandState.targetPolicyName),
                         targetGovernment = ResolveGovernmentByName(demandState.targetGovernmentName),
                         targetBuilding = ResolveBuildingByName(demandState.targetBuildingName),
+                        replacementPolicy = ResolvePolicyByName(demandState.replacementPolicyName),
                         targetReligion = ResolveReligionByName(demandState.targetReligionName),
                     };
                     bloc.ActiveDemands.Add(restoredDemand);

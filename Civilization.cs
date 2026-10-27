@@ -1518,11 +1518,11 @@ public class Civilization : MonoBehaviour
                     break;
                 case FactionDemandType.AdoptPolicy:
                     if (demand.targetPolicy == null || PolicyManager.Instance == null
-                        || !PolicyManager.Instance.AdoptPolicy(this, demand.targetPolicy))
+                        || !PolicyManager.Instance.AdoptPolicy(this, demand.targetPolicy, demand.replacementPolicy))
                     {
                         result.failureReason = demand.targetPolicy == null
                             ? "The demand has no target policy."
-                            : $"Could not adopt {demand.targetPolicy.policyName} (cost, prerequisites, or council vote).";
+                            : $"Could not adopt {demand.targetPolicy.policyName} (cost, prerequisites, replacement, or council vote).";
                         return result;
                     }
                     break;
@@ -1607,8 +1607,8 @@ public class Civilization : MonoBehaviour
         {
             if (proposal.objective == FactionProposalObjective.AdoptPolicy && proposal.targetPolicy != null
                 && PolicyManager.Instance != null && !activePolicies.Contains(proposal.targetPolicy)
-                && PolicyManager.Instance.EvaluatePolicy(this, proposal.targetPolicy).canAdopt)
-                PolicyManager.Instance.AdoptPolicy(this, proposal.targetPolicy);
+                && PolicyManager.Instance.EvaluatePolicy(this, proposal.targetPolicy, proposal.replacementPolicy).canAdopt)
+                PolicyManager.Instance.AdoptPolicy(this, proposal.targetPolicy, proposal.replacementPolicy);
             return;
         }
         if (proposal.state != FactionProposalState.Offered) return;
@@ -1617,9 +1617,9 @@ public class Civilization : MonoBehaviour
             if (proposal.objective == FactionProposalObjective.AdoptPolicy)
             {
                 bool feasible = proposal.targetPolicy != null && PolicyManager.Instance != null
-                    && PolicyManager.Instance.EvaluatePolicy(this, proposal.targetPolicy).canAdopt;
+                    && PolicyManager.Instance.EvaluatePolicy(this, proposal.targetPolicy, proposal.replacementPolicy).canAdopt;
                 ResolveFactionDemandDetailed(bloc, proposal, feasible, currentTurn);
-                if (feasible) PolicyManager.Instance.AdoptPolicy(this, proposal.targetPolicy);
+                if (feasible) PolicyManager.Instance.AdoptPolicy(this, proposal.targetPolicy, proposal.replacementPolicy);
                 return;
             }
             bool queued = false;

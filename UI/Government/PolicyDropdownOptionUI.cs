@@ -26,23 +26,29 @@ public class PolicyDropdownOptionUI : MonoBehaviour, IPointerEnterHandler, IPoin
         civ = civilization; policy = value; evaluation = result; tooltip = sharedTooltip;
         var state = result != null ? result.State : PolicyListState.Locked;
         GovernmentUiUtil.SetText(policyNameText, GovernmentPresentation.NameOf(value));
-        GovernmentUiUtil.SetText(statusText, state == PolicyListState.Locked ? "Requirements not met" : state.ToString());
+        GovernmentUiUtil.SetText(statusText, StatusLabel(state));
         SetMarker(state == PolicyListState.Active ? activeMarker
-            : state == PolicyListState.Available ? availableMarker : lockedMarker);
+            : state == PolicyListState.Locked ? lockedMarker : availableMarker);
         GovernmentUiUtil.SetInteractable(button, state != PolicyListState.Locked);
         GovernmentUiUtil.SetClick(button, () =>
         {
-            if (evaluation != null && evaluation.canAdopt) onSelected?.Invoke(policy);
-            else if (evaluation != null && evaluation.alreadyActive) onDismiss?.Invoke();
+            if (evaluation == null) return;
+            if (evaluation.alreadyActive) onDismiss?.Invoke();
+            else if (evaluation.canAdopt || evaluation.CanAdoptWithReplacement) onSelected?.Invoke(policy);
         });
     }
 
-    public void BindNone(Action onSelected)
+    public static string StatusLabel(PolicyListState state)
+        => state == PolicyListState.Locked ? "Locked"
+            : state == PolicyListState.Replace ? "Available" : state.ToString();
+
+    /// <summary>Non-policy row such as a repeal, replacement choice, or cancel action.</summary>
+    public void BindAction(string label, string status, bool interactable, Action onSelected)
     {
         civ = null; policy = null; evaluation = null; tooltip = null;
-        GovernmentUiUtil.SetText(policyNameText, "None"); GovernmentUiUtil.SetText(statusText, "Repeal current policy");
-        SetMarker(availableMarker);
-        GovernmentUiUtil.SetInteractable(button, true); GovernmentUiUtil.SetClick(button, onSelected);
+        GovernmentUiUtil.SetText(policyNameText, label); GovernmentUiUtil.SetText(statusText, status);
+        SetMarker(interactable ? availableMarker : lockedMarker);
+        GovernmentUiUtil.SetInteractable(button, interactable); GovernmentUiUtil.SetClick(button, onSelected);
     }
 
     private void SetMarker(Sprite marker)

@@ -35,6 +35,8 @@ public class FactionDemand
     public float satisfactionReward;
     public float satisfactionFailurePenalty;
     public BuildingData targetBuilding;
+    /// <summary>Active policy a requested adoption replaces when its area is already full.</summary>
+    public PolicyData replacementPolicy;
 }
 
 /// <summary>
@@ -205,6 +207,7 @@ public class FactionBloc
             ? BuildCooperativeRequest(civ, currentTurn)
             : BuildDemandForAlignment(civ, currentTurn);
         if (demand == null) return null;
+        if (!AssignPolicyReplacement(civ, demand)) return null;
 
         demand.proposalId = string.IsNullOrWhiteSpace(demand.proposalId)
             ? $"{FactionName}|{currentTurn}|{demand.type}" : demand.proposalId;
@@ -214,6 +217,17 @@ public class FactionBloc
 
         ActiveDemands.Add(demand);
         return demand;
+    }
+
+    /// <summary>Full policy areas need an explicit replacement; picks the one this faction least favors. False when none is possible.</summary>
+    private bool AssignPolicyReplacement(Civilization civ, FactionDemand demand)
+    {
+        if (demand.type != FactionDemandType.AdoptPolicy || demand.targetPolicy == null || PolicyManager.Instance == null) return true;
+        demand.replacementPolicy = PolicyManager.Instance.ChooseReplacementForFaction(civ, demand.targetPolicy, this, out bool possible);
+        if (!possible) return false;
+        if (demand.replacementPolicy != null)
+            demand.description += $" (replacing {demand.replacementPolicy.policyName})";
+        return true;
     }
 
     private FactionDemand BuildCooperativeRequest(Civilization civ, int currentTurn)

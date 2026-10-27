@@ -46,7 +46,7 @@ public class PolicyTooltipUI : MonoBehaviour
         if (policy == null) yield break;
         GovernmentUiUtil.SetText(policyNameText, GovernmentPresentation.NameOf(policy));
         GovernmentUiUtil.SetText(areaText, GovernmentPresentation.PolicyAreaDisplayName(policy.policyArea));
-        GovernmentUiUtil.SetText(statusText, evaluation != null ? evaluation.State.ToString() : "Locked");
+        GovernmentUiUtil.SetText(statusText, evaluation != null ? PolicyDropdownOptionUI.StatusLabel(evaluation.State) : "Locked");
         GovernmentUiUtil.SetText(descriptionText, BuildDescription(civ, policy, evaluation));
         GovernmentUiUtil.SetText(costText, $"Policy Points: -{policy.policyPointCost}");
         Root.SetActive(true);
@@ -66,7 +66,7 @@ public class PolicyTooltipUI : MonoBehaviour
             FormatEffects(PoliticalEffectSummaryBuilder.BuildPolicyEffects(policy)));
         AddSection(sections, "REQUIREMENTS",
             FormatRequirements(PoliticalEffectSummaryBuilder.BuildPolicyRequirements(civ, policy), evaluation));
-        AddSection(sections, "RELATIONSHIPS", FormatRelationships(policy, evaluation));
+        AddSection(sections, "RELATIONSHIPS", FormatRelationships(civ, policy, evaluation));
         AddSection(sections, "GOVERNOR REACTIONS",
             FormatEffects(PoliticalEffectSummaryBuilder.BuildGovernorReactionLines(policy.governorOpinionEffects)));
         AddSection(sections, "COUNCIL OUTLOOK",
@@ -108,10 +108,27 @@ public class PolicyTooltipUI : MonoBehaviour
         return string.Join("\n", result.Distinct());
     }
 
-    private static string FormatRelationships(PolicyData policy, PolicyAdoptionEvaluation evaluation)
+    private static string FormatRelationships(Civilization civ, PolicyData policy, PolicyAdoptionEvaluation evaluation)
     {
         var lines = new List<string>();
-        if (evaluation?.replacedAreaPolicy != null) lines.Add($"Would replace: {GovernmentPresentation.NameOf(evaluation.replacedAreaPolicy)}");
+        if (evaluation != null && !evaluation.alreadyActive)
+        {
+            lines.Add($"Area slots used: {evaluation.activeAreaPolicies.Count}/{PolicyManager.MaxActivePoliciesPerArea}");
+            if (evaluation.supersededActivePolicies.Count > 0)
+                lines.Add($"Would supersede: {string.Join(", ", evaluation.supersededActivePolicies.Select(GovernmentPresentation.NameOf))}");
+            if (evaluation.selectedReplacement != null)
+                lines.Add($"Would replace: {GovernmentPresentation.NameOf(evaluation.selectedReplacement)}");
+            if (evaluation.CanAdoptWithReplacement)
+            {
+                lines.Add($"Choose one to replace: {string.Join(", ", evaluation.replacementChoices.Select(GovernmentPresentation.NameOf))}");
+                foreach (var choice in evaluation.replacementChoices)
+                {
+                    var upset = PolicyManager.GetFactionsFavoringPolicy(civ, choice);
+                    if (upset.Count > 0)
+                        lines.Add($"Replacing {GovernmentPresentation.NameOf(choice)} may upset: {string.Join(", ", upset.Select(f => f.FactionName))}");
+                }
+            }
+        }
         Add(lines, "Requires", policy.requiredPolicies); Add(lines, "Conflicts", policy.incompatiblePolicies); Add(lines, "Supersedes", policy.supersedesPolicies);
         return string.Join("\n", lines);
     }
