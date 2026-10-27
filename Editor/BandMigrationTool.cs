@@ -28,7 +28,7 @@ public static class BandMigrationTool
         EditorUtility.SetDirty(data);
         AssetDatabase.SaveAssets();
         Selection.activeObject = data;
-        Debug.Log("Created/updated Paleolithic BandData, six data-driven Band structures, and the four Paleolithic recruitment entries. Legacy assets were retained for compatibility.");
+        Debug.Log("Created/updated Paleolithic BandData, five data-driven Band structures, and the four Paleolithic recruitment entries. Legacy assets were retained for compatibility.");
     }
 
     private static void MigrateCampUpgrades(BandData bandData)
@@ -41,7 +41,7 @@ public static class BandMigrationTool
         var serialized = new SerializedObject(camp);
         var upgrades = serialized.FindProperty("availableUpgrades");
         bandData.allowedStructures = new List<BandStructureData>();
-        string[] intendedStructures = { "Foraging Tent", "Story Circle", "Burial Pit", "Stone Pile", "Tool Maker", "Fishing Tent" };
+        string[] intendedStructures = { "Foraging Tent", "Story Circle", "Stone Pile", "Tool Maker", "Fishing Tent" };
         for (int i = 0; upgrades != null && i < upgrades.arraySize; i++)
         {
             var source = upgrades.GetArrayElementAtIndex(i);
