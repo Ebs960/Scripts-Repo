@@ -39,6 +39,18 @@ public sealed class ArmyRosterSelection : MonoBehaviour
 
     public void Clear() { combatIds.Clear(); workerIds.Clear(); }
 
+    public void Prune(IReadOnlyList<CombatUnit> combatUnits, IReadOnlyList<WorkerUnit> workerUnits)
+    {
+        var validCombat = new HashSet<int>();
+        if (combatUnits != null)
+            foreach (var unit in combatUnits) if (unit != null) validCombat.Add(unit.gameObject.GetRuntimeId());
+        var validWorkers = new HashSet<int>();
+        if (workerUnits != null)
+            foreach (var unit in workerUnits) if (unit != null) validWorkers.Add(unit.gameObject.GetRuntimeId());
+        combatIds.IntersectWith(validCombat);
+        workerIds.IntersectWith(validWorkers);
+    }
+
     public void SelectExclusive(CombatUnit unit) { Clear(); if (IsInCurrentArmy(unit)) combatIds.Add(unit.gameObject.GetRuntimeId()); }
     public void SelectExclusive(WorkerUnit unit) { Clear(); if (IsAttachedToCurrentArmy(unit)) workerIds.Add(unit.gameObject.GetRuntimeId()); }
     public void Toggle(CombatUnit unit) { if (!IsInCurrentArmy(unit)) return; ToggleId(combatIds, unit.gameObject.GetRuntimeId()); }

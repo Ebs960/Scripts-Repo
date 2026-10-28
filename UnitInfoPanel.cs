@@ -2,8 +2,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
-using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 public class UnitInfoPanel : MonoBehaviour
 {
@@ -53,6 +53,9 @@ public class UnitInfoPanel : MonoBehaviour
     private CombatUnit currentCombatUnit;
     private WorkerUnit currentWorkerUnit;
     private CampaignArmyPanel campaignArmyPanel;
+    private GameEventManager subscribedGameEvents;
+    public bool IsVisible => unitInfoPanel != null && unitInfoPanel.activeSelf;
+    public TMP_Text StackInfoText => stackInfoText;
     // Dropdown option data
     private struct BuildOption
     {
@@ -87,6 +90,7 @@ public class UnitInfoPanel : MonoBehaviour
             forageButton.onClick.AddListener(OnForageClicked);
         AddTooltipToButton(forageButton, "Forage", "Forage resources from this tile if available.");
         EnsureUpgradeButton();
+        EnsureOrbitButtons();
         if (fortifyButton != null)
             fortifyButton.onClick.AddListener(OnFortifyClicked);
         AddTooltipToButton(fortifyButton, "Fortify", "Fortify to gain defense and skip this unit's action.");
@@ -110,16 +114,14 @@ public class UnitInfoPanel : MonoBehaviour
         {
             buildOptionsDropdown.onValueChanged.RemoveAllListeners();
             buildOptionsDropdown.onValueChanged.AddListener(OnBuildOptionSelected);
-            // Keep visible at all times per UI requirement; start disabled until populated
-            buildOptionsDropdown.gameObject.SetActive(true);
+            buildOptionsDropdown.gameObject.SetActive(false);
             buildOptionsDropdown.interactable = false;
         }
         if (unitBuildDropdown != null)
         {
             unitBuildDropdown.onValueChanged.RemoveAllListeners();
             unitBuildDropdown.onValueChanged.AddListener(OnUnitBuildOptionSelected);
-            // Keep visible at all times per UI requirement; start disabled until populated
-            unitBuildDropdown.gameObject.SetActive(true);
+            unitBuildDropdown.gameObject.SetActive(false);
             unitBuildDropdown.interactable = false;
         }
         if (startBuildButton != null)
@@ -145,17 +147,42 @@ public class UnitInfoPanel : MonoBehaviour
         // Validate serialized fields at startup so missing inspector wiring is obvious in Console
         ValidateSerializedFields();
 
-        // Subscribe to movement events so UI updates immediately when a selected unit moves
-        if (GameEventManager.Instance != null)
-        {
-            GameEventManager.Instance.OnUnitMoved += HandleUnitMovedEvent;
-            GameEventManager.Instance.OnMovementCompleted += HandleUnitMovedEvent;
-            GameEventManager.Instance.OnMovePointsChanged += HandleMovePointsChanged;
-            GameEventManager.Instance.OnAttackPointsChanged += HandleAttackPointsChanged;
-            GameEventManager.Instance.OnHealthChanged += HandleHealthChanged;
-            GameEventManager.Instance.OnDamageApplied += HandleCombatEvent;
-            GameEventManager.Instance.OnUnitKilled += HandleCombatEvent;
-        }
+        SubscribeToGameEvents();
+    }
+
+    private void SubscribeToGameEvents()
+    {
+        var current = GameEventManager.Instance;
+        if (current == subscribedGameEvents) return;
+        UnsubscribeFromGameEvents();
+        subscribedGameEvents = current;
+        if (subscribedGameEvents == null) return;
+        subscribedGameEvents.OnUnitMoved += HandleUnitMovedEvent;
+        subscribedGameEvents.OnMovementCompleted += HandleUnitMovedEvent;
+        subscribedGameEvents.OnMovePointsChanged += HandleMovePointsChanged;
+        subscribedGameEvents.OnAttackPointsChanged += HandleAttackPointsChanged;
+        subscribedGameEvents.OnHealthChanged += HandleHealthChanged;
+        subscribedGameEvents.OnDamageApplied += HandleCombatEvent;
+        subscribedGameEvents.OnUnitKilled += HandleCombatEvent;
+        subscribedGameEvents.OnUnitLost += HandleUnitLost;
+        subscribedGameEvents.OnTurnStarted += HandleTurnChanged;
+        subscribedGameEvents.OnTurnEnded += HandleTurnChanged;
+    }
+
+    private void UnsubscribeFromGameEvents()
+    {
+        if (subscribedGameEvents == null) return;
+        subscribedGameEvents.OnUnitMoved -= HandleUnitMovedEvent;
+        subscribedGameEvents.OnMovementCompleted -= HandleUnitMovedEvent;
+        subscribedGameEvents.OnMovePointsChanged -= HandleMovePointsChanged;
+        subscribedGameEvents.OnAttackPointsChanged -= HandleAttackPointsChanged;
+        subscribedGameEvents.OnHealthChanged -= HandleHealthChanged;
+        subscribedGameEvents.OnDamageApplied -= HandleCombatEvent;
+        subscribedGameEvents.OnUnitKilled -= HandleCombatEvent;
+        subscribedGameEvents.OnUnitLost -= HandleUnitLost;
+        subscribedGameEvents.OnTurnStarted -= HandleTurnChanged;
+        subscribedGameEvents.OnTurnEnded -= HandleTurnChanged;
+        subscribedGameEvents = null;
     }
 
 
@@ -165,10 +192,43 @@ public class UnitInfoPanel : MonoBehaviour
 
         var clone = Instantiate(fortifyButton.gameObject, fortifyButton.transform.parent);
         clone.name = "Upgrade Button";
+        var rect = clone.GetComponent<RectTransform>();
+        if (rect != null)
+        {
+            rect.anchoredPosition = new Vector2(200f, -14f);
+            rect.sizeDelta = new Vector2(86f, 28f);
+        }
         upgradeButton = clone.GetComponent<Button>();
         var label = clone.GetComponentInChildren<TextMeshProUGUI>();
         if (label != null) label.text = "Upgrade";
         clone.SetActive(false);
+    }
+
+    private void EnsureOrbitButtons()
+    {
+        if (fortifyButton == null) return;
+        if (enterOrbitButton == null)
+            enterOrbitButton = CreateActionButton("Enter Orbit", 285f);
+        if (exitOrbitButton == null)
+            exitOrbitButton = CreateActionButton("Exit Orbit", 285f);
+    }
+
+    private Button CreateActionButton(string labelText, float x)
+    {
+        var clone = Instantiate(fortifyButton.gameObject, fortifyButton.transform.parent, false);
+        clone.name = labelText + " Button";
+        var rect = clone.GetComponent<RectTransform>();
+        if (rect != null)
+        {
+            rect.anchoredPosition = new Vector2(x, -14f);
+            rect.sizeDelta = new Vector2(82f, 28f);
+        }
+        var label = clone.GetComponentInChildren<TextMeshProUGUI>();
+        if (label != null) label.text = labelText;
+        var button = clone.GetComponent<Button>();
+        button?.onClick.RemoveAllListeners();
+        clone.SetActive(false);
+        return button;
     }
 
     private void AddTooltipToButton(Button btn, string title, string description)
@@ -195,40 +255,12 @@ public class UnitInfoPanel : MonoBehaviour
         trig.triggers.Add(entryExit);
     }
 
-    // --- Slide animation settings ---
-    [Header("Slide Settings")]
-    [Tooltip("Duration in seconds for slide in/out animations")]
-    [SerializeField] private float slideDuration = 0.2f;
-    [Tooltip("Extra offset beyond panel width to position offscreen")]
-    [SerializeField] private float offscreenPadding = 20f;
-
-    private RectTransform panelRect;
-    private Vector2 targetAnchoredPos;
-    private Vector2 hiddenAnchoredPos;
-    private Coroutine slideCoroutine;
-
-    private void Start()
-    {
-        if (unitInfoPanel != null)
-            panelRect = unitInfoPanel.GetComponent<RectTransform>();
-        if (panelRect != null)
-        {
-            targetAnchoredPos = panelRect.anchoredPosition;
-            float width = panelRect.rect.width;
-            hiddenAnchoredPos = targetAnchoredPos + new Vector2(width + offscreenPadding, 0f);
-            // Initially hide offscreen
-            panelRect.anchoredPosition = hiddenAnchoredPos;
-            if (unitInfoPanel != null) unitInfoPanel.SetActive(false);
-        }
-    }
-
     private void ValidateSerializedFields()
     {
         // Common section
         if (unitInfoPanel == null) Debug.LogWarning("[UnitInfoPanel] unitInfoPanel is not assigned in the Inspector.");
         if (unitNameText == null) Debug.LogWarning("[UnitInfoPanel] unitNameText is not assigned in the Inspector.");
         if (unitTypeText == null) Debug.LogWarning("[UnitInfoPanel] unitTypeText is not assigned in the Inspector.");
-        if (unitDescriptionText == null) Debug.LogWarning("[UnitInfoPanel] unitDescriptionText is not assigned in the Inspector; unit descriptions will appear as a name tooltip only.");
         if (levelText == null) Debug.LogWarning("[UnitInfoPanel] levelText is not assigned in the Inspector.");
         if (experienceText == null) Debug.LogWarning("[UnitInfoPanel] experienceText is not assigned in the Inspector.");
 
@@ -253,7 +285,9 @@ public class UnitInfoPanel : MonoBehaviour
 
     public void ShowPanel(object unitObject)
     {
-        if (unitInfoPanel != null) unitInfoPanel.SetActive(true); // Ensure the content view is active
+        if (unitObject == null) { HidePanel(); return; }
+        if (unitInfoPanel != null && !unitInfoPanel.activeSelf)
+            unitInfoPanel.SetActive(true);
 
         HideAllSections(); // Helper to hide all specific sections initially
 
@@ -264,17 +298,28 @@ public class UnitInfoPanel : MonoBehaviour
             currentCombatUnit = combatUnit;
             currentWorkerUnit = null; // Ensure worker unit is cleared
             unitNameForLog = currentCombatUnit.data.unitName;
-PopulateForCombatUnit(currentCombatUnit);
+            campaignArmyPanel?.SetInspector(InspectRosterMember);
             campaignArmyPanel?.Show(currentCombatUnit);
+            PopulateForCombatUnit(currentCombatUnit);
             if (settleCityButton != null) settleCityButton.gameObject.SetActive(false); // Hide for combat units
         }
         else if (unitObject is WorkerUnit workerUnit)
         {
-            campaignArmyPanel?.Hide();
             currentWorkerUnit = workerUnit;
             currentCombatUnit = null; // Ensure combat unit is cleared
             unitNameForLog = currentWorkerUnit.data.unitName;
-PopulateForWorkerUnit(currentWorkerUnit);
+            CombatUnit attachedArmy = FindAttachedArmy(workerUnit);
+            if (attachedArmy != null)
+            {
+                campaignArmyPanel?.SetInspector(InspectRosterMember);
+                campaignArmyPanel?.Show(attachedArmy);
+                InspectRosterMember(workerUnit);
+            }
+            else
+            {
+                campaignArmyPanel?.Hide();
+                PopulateForWorkerUnit(currentWorkerUnit);
+            }
         }
         else
         {
@@ -290,65 +335,53 @@ PopulateForWorkerUnit(currentWorkerUnit);
             return;
         }
         // Start slide-in animation
-        StartSlideIn();
         // Update common elements if any, or specific ones again if needed after activation
         // RefreshLayout(); // If you have dynamic content that needs a layout refresh
     }
 
     public void HidePanel()
     {
-        // Start slide-out animation then clear panel when complete
-        StartSlideOut();
+        ClearPanelInfo();
+        if (unitInfoPanel != null) unitInfoPanel.SetActive(false);
     }
 
-    private void StartSlideIn()
+    private void LateUpdate()
     {
-        if (panelRect == null) return;
-        if (slideCoroutine != null) StopCoroutine(slideCoroutine);
-        slideCoroutine = StartCoroutine(Slide(panelRect.anchoredPosition, targetAnchoredPos, slideDuration));
+        SubscribeToGameEvents();
+        if (IsVisible && currentCombatUnit == null && currentWorkerUnit == null)
+            HidePanel();
     }
 
-    private void StartSlideOut()
+
+    private CombatUnit FindAttachedArmy(WorkerUnit worker)
     {
-        if (panelRect == null)
+        if (worker == null || string.IsNullOrEmpty(worker.AttachedArmyFormationId) || worker.owner?.combatUnits == null)
+            return null;
+        foreach (var member in worker.owner.combatUnits)
+            if (member != null && member.MilitaryFormationId == worker.AttachedArmyFormationId)
+                return CampaignArmyService.GetRepresentative(member);
+        return null;
+    }
+
+    private void InspectRosterMember(BaseUnit unit)
+    {
+        if (unit == null || !IsVisible) return;
+        if (unit is CombatUnit combat)
         {
-            ClearPanelInfo();
-            return;
+            currentCombatUnit = combat;
+            currentWorkerUnit = null;
+            PopulateForCombatUnit(combat);
         }
-        if (slideCoroutine != null) StopCoroutine(slideCoroutine);
-        slideCoroutine = StartCoroutine(Slide(panelRect.anchoredPosition, hiddenAnchoredPos, slideDuration, () => {
-            // After slide out completes, clear and deactivate
-            ClearPanelInfo();
-            if (unitInfoPanel != null) unitInfoPanel.SetActive(false);
-        }));
-    }
-
-    private IEnumerator Slide(Vector2 from, Vector2 to, float duration, System.Action onComplete = null)
-    {
-        float t = 0f;
-        // Ensure starting position
-        panelRect.anchoredPosition = from;
-        while (t < duration)
+        else if (unit is WorkerUnit worker)
         {
-            t += Time.unscaledDeltaTime;
-            float f = Mathf.Clamp01(t / duration);
-            // Smooth step easing
-            float ease = f * f * (3f - 2f * f);
-            panelRect.anchoredPosition = Vector2.LerpUnclamped(from, to, ease);
-            yield return null;
+            currentWorkerUnit = worker;
+            currentCombatUnit = null;
+            PopulateForWorkerUnit(worker);
         }
-        panelRect.anchoredPosition = to;
-        slideCoroutine = null;
-        onComplete?.Invoke();
     }
 
     private void ClearPanelInfo()
     {
-        if (unitInfoPanel != null)
-        {
-            unitInfoPanel.SetActive(true); // Ensure the content container is always visible
-        }
-
         // Set all text fields to their default "empty" state and ensure they are visible
         if (unitNameText != null) { unitNameText.text = "No Unit Selected"; unitNameText.gameObject.SetActive(true); }
         if (unitTypeText != null) { unitTypeText.text = "---"; unitTypeText.gameObject.SetActive(true); }
@@ -369,15 +402,13 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (buildOptionsDropdown != null)
         {
             buildOptionsDropdown.ClearOptions();
-            // Keep visible but disabled when empty
-            buildOptionsDropdown.gameObject.SetActive(true);
+            buildOptionsDropdown.gameObject.SetActive(false);
             buildOptionsDropdown.interactable = false;
         }
         if (unitBuildDropdown != null)
         {
             unitBuildDropdown.ClearOptions();
-            // Keep visible but disabled when empty
-            unitBuildDropdown.gameObject.SetActive(true);
+            unitBuildDropdown.gameObject.SetActive(false);
             unitBuildDropdown.interactable = false;
         }
         // Primary start/contribute button: keep visible but disabled when no action
@@ -398,6 +429,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         // Clear unit references
         currentCombatUnit = null;
         currentWorkerUnit = null;
+        if (unitInfoPanel != null) unitInfoPanel.SetActive(false);
     }
 
     private void PopulateUnitBuildDropdown(WorkerUnit worker)
@@ -407,7 +439,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         var civ = worker.owner;
         if (civ == null) return;
 
-        var options = new List<string> { "Select unit to build..." };
+        var options = new List<string> { "Train Unit..." };
 
         var units = GetWorkerBuildableCombatUnits(worker);
         if (units.Count > 0)
@@ -439,6 +471,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
             unitBuildDropdown.options = new List<TMP_Dropdown.OptionData> { new TMP_Dropdown.OptionData("No unit build options") };
             unitBuildDropdown.SetValueWithoutNotify(0);
             unitBuildDropdown.interactable = false;
+            unitBuildDropdown.gameObject.SetActive(false);
             // Use primary Start/Contribute button for unit actions; keep it visible but disabled
             if (startBuildButton != null) { startBuildButton.gameObject.SetActive(true); startBuildButton.interactable = false; }
             return;
@@ -448,6 +481,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         unitBuildDropdown.AddOptions(options);
         unitBuildDropdown.SetValueWithoutNotify(0);
         unitBuildDropdown.interactable = true;
+        unitBuildDropdown.gameObject.SetActive(true);
         pendingUnitBuildIndex = -1;
         RefreshStartBuildButtonState(worker);
     }
@@ -463,8 +497,10 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         pendingUnitBuildIndex = idx - 1;
         pendingBuildIndex = -1;
+        unitBuildDropdown.gameObject.SetActive(false);
         RefreshStartBuildButtonState(currentWorkerUnit);
     }
+
 
     private List<CombatUnitData> GetWorkerBuildableCombatUnits(WorkerUnit worker)
     {
@@ -585,15 +621,19 @@ PopulateForWorkerUnit(currentWorkerUnit);
         SetUnitDescription(currentCombatUnit.data.description, currentCombatUnit.data.unitName);
 
         // Display unit icon
-        if (unitIconImage != null && currentCombatUnit.data.GetIcon(currentCombatUnit.owner) != null)
-            unitIconImage.sprite = currentCombatUnit.data.GetIcon(currentCombatUnit.owner);
+        if (unitIconImage != null)
+        {
+            unitIconImage.sprite = currentCombatUnit.data != null
+                ? currentCombatUnit.data.GetIcon(currentCombatUnit.owner) : null;
+            unitIconImage.enabled = unitIconImage.sprite != null;
+        }
         levelText.text = $"{currentCombatUnit.level}";
         experienceText.text = $"XP: {currentCombatUnit.experience}/{currentCombatUnit.data.xpToNextLevel[currentCombatUnit.level - 1]}";
         
         attackText.text = $"{currentCombatUnit.CurrentAttack}";
         defenseText.text = $"{currentCombatUnit.CurrentDefense}";
         healthText.text = $"{currentCombatUnit.currentHealth}/{currentCombatUnit.MaxHealth}";
-        if (movePointsText != null) movePointsText.text = $"{currentCombatUnit.moveSpeed:F1}";
+        if (movePointsText != null) movePointsText.text = $"{currentCombatUnit.currentMovePoints}/{currentCombatUnit.GetTurnMovementBudget()}";
         rangeText.text = $"{currentCombatUnit.CurrentRange}";
         if (attackPointsText != null)
         {
@@ -606,7 +646,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         UpdateUpgradeActionState(currentCombatUnit);
         UpdateFortifyActionState(currentCombatUnit);
         UpdateStackInfo(currentCombatUnit);
-        campaignArmyPanel?.Show(currentCombatUnit);
+        campaignArmyPanel?.Refresh();
     }
 
     private void UpdateUnitInfoForWorkerUnit()
@@ -625,7 +665,15 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         if (levelText != null) levelText.gameObject.SetActive(true);
         if (experienceText != null) experienceText.gameObject.SetActive(true);
-        if (rangeText != null) rangeText.gameObject.SetActive(false);
+        if (rangeText != null)
+        {
+            rangeText.gameObject.SetActive(true);
+            bool hasJob = ImprovementManager.Instance != null
+                && ImprovementManager.Instance.HasAnyJobAtTile(currentWorkerUnit.currentTileIndex, currentWorkerUnit.planetIndex);
+            bool assigned = hasJob && ImprovementManager.Instance.JobAssignedToWorker(
+                currentWorkerUnit.currentTileIndex, currentWorkerUnit, currentWorkerUnit.planetIndex);
+            rangeText.text = assigned ? "Work: Assigned" : hasJob ? "Work: Available" : "Work: Idle";
+        }
 
 
         unitNameText.text = currentWorkerUnit.data.unitName;
@@ -634,10 +682,13 @@ PopulateForWorkerUnit(currentWorkerUnit);
 
         // Display worker icon (was missing, causing stale/blank icon in worker panel)
         if (unitIconImage != null)
+        {
             unitIconImage.sprite = currentWorkerUnit.data != null ? currentWorkerUnit.data.GetIcon(currentWorkerUnit.owner) : null;
+            unitIconImage.enabled = unitIconImage.sprite != null;
+        }
         
         healthText.text = $"{currentWorkerUnit.currentHealth}/{currentWorkerUnit.MaxHealth}";
-        movePointsText.text = $"{currentWorkerUnit.currentMovePoints}";
+        movePointsText.text = $"{currentWorkerUnit.currentMovePoints}/{currentWorkerUnit.GetTurnMovementBudget()}";
         attackText.text = $"{currentWorkerUnit.CurrentAttack}";
         defenseText.text = $"{currentWorkerUnit.CurrentDefense}";
         if (levelText != null) levelText.text = $"Level: {currentWorkerUnit.level}";
@@ -664,6 +715,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         UpdateWorkerActionStates(currentWorkerUnit);
         UpdateFortifyActionState(currentWorkerUnit);
         UpdateStackInfo(currentWorkerUnit);
+        campaignArmyPanel?.Refresh();
     }
     
 
@@ -719,6 +771,13 @@ PopulateForWorkerUnit(currentWorkerUnit);
     {
         BaseUnit unit = currentCombatUnit != null ? (BaseUnit)currentCombatUnit : currentWorkerUnit;
         if (unit == null) return;
+
+        if (unit is CombatUnit)
+        {
+            campaignArmyPanel?.ToggleDefenseFromUnitInfo();
+            UpdateUnitInfoForCombatUnit();
+            return;
+        }
 
         unit.Fortify();
 
@@ -789,7 +848,8 @@ PopulateForWorkerUnit(currentWorkerUnit);
             unstackButton.interactable = false;
         }
 
-        stackOrderPanel?.Refresh(unit);
+        stackOrderPanel?.Refresh(null);
+        if (unstackButton != null) unstackButton.gameObject.SetActive(false);
     }
 
     private void OnDestroy()
@@ -809,17 +869,7 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (unitBuildDropdown != null)
             unitBuildDropdown.onValueChanged.RemoveAllListeners();
 
-        // Unsubscribe from movement events
-        if (GameEventManager.Instance != null)
-        {
-            GameEventManager.Instance.OnUnitMoved -= HandleUnitMovedEvent;
-            GameEventManager.Instance.OnMovementCompleted -= HandleUnitMovedEvent;
-            GameEventManager.Instance.OnMovePointsChanged -= HandleMovePointsChanged;
-            GameEventManager.Instance.OnAttackPointsChanged -= HandleAttackPointsChanged;
-            GameEventManager.Instance.OnHealthChanged -= HandleHealthChanged;
-            GameEventManager.Instance.OnDamageApplied -= HandleCombatEvent;
-            GameEventManager.Instance.OnUnitKilled -= HandleCombatEvent;
-        }
+        UnsubscribeFromGameEvents();
     }
     
 
@@ -827,73 +877,93 @@ PopulateForWorkerUnit(currentWorkerUnit);
     {
         if (args == null || args.Unit == null) return;
 
-        // If the moved unit is the one currently displayed, refresh its info
-        if (currentWorkerUnit != null && args.Unit == currentWorkerUnit)
-        {
-            UpdateUnitInfoForWorkerUnit();
-        }
-        else if (currentCombatUnit != null && args.Unit == currentCombatUnit)
-        {
-            UpdateUnitInfoForCombatUnit();
-        }
+        if (IsDisplayedArmyMember(args.Unit)) RefreshDisplayedUnit();
     }
 
     private void HandleMovePointsChanged(GameEventManager.MovePointsChangedEventArgs args)
     {
         if (args == null || args.Unit == null) return;
 
-        if (currentWorkerUnit != null && args.Unit == currentWorkerUnit)
-        {
-            UpdateUnitInfoForWorkerUnit();
-        }
-        else if (currentCombatUnit != null && args.Unit == currentCombatUnit)
-        {
-            UpdateUnitInfoForCombatUnit();
-        }
+        if (IsDisplayedArmyMember(args.Unit)) RefreshDisplayedUnit();
     }
 
     private void HandleAttackPointsChanged(GameEventManager.UnitValueChangedEventArgs args)
     {
         if (args == null || args.Unit == null) return;
 
-        if (currentWorkerUnit != null && args.Unit == currentWorkerUnit)
-        {
-            UpdateUnitInfoForWorkerUnit();
-        }
-        else if (currentCombatUnit != null && args.Unit == currentCombatUnit)
-        {
-            UpdateUnitInfoForCombatUnit();
-        }
+        if (IsDisplayedArmyMember(args.Unit)) RefreshDisplayedUnit();
     }
 
     private void HandleHealthChanged(GameEventManager.UnitValueChangedEventArgs args)
     {
         if (args == null || args.Unit == null) return;
 
-        if (currentWorkerUnit != null && args.Unit == currentWorkerUnit)
-        {
-            UpdateUnitInfoForWorkerUnit();
-        }
-        else if (currentCombatUnit != null && args.Unit == currentCombatUnit)
-        {
-            UpdateUnitInfoForCombatUnit();
-        }
+        if (IsDisplayedArmyMember(args.Unit)) RefreshDisplayedUnit();
     }
 
     private void HandleCombatEvent(GameEventManager.CombatEventArgs args)
     {
         if (args == null) return;
 
-        if (currentWorkerUnit != null &&
-            (args.Attacker == currentWorkerUnit || args.Defender == currentWorkerUnit))
+        if (IsDisplayedArmyMember(args.Attacker) || IsDisplayedArmyMember(args.Defender)) RefreshDisplayedUnit();
+    }
+
+    private bool IsDisplayedArmyMember(MonoBehaviour value)
+    {
+        if (value is not BaseUnit unit) return false;
+        if (unit == currentCombatUnit || unit == currentWorkerUnit) return true;
+        if (currentCombatUnit != null && unit is CombatUnit combat)
+            return combat.MilitaryFormationId == currentCombatUnit.MilitaryFormationId;
+        if (currentCombatUnit != null && unit is WorkerUnit worker)
+            return worker.AttachedArmyFormationId == currentCombatUnit.MilitaryFormationId;
+        return currentWorkerUnit != null && unit is WorkerUnit displayedWorker
+            && displayedWorker.AttachedArmyFormationId == currentWorkerUnit.AttachedArmyFormationId
+            && !string.IsNullOrEmpty(currentWorkerUnit.AttachedArmyFormationId);
+    }
+
+    private void RefreshDisplayedUnit()
+    {
+        if (!IsVisible) return;
+        if (currentCombatUnit != null) UpdateUnitInfoForCombatUnit();
+        else if (currentWorkerUnit != null) UpdateUnitInfoForWorkerUnit();
+    }
+
+    private void HandleTurnChanged() => RefreshDisplayedUnit();
+
+    private void HandleUnitLost(GameEventManager.UnitLostEventArgs args)
+    {
+        if (args?.Unit == null || !IsDisplayedArmyMember(args.Unit)) return;
+        bool isMapSelection = UnitSelectionManager.Instance != null
+            && UnitSelectionManager.Instance.GetSelectedUnit() == args.Unit;
+        if (args.Unit == currentCombatUnit && currentCombatUnit != null)
         {
-            UpdateUnitInfoForWorkerUnit();
+            var survivingMember = CampaignArmyService.GetMembers(currentCombatUnit)
+                .FirstOrDefault(member => member != null && member != currentCombatUnit && member.currentHealth > 0);
+            if (survivingMember != null && !isMapSelection)
+            {
+                currentCombatUnit = CampaignArmyService.GetRepresentative(survivingMember);
+                UpdateUnitInfoForCombatUnit();
+                return;
+            }
+            if (isMapSelection) UnitSelectionManager.Instance.DeselectUnit();
+            else HidePanel();
+            return;
         }
-        else if (currentCombatUnit != null &&
-                 (args.Attacker == currentCombatUnit || args.Defender == currentCombatUnit))
+        if (args.Unit == currentWorkerUnit && currentWorkerUnit != null)
         {
-            UpdateUnitInfoForCombatUnit();
+            CombatUnit attachedArmy = FindAttachedArmy(currentWorkerUnit);
+            if (attachedArmy != null && !isMapSelection)
+            {
+                currentWorkerUnit = null;
+                currentCombatUnit = attachedArmy;
+                PopulateForCombatUnit(attachedArmy);
+                return;
+            }
+            if (isMapSelection) UnitSelectionManager.Instance.DeselectUnit();
+            else HidePanel();
+            return;
         }
+        RefreshDisplayedUnit();
     }
 
     private void HideAllSections()
@@ -914,6 +984,10 @@ PopulateForWorkerUnit(currentWorkerUnit);
         if (settleCityButton != null) settleCityButton.gameObject.SetActive(false);
         if (forageButton != null) forageButton.gameObject.SetActive(false);
         if (fortifyButton != null) fortifyButton.gameObject.SetActive(false);
+        if (buildOptionsDropdown != null) buildOptionsDropdown.gameObject.SetActive(false);
+        if (unitBuildDropdown != null) unitBuildDropdown.gameObject.SetActive(false);
+        if (buildHerdButton != null) buildHerdButton.gameObject.SetActive(false);
+        if (captureButton != null) captureButton.gameObject.SetActive(false);
         // Keep primary build button visible but disabled when hidden sections are active
         if (startBuildButton != null) { startBuildButton.gameObject.SetActive(true); startBuildButton.interactable = false; }
 
@@ -949,8 +1023,7 @@ UpdateUnitInfoForCombatUnit();
             }
             var actor = UnitSelectionManager.Instance != null ? UnitSelectionManager.Instance.GetSelectedUnit() : null;
             bool canCapture = actor != null && actor != combatUnit && combatUnit.data != null && combatUnit.data.captureable && AreAdjacent(actor, combatUnit);
-            // Always show capture button; grey out (non-interactable) when not possible
-            captureButton.gameObject.SetActive(true);
+            captureButton.gameObject.SetActive(canCapture);
             captureButton.interactable = canCapture;
             AddTooltipToButton(captureButton, "Capture", "Capture an adjacent animal or worker into a herd (requires adjacency).");
             if (canCapture)
@@ -981,6 +1054,9 @@ UpdateUnitInfoForWorkerUnit();
                 }
             }
             forageButton.interactable = canForageNow;
+            AddTooltipToButton(forageButton, "Forage", canForageNow
+                ? "Harvest resources from this tile."
+                : "No suitable forageable resource is available here.");
         }
 
         // Worker herd creation: use a single herd button (behaves like SettleCity)
@@ -991,9 +1067,13 @@ UpdateUnitInfoForWorkerUnit();
             bool canCreateHerd = false;
             if (workerUnit != null && workerUnit.owner != null)
             {
-                canCreateHerd = workerUnit.owner.herdsEnabled && (workerUnit.owner.civData != null && workerUnit.owner.civData.herdPrefab != null);
+                canCreateHerd = workerUnit.owner.herdsEnabled
+                    && workerUnit.owner.civData != null && workerUnit.owner.civData.herdPrefab != null
+                    && CanCreateHerdAtCurrentTile(workerUnit);
             }
             buildHerdButton.interactable = canCreateHerd;
+            var herdLabel = buildHerdButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (herdLabel != null) herdLabel.text = "Create Herd";
             AddTooltipToButton(buildHerdButton, "Create Herd", "Create a herd at this tile (requires a civ herd prefab and herding tech). Herds cannot share the same tile.");
             if (canCreateHerd)
                 buildHerdButton.onClick.AddListener(OnBuildHerdClicked);
@@ -1005,8 +1085,7 @@ UpdateUnitInfoForWorkerUnit();
             captureButton.onClick.RemoveAllListeners();
             var actor = UnitSelectionManager.Instance != null ? UnitSelectionManager.Instance.GetSelectedUnit() : null;
             bool canCapture = actor != null && actor != workerUnit && workerUnit.data != null && workerUnit.data.captureable && AreAdjacent(actor, workerUnit);
-            // Always show capture button; grey out (non-interactable) when not possible
-            captureButton.gameObject.SetActive(true);
+            captureButton.gameObject.SetActive(canCapture);
             captureButton.interactable = canCapture;
             if (canCapture)
             {
@@ -1014,6 +1093,16 @@ UpdateUnitInfoForWorkerUnit();
             }
         }
 
+    }
+
+    private static bool CanCreateHerdAtCurrentTile(WorkerUnit worker)
+    {
+        if (worker == null || worker.currentTileIndex < 0) return false;
+        var tileSystem = TileSystem.GetForPlanet(worker.planetIndex) ?? TileSystem.Instance;
+        if (tileSystem == null || tileSystem.GetTileData(worker.currentTileIndex) == null) return false;
+        var occupant = TileOccupancyManager.GetOccupantObjectForTileWithFallback(
+            worker.currentTileIndex, TileLayer.Surface, worker.planetIndex);
+        return occupant == null || occupant == worker.gameObject;
     }
 
     private bool AreAdjacent(BaseUnit a, BaseUnit b)
@@ -1034,11 +1123,14 @@ UpdateUnitInfoForWorkerUnit();
             bool canEverSettle = workerUnit.data != null && workerUnit.data.canFoundCity;
             settleCityButton.gameObject.SetActive(canEverSettle);
             settleCityButton.interactable = canEverSettle && workerUnit.CanFoundCityOnCurrentTile();
+            AddTooltipToButton(settleCityButton, "Found City", canEverSettle
+                ? settleCityButton.interactable ? "Found a city here. Consumes this worker." : "This tile is not valid for founding a city."
+                : "This worker cannot found cities.");
         }
 
         if (buildOptionsDropdown != null)
         {
-            buildOptionsDropdown.gameObject.SetActive(true);
+            buildOptionsDropdown.gameObject.SetActive(false);
         }
 
         // Use the single Start/Contribute button for both starting builds and contributing work
@@ -1050,7 +1142,13 @@ UpdateUnitInfoForWorkerUnit();
             // Keep this button for contributing work and unit build placement.
             startBuildButton.gameObject.SetActive(true);
             var txt = startBuildButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (txt != null) txt.text = hasJob ? "Contribute Work" : "Start Unit Build";
+            string actionLabel = hasJob ? "Contribute Work"
+                : pendingUnitBuildIndex >= 0 ? "Start Unit Build" : "Build";
+            if (txt != null) txt.text = actionLabel;
+            AddTooltipToButton(startBuildButton, actionLabel, hasJob
+                ? workerUnit.currentWorkPoints > 0 ? "Contribute this worker's available work points to the assigned job." : "No work points remain this turn."
+                : pendingUnitBuildIndex >= 0 ? "Place the selected unit build on a valid adjacent tile."
+                : buildOptions.Count > 0 ? "Choose an improvement to begin placement." : "No improvement is available here.");
         }
         RefreshStartBuildButtonState(workerUnit);
         // Legacy contribute button removed; primary start button handles contribute/start behavior
@@ -1073,6 +1171,7 @@ UpdateUnitInfoForWorkerUnit();
         {
             if (pendingUnitBuildIndex >= 0 && pendingUnitBuildIndex < unitBuildOptions.Count)
                 canStart = unitBuildOptions[pendingUnitBuildIndex].isAvailable;
+            else canStart = buildOptions.Count > 0;
         }
 
         startBuildButton.interactable = canStart;
@@ -1083,11 +1182,19 @@ UpdateUnitInfoForWorkerUnit();
         if (fortifyButton == null) return;
 
         fortifyButton.gameObject.SetActive(unit != null);
-        fortifyButton.interactable = unit != null && !unit.isStored && !unit.isMoving && !unit.IsFortified;
+        bool isArmy = unit is CombatUnit;
+        bool defended = unit is CombatUnit combat
+            ? CampaignArmyService.IsInDefenseMode(combat)
+            : unit != null && unit.IsFortified;
+        fortifyButton.interactable = unit != null && !unit.isStored && !unit.isMoving && (isArmy || !defended);
 
         var txt = fortifyButton.GetComponentInChildren<TextMeshProUGUI>();
         if (txt != null)
-            txt.text = unit != null && unit.IsFortified ? "Fortified" : "Fortify";
+            txt.text = isArmy ? defended ? "Defense: On" : "Defense Mode"
+                : defended ? "Fortified" : "Fortify";
+        AddTooltipToButton(fortifyButton, isArmy ? "Defense Mode" : "Fortify",
+            isArmy ? defended ? "Exit defense mode for this army." : "Put every combat member in defense mode."
+                : "Fortify this worker to gain defense and skip its action.");
     }
 
 
@@ -1233,7 +1340,7 @@ UpdateUnitInfoForWorkerUnit();
             buildOptionsDropdown.interactable = true;
             if (startBuildButton != null) startBuildButton.gameObject.SetActive(true);
         }
-        buildOptionsDropdown.gameObject.SetActive(true);
+        buildOptionsDropdown.gameObject.SetActive(false);
         RefreshStartBuildButtonState(worker);
     }
 
@@ -1249,6 +1356,7 @@ UpdateUnitInfoForWorkerUnit();
 
         pendingBuildIndex = idx - 1;
         pendingUnitBuildIndex = -1;
+        buildOptionsDropdown.gameObject.SetActive(false);
         var opt = buildOptions[pendingBuildIndex];
         if (opt.Type == BuildOption.OptionType.Improvement && opt.Improvement != null)
             BeginImprovementPlacement(opt.Improvement);
@@ -1280,6 +1388,12 @@ UpdateUnitInfoForWorkerUnit();
             if (entry.isCombat && entry.combatData != null) OnStartWorkerBuildUnit(entry.combatData);
             else if (!entry.isCombat && entry.workerData != null) OnStartWorkerBuildWorker(entry.workerData);
             return;
+        }
+
+        if (buildOptions.Count > 0 && buildOptionsDropdown != null)
+        {
+            buildOptionsDropdown.gameObject.SetActive(true);
+            buildOptionsDropdown.Show();
         }
 
     }
@@ -1412,6 +1526,10 @@ UpdateUnitInfoForWorkerUnit();
         currentCombatUnit.EnterOrbit(currentCombatUnit.currentTileIndex);
         currentCombatUnit.ConsumeAction();
         UpdateUnitInfoForCombatUnit();
+        if (startBuildButton != null) startBuildButton.gameObject.SetActive(false);
+        if (buildOptionsDropdown != null) buildOptionsDropdown.gameObject.SetActive(false);
+        if (unitBuildDropdown != null) unitBuildDropdown.gameObject.SetActive(false);
+        if (buildHerdButton != null) buildHerdButton.gameObject.SetActive(false);
     }
 
     private void OnExitOrbitClicked()

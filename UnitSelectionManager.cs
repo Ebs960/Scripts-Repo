@@ -75,6 +75,7 @@ public class UnitSelectionManager : MonoBehaviour
     private int _lastPreviewUpdateFrame = -1;
     private int _lastQueuedPreviewFrame = -1;
     private int lastBandHoverDiagnosticTile = -1;
+    private GameEventManager subscribedGameEvents;
     
 
     // Runtime attack hover instance (single pooled instance)
@@ -133,10 +134,12 @@ public class UnitSelectionManager : MonoBehaviour
         {
             GameEventManager.Instance.OnMovementCompleted += OnUnitMovementCompleted;
         }
+        SubscribeToUnitLossEvents();
     }
     
     void Update()
     {
+        SubscribeToUnitLossEvents();
         // Keep event subscription aligned with the active planet.
         int desiredPlanet = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
         if (eventTileSystem == null || eventPlanetIndex != desiredPlanet)
@@ -184,6 +187,8 @@ public class UnitSelectionManager : MonoBehaviour
         {
             GameEventManager.Instance.OnMovementCompleted -= OnUnitMovementCompleted;
         }
+        if (subscribedGameEvents != null) subscribedGameEvents.OnUnitLost -= OnSelectedUnitLost;
+        subscribedGameEvents = null;
     }
 
     private void OnDestroy()
@@ -192,6 +197,24 @@ public class UnitSelectionManager : MonoBehaviour
         {
             GameEventManager.Instance.OnMovementCompleted -= OnUnitMovementCompleted;
         }
+        if (subscribedGameEvents != null) subscribedGameEvents.OnUnitLost -= OnSelectedUnitLost;
+        subscribedGameEvents = null;
+    }
+
+    private void SubscribeToUnitLossEvents()
+    {
+        var current = GameEventManager.Instance;
+        if (current == subscribedGameEvents) return;
+        if (subscribedGameEvents != null) subscribedGameEvents.OnUnitLost -= OnSelectedUnitLost;
+        subscribedGameEvents = current;
+        if (subscribedGameEvents != null) subscribedGameEvents.OnUnitLost += OnSelectedUnitLost;
+    }
+
+    private void OnSelectedUnitLost(GameEventManager.UnitLostEventArgs args)
+    {
+        if (args?.Unit == null || selectedUnit == null || args.Unit != (MonoBehaviour)selectedUnit) return;
+        DeselectUnit();
+        pendingAttackTarget = null;
     }
 
     private void OnTileHoveredTileSystem(int tileIndex, Vector3 worldPos)
@@ -1440,11 +1463,6 @@ public class UnitSelectionManager : MonoBehaviour
             // Rebuild persistent preview from moveOrderPath
             ClearPreviewVisuals();
             ShowQueuedPathPreviewIfAny();
-            // Refresh the unit info panel so it reflects new movement points immediately
-            if (UIManager.Instance != null)
-            {
-                UIManager.Instance.ShowUnitInfoPanelForUnit(selectedUnit);
-            }
             // If we had a pending attack target for this unit, try to execute it now
             if (pendingAttackTarget != null && args.Unit == (MonoBehaviour)selectedUnit)
             {
@@ -1560,7 +1578,6 @@ public class UnitSelectionManager : MonoBehaviour
         ClearPreviewVisuals();
         ShowQueuedPathPreviewIfAny();
         UpdatePreviewVisuals();
-        if (UIManager.Instance != null) UIManager.Instance.ShowUnitInfoPanelForUnit(selectedUnit);
     }
     
     /// <summary>
@@ -1710,6 +1727,8 @@ public class UnitSelectionManager : MonoBehaviour
                     foreach (var worker in selectedWorkers)
                         if (worker != null && worker.CanMoveTo(targetTileIndex)) worker.MoveTo(targetTileIndex);
                 }
+                CampaignArmyPanel.Active?.Show(combatUnit);
+                CampaignArmyPanel.Active?.Inspect(combatUnit);
                 if (!canMove) UIManager.Instance?.ShowNotification($"{unitName} cannot move there!");
                 return;
             }

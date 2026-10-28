@@ -3417,6 +3417,16 @@ public abstract class BaseUnit : MonoBehaviour
         return 0;
     }
 
+    /// <summary>Read-only turn movement budget using the same modifiers as movement restoration.</summary>
+    public int GetTurnMovementBudget()
+    {
+        if (IsTrapped) return 0;
+        int move = GetStartingMovePoints() + GetStatusEffectMovementModifier();
+        if (hasWinterPenalty && ClimateManager.Instance != null && ClimateManager.Instance.currentSeason == Season.Winter)
+            move = Mathf.Max(1, move - 1);
+        return ApplyResourceUpkeepToTurnPoints(Mathf.Max(0, move));
+    }
+
     /// <summary>
     /// Deduct move points (safe to call for any unit). Clamps at zero.
     /// </summary>

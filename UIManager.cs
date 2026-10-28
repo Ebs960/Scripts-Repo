@@ -905,12 +905,12 @@ public class UIManager : MonoBehaviour
             Debug.Log("[UIManager] Ignoring ShowUnitInfoPanelForUnit because a mission/crisis modal is open.");
             return;
         }
-        // Show the panel container FIRST (which calls HideAllPanels + SetActive),
-        // then populate it. This avoids populating into a hidden panel that gets
-        // immediately wiped by HideAllPanels, and eliminates a visual flicker.
-        ShowPanel("UnitInfoPanel");
         var infoUI = unitInfoPanel.GetComponent<UnitInfoPanel>();
-        if (infoUI != null)
+        if (infoUI == null) return;
+
+        if (!unitInfoPanel.activeInHierarchy || !infoUI.IsVisible)
+            ShowPanel("UnitInfoPanel");
+        if (unitInfoPanel.activeInHierarchy)
             infoUI.ShowPanel(unit);
     }
 
