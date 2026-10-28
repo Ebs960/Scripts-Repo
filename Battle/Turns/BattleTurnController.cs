@@ -23,6 +23,31 @@ public sealed class BattleTurnController
         if (ReleaseDelayedActivations(session))
             return;
 
+        AdvanceToNextSide(session);
+    }
+
+    public void EndCurrentSideAndForfeitActivations(BattleSession session)
+    {
+        if (session == null)
+            return;
+
+        for (int i = 0; i < session.Units.Count; i++)
+        {
+            var unit = session.Units[i];
+            if (unit == null || unit.Side != session.ActiveSide || !unit.IsAliveAndActive)
+                continue;
+
+            unit.IsWaiting = false;
+            unit.HasActed = true;
+            unit.CurrentActionPoints = 0;
+            unit.CurrentMovePoints = 0;
+        }
+
+        AdvanceToNextSide(session);
+    }
+
+    private static void AdvanceToNextSide(BattleSession session)
+    {
         if (session.ActiveSide == BattleSide.Attacker)
         {
             session.StartSide(BattleSide.Defender);

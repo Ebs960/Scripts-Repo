@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 /// <summary>Raycastable world-space rendering of one authoritative BattleCell.</summary>
 public sealed class BattleCellView : MonoBehaviour
@@ -29,8 +30,10 @@ public sealed class BattleCellView : MonoBehaviour
         AddTerrainCues(cell);
     }
 
-    private void OnMouseDown() => Clicked?.Invoke(CellIndex);
-    private void OnMouseEnter() => PointerEntered?.Invoke(CellIndex);
+    private static bool PointerOverUi => EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+
+    private void OnMouseDown() { if (!PointerOverUi) Clicked?.Invoke(CellIndex); }
+    private void OnMouseEnter() { if (!PointerOverUi) PointerEntered?.Invoke(CellIndex); }
     private void OnMouseExit() => PointerExited?.Invoke(CellIndex);
     public void SetOverlay(BattlePresenter.CellOverlay state, bool selected)
     {

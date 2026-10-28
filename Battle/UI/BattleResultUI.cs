@@ -1,12 +1,12 @@
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public sealed class BattleResultUI : MonoBehaviour
 {
+    private const string PanelResource = BattleUIUtil.ResourceFolder + "BattleResultPanel";
+
     private BattleManager manager;
-    private GameObject root;
-    private TextMeshProUGUI summary;
+    private BattleResultPanel panel;
+    private BattleTooltipView modalTooltip;
 
     public static BattleResultUI GetOrCreate(BattleManager manager)
     {
@@ -16,7 +16,10 @@ public sealed class BattleResultUI : MonoBehaviour
 
     public void Bind(BattleManager battleManager)
     {
+        if (manager == battleManager) return;
+        if (manager != null) manager.BattleResolved -= Show;
         manager = battleManager;
+        if (manager == null) return;
         manager.BattleResolved += Show;
         Build();
     }
@@ -29,25 +32,23 @@ public sealed class BattleResultUI : MonoBehaviour
 
     private void Build()
     {
-        if (root != null) return;
-        root = new GameObject("Battle Result", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-        var canvas = root.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 530;
-        root.GetComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        root.GetComponent<CanvasScaler>().referenceResolution = new Vector2(1920f, 1080f);
-
-        var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image));
-        panel.transform.SetParent(root.transform, false);
-        var panelRect = panel.GetComponent<RectTransform>();
-        panelRect.anchorMin = panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-        panelRect.sizeDelta = new Vector2(560f, 380f);
-        panel.GetComponent<Image>().color = new Color(0.08f, 0.1f, 0.13f, 0.99f);
-
-        summary = CreateText(panel.transform, "Summary", new Vector2(0.5f, 1f), new Vector2(0f, -28f), new Vector2(500f, 270f), 19f);
-        summary.alignment = TextAlignmentOptions.TopLeft;
-        CreateButton(panel.transform, "Continue", new Vector2(0f, 26f), Continue);
-        root.SetActive(false);
+        if (panel != null) return;
+        var prefab = Resources.Load<BattleResultPanel>(PanelResource);
+        if (prefab == null)
+        {
+            Debug.LogError($"[BattleResultUI] Resources/{PanelResource}.prefab is missing. Run Tools > Battle UI > Build Tactical Battle Prefabs.");
+            return;
+        }
+        panel = Instantiate(prefab, transform, false);
+        panel.name = "Battle Result";
+        panel.ContinueButton.onClick.AddListener(Continue);
+        modalTooltip = panel.GetComponentInChildren<BattleTooltipView>(true)
+            ?? manager.GetComponentInChildren<BattleHUD>(true)?.CreateTooltipOverlay((RectTransform)panel.transform);
+        var continueTip = panel.ContinueButton.GetComponent<BattleHoverTip>();
+        if (continueTip == null) continueTip = panel.ContinueButton.gameObject.AddComponent<BattleHoverTip>();
+        continueTip.Initialize(modalTooltip);
+        continueTip.SetText("Continue: Return to the campaign.");
+        panel.gameObject.SetActive(false);
     }
 
     private void Show(BattleResult result)
@@ -62,30 +63,77 @@ public sealed class BattleResultUI : MonoBehaviour
             return;
 
         Build();
-        int attackerLosses = 0;
-        int defenderLosses = 0;
-        int attackerRetreats = 0;
-        int defenderRetreats = 0;
-        int survivors = 0;
+        if (panel == null) return;
+
+        // Counts are whole tactical units, not individual soldier casualties.
+        var attacker = new int[3];
+        var defender = new int[3];
         for (int i = 0; i < result.UnitOutcomes.Count; i++)
         {
             var outcome = result.UnitOutcomes[i];
-            if (outcome.Died)
-            {
-                if (outcome.Side == BattleSide.Attacker) attackerLosses++; else defenderLosses++;
-            }
-            else survivors++;
-            if (outcome.Retreated)
-            {
-                if (outcome.Side == BattleSide.Attacker) attackerRetreats++; else defenderRetreats++;
-            }
+            var counts = outcome.Side == BattleSide.Attacker ? attacker : defender;
+            if (outcome.Died) counts[0]++;
+            else if (outcome.Retreated) counts[1]++;
+            else counts[2]++;
         }
 
-        summary.text = $"Battle Result\n\nWinner: {result.WinningSide}\nResolution: {result.ResolutionType}\nFinal round: {result.FinalRound}\n\n" +
-            $"Attacker losses: {attackerLosses}\nDefender losses: {defenderLosses}\n" +
-            $"Attacker retreats: {attackerRetreats}\nDefender retreats: {defenderRetreats}\n" +
-            $"Survivors: {survivors}\nAuto-resolved: {result.WasAutoResolved}";
-        root.SetActive(true);
+        bool attackerHuman = manager != null && manager.IsHumanControlledSide(BattleSide.Attacker);
+        bool defenderHuman = manager != null && manager.IsHumanControlledSide(BattleSide.Defender);
+        string title = "BATTLE CONCLUDED";
+        Color color = new Color(0.93f, 0.76f, 0.28f);
+        if (attackerHuman != defenderHuman)
+        {
+            bool won = result.WinningSide == (attackerHuman ? BattleSide.Attacker : BattleSide.Defender);
+            title = won ? "VICTORY" : "DEFEAT";
+            color = won ? new Color(0.93f, 0.76f, 0.28f) : new Color(0.95f, 0.4f, 0.35f);
+        }
+
+        string attackerCiv = BattleUIUtil.CivName(BattleUIUtil.SideOwner(preview, BattleSide.Attacker));
+        string defenderCiv = BattleUIUtil.CivName(BattleUIUtil.SideOwner(preview, BattleSide.Defender));
+        string winnerCiv = result.WinningSide == BattleSide.Attacker ? attackerCiv : defenderCiv;
+        string resolution = BattleUIUtil.Humanize(result.ResolutionType.ToString()) + (result.WasAutoResolved ? " (auto-resolved)" : string.Empty);
+        string commanderExperience = CommanderExperienceSummary(result, preview);
+        if (!string.IsNullOrEmpty(commanderExperience)) resolution += $"\n{commanderExperience}";
+
+        panel.Show(title, color, $"Winner: {result.WinningSide} - {winnerCiv}", $"Resolution: {resolution}",
+            $"Final round: {result.FinalRound}", attackerCiv, attacker, defenderCiv, defender);
+        panel.gameObject.SetActive(true);
+    }
+
+    private static string CommanderExperienceSummary(BattleResult result, EngagementPreview preview)
+    {
+        int attackerExperience = 0;
+        int defenderExperience = 0;
+        bool found = false;
+        for (int i = 0; i < result.CommanderOutcomes.Count; i++)
+        {
+            var outcome = result.CommanderOutcomes[i];
+            if (outcome == null || outcome.ExperienceGained <= 0 || !TryGetFormationSide(preview, outcome.FormationId, out var side))
+                continue;
+
+            found = true;
+            if (side == BattleSide.Attacker) attackerExperience += outcome.ExperienceGained;
+            else defenderExperience += outcome.ExperienceGained;
+        }
+
+        return found
+            ? $"Commander experience: Attacker +{attackerExperience:N0} XP; Defender +{defenderExperience:N0} XP"
+            : string.Empty;
+    }
+
+    private static bool TryGetFormationSide(EngagementPreview preview, string formationId, out BattleSide side)
+    {
+        side = BattleSide.Attacker;
+        if (preview == null || string.IsNullOrEmpty(formationId)) return false;
+        for (int i = 0; i < preview.AttackerUnits.Count; i++)
+            if (preview.AttackerUnits[i].FormationId == formationId) return true;
+        for (int i = 0; i < preview.DefenderUnits.Count; i++)
+            if (preview.DefenderUnits[i].FormationId == formationId)
+            {
+                side = BattleSide.Defender;
+                return true;
+            }
+        return false;
     }
 
     public void PresentRestored(BattleResult result) => Show(result);
@@ -93,39 +141,6 @@ public sealed class BattleResultUI : MonoBehaviour
     private void Continue()
     {
         manager?.ContinueAfterBattleResult();
-        if (root != null) root.SetActive(false);
-    }
-
-    private static TextMeshProUGUI CreateText(Transform parent, string name, Vector2 anchor, Vector2 position, Vector2 size, float fontSize)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent, false);
-        var rect = go.GetComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = anchor;
-        rect.pivot = anchor;
-        rect.anchoredPosition = position;
-        rect.sizeDelta = size;
-        var text = go.GetComponent<TextMeshProUGUI>();
-        text.font = TMP_Settings.defaultFontAsset;
-        text.fontSize = fontSize;
-        text.color = Color.white;
-        return text;
-    }
-
-    private static void CreateButton(Transform parent, string label, Vector2 position, UnityEngine.Events.UnityAction action)
-    {
-        var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button));
-        go.transform.SetParent(parent, false);
-        var rect = go.GetComponent<RectTransform>();
-        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0f);
-        rect.pivot = new Vector2(0.5f, 0f);
-        rect.anchoredPosition = position;
-        rect.sizeDelta = new Vector2(180f, 42f);
-        go.GetComponent<Image>().color = new Color(0.72f, 0.67f, 0.52f, 1f);
-        go.GetComponent<Button>().onClick.AddListener(action);
-        var text = CreateText(go.transform, "Label", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(170f, 34f), 15f);
-        text.alignment = TextAlignmentOptions.Center;
-        text.color = Color.black;
-        text.text = label;
+        if (panel != null) panel.gameObject.SetActive(false);
     }
 }

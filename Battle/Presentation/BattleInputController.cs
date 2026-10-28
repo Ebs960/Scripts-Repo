@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public enum BattleInteractionMode { Selection, Movement, Attack, Deployment, Retreat, Embark, Disembark, Launch, Recovery, Depth, Detection }
 
@@ -82,7 +83,8 @@ public sealed class BattleInputController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(1)) Cancel();
         Vector2 pan = new(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
         float rotate = (Input.GetKey(KeyCode.Q) ? -1f : 0f) + (Input.GetKey(KeyCode.E) ? 1f : 0f);
-        cameraController?.RouteInput(pan, Input.mouseScrollDelta.y, rotate, Time.unscaledDeltaTime);
+        bool overUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        cameraController?.RouteInput(pan, overUi ? 0f : Input.mouseScrollDelta.y, rotate, Time.unscaledDeltaTime);
     }
 
     private void Submit(bool success, string reason)

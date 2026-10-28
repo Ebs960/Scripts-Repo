@@ -1535,6 +1535,37 @@ public class UIManager : MonoBehaviour
         modalWatchdog = null;
     }
 
+    private bool tacticalHudSuppressed;
+    private bool restoreGameplayHudAfterTactical;
+    private bool restoreUnitInfoPanelAfterTactical;
+    private bool restoreMinimapAfterTactical;
+
+    /// <summary>Hides the campaign top bar, unit HUD and minimap while the tactical battle UI owns the screen.</summary>
+    public void SetTacticalBattleHudSuppressed(bool suppressed)
+    {
+        if (tacticalHudSuppressed == suppressed) return;
+        tacticalHudSuppressed = suppressed;
+
+        if (cachedMinimapUI == null)
+            cachedMinimapUI = FindAnyObjectByType<MinimapUI>(FindObjectsInactive.Include);
+
+        if (suppressed)
+        {
+            restoreGameplayHudAfterTactical = gameplayHudRoot != null && gameplayHudRoot.activeSelf;
+            restoreUnitInfoPanelAfterTactical = unitInfoPanel != null && unitInfoPanel.activeSelf;
+            restoreMinimapAfterTactical = cachedMinimapUI != null && cachedMinimapUI.gameObject.activeSelf;
+            if (unitInfoPanel != null) unitInfoPanel.SetActive(false);
+            if (gameplayHudRoot != null) gameplayHudRoot.SetActive(false);
+            if (cachedMinimapUI != null) cachedMinimapUI.gameObject.SetActive(false);
+            return;
+        }
+
+        if (gameplayHudRoot != null) gameplayHudRoot.SetActive(restoreGameplayHudAfterTactical && !IsLoadingActive());
+        if (unitInfoPanel != null) unitInfoPanel.SetActive(restoreUnitInfoPanelAfterTactical && !IsLoadingActive());
+        if (cachedMinimapUI != null) cachedMinimapUI.gameObject.SetActive(restoreMinimapAfterTactical && !IsLoadingActive());
+        restoreGameplayHudAfterTactical = restoreUnitInfoPanelAfterTactical = restoreMinimapAfterTactical = false;
+    }
+
     private void SuppressGameplayHudForMissionCrisisModal()
     {
         restoreGameplayHudAfterModal = gameplayHudRoot != null && gameplayHudRoot.activeSelf;

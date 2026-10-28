@@ -905,6 +905,12 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         preview=ActiveBattleState.CommandExecutor.PreviewAttack(ActiveBattle,attacker,defender,weaponIndex,profile);return true;
     }
 
+    public bool IsLegalAttackTarget(int attackerId, int defenderId, int weaponIndex, BattleAttackProfile profile)
+    {
+        return TryGetDamagePreview(attackerId, defenderId, weaponIndex, profile, out var preview, out var detection)
+            && detection >= BattleDetectionLevel.Detected && preview.CanAttack;
+    }
+
     private BattlePresentationEvent CapturePresentationBefore(BattleCommand command)
     {
         var unit=FindUnit(command.UnitId);var e=new BattlePresentationEvent{UnitId=command.UnitId,SourceCell=unit?.CellIndex??-1,HealthBefore=unit?.CurrentHealth??0};
@@ -923,10 +929,13 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
     public void EndPlayerSideTurn()
     {
-        if (ActiveBattleState == null || (battleInput!=null&&battleInput.IsCommandInputLocked) || !IsHumanControlledSide(ActiveBattle.ActiveSide))
+        if (ActiveBattleState == null
+            || (ActiveBattle.Phase != BattlePhase.AttackerTurn && ActiveBattle.Phase != BattlePhase.DefenderTurn)
+            || (battleInput != null && battleInput.IsCommandInputLocked)
+            || !IsHumanControlledSide(ActiveBattle.ActiveSide))
             return;
 
-        ActiveBattleState.TurnController.EndCurrentSide(ActiveBattle);
+        ActiveBattleState.TurnController.EndCurrentSideAndForfeitActivations(ActiveBattle);
         AdvanceManualFlow();
         NotifyBattleStateChanged();
     }
@@ -1008,7 +1017,7 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
         }
     }
 
-    private bool IsHumanControlledSide(BattleSide side)
+    public bool IsHumanControlledSide(BattleSide side)
     {
         if (pendingPreview == null)
             return false;

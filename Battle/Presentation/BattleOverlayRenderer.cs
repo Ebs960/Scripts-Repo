@@ -40,9 +40,21 @@ public sealed class BattleOverlayRenderer : MonoBehaviour
                 if(cell.IsObjective)flags|=BattlePresenter.CellOverlay.Objective;
                 if(cell.IsReinforcementEntry)flags|=BattlePresenter.CellOverlay.Reinforcement;
                 if(cell.RetreatExitForSide==selected.Side)flags|=BattlePresenter.CellOverlay.RetreatExit;
-                if (manager.IsLegalCellForMode(selected.UnitId, i, input.Mode))
-                    (input.Mode == BattleInteractionMode.Attack ? targets : moves).Add(i);
-                else if(input.Mode!=BattleInteractionMode.Selection)flags|=BattlePresenter.CellOverlay.Invalid;
+                bool legal = false;
+                if (input.Mode == BattleInteractionMode.Attack)
+                {
+                    var target = manager.GetUnitAtCell(i);
+                    var profile = input.UseSpecialAttack ? selected.Snapshot?.SpecialAttackProfile : null;
+                    legal = target != null && target.Side != selected.Side
+                        && manager.IsLegalAttackTarget(selected.UnitId, target.UnitId, input.SelectedWeaponIndex, profile);
+                    if (legal) targets.Add(i);
+                }
+                else if (input.Mode != BattleInteractionMode.Selection)
+                {
+                    legal = manager.IsLegalCellForMode(selected.UnitId, i, input.Mode);
+                    if (legal) moves.Add(i);
+                }
+                if (!legal && input.Mode != BattleInteractionMode.Selection) flags |= BattlePresenter.CellOverlay.Invalid;
                 var contact=manager.GetUnitAtCell(i);
                 if(contact!=null&&contact.Side!=selected.Side)flags|=manager.GetDetectionLevel(selected.Side,contact) switch
                 { BattleDetectionLevel.Suspected=>BattlePresenter.CellOverlay.Suspected, BattleDetectionLevel.Detected=>BattlePresenter.CellOverlay.Detected,

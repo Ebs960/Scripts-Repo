@@ -301,78 +301,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &9300000000000000000
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2436723609212313998}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c2d9853614f5c804aac676cede4fb220, type: 3}
-  m_Name: ''
-  m_EditorClassIdentifier: Assembly-CSharp::CampaignArmyPanel
-  rootPanel: {fileID: 9300000000000000004}
-  armyNameText: {fileID: 4168747676706059163}
-  renameInput: {fileID: 9300000000000000006}
-  renamePenButton: {fileID: 9300000000000000007}
-  renameConfirmButton: {fileID: 0}
-  combatCapacityText: {fileID: 3014979541756648637}
-  workerCountText: {fileID: 0}
-  commanderArea: {fileID: 0}
-  rosterContent: {fileID: 9300000000000000005}
-  combatUnitCardPrefab: {fileID: 9100000000000000006, guid: a148bd75c3f342dca21e9dd842d31b66, type: 3}
-  workerUnitCardPrefab: {fileID: 9100000000000000006, guid: a148bd75c3f342dca21e9dd842d31b66, type: 3}
-  defenseModeButton: {fileID: 1908048433525553149}
-  defenseModeActiveIndicator: {fileID: 0}
-  buildButton: {fileID: 0}
-  rosterSelection: {fileID: 9300000000000000001}
-  selectedCountText: {fileID: 0}
---- !u!114 &9300000000000000001
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2436723609212313998}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1f39cac9a77d40efba0e0d029622798e, type: 3}
-  m_Name: ''
-  m_EditorClassIdentifier: Assembly-CSharp::ArmyRosterSelection
---- !u!1 &9300000000000000004 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 5956610791159309652, guid: b18f3a5b8be1c384381d63b14f3599a5, type: 3}
-  m_PrefabInstance: {fileID: 7970943173212972499}
-  m_PrefabAsset: {fileID: 0}
---- !u!224 &9300000000000000005 stripped
-RectTransform:
-  m_CorrespondingSourceObject: {fileID: 3160709327215560646, guid: b18f3a5b8be1c384381d63b14f3599a5, type: 3}
-  m_PrefabInstance: {fileID: 7970943173212972499}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &9300000000000000006 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 9200000000000000003, guid: b18f3a5b8be1c384381d63b14f3599a5, type: 3}
-  m_PrefabInstance: {fileID: 7970943173212972499}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2da0c512f12947e489f739169773d7ca, type: 3}
-  m_Name: ''
-  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TMP_InputField
---- !u!114 &9300000000000000007 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 8768308045211651075, guid: b18f3a5b8be1c384381d63b14f3599a5, type: 3}
-  m_PrefabInstance: {fileID: 7970943173212972499}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: ''
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
   m_Navigation:
     m_Mode: 3
     m_WrapAround: 0
@@ -401,7 +329,7 @@ MonoBehaviour:
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
   m_Interactable: 1
-  m_TargetGraphic: {fileID: 3364789314961940826}
+  m_TargetGraphic: {fileID: 0}
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
@@ -2001,8 +1929,6 @@ GameObject:
   - component: {fileID: 2183890902987634140}
   - component: {fileID: 4779787306180687996}
   - component: {fileID: 1432244064767108866}
-  - component: {fileID: 9300000000000000000}
-  - component: {fileID: 9300000000000000001}
   m_Layer: 5
   m_Name: UnitUI
   m_TagString: Untagged
@@ -2050,6 +1976,7 @@ Canvas:
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
+  m_UseReflectionProbes: 0
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
@@ -2111,6 +2038,7 @@ MonoBehaviour:
   unitIconImage: {fileID: 533558947852961193}
   unitNameText: {fileID: 3075544022281286564}
   unitTypeText: {fileID: 4168747676706059163}
+  unitDescriptionText: {fileID: 0}
   levelText: {fileID: 4106497852176620792}
   experienceText: {fileID: 400840846342915399}
   attackText: {fileID: 6869027371250281599}
@@ -2125,6 +2053,7 @@ MonoBehaviour:
   fortifyButton: {fileID: 1908048433525553149}
   startBuildButton: {fileID: 4063430481572289634}
   captureButton: {fileID: 2698521208474183704}
+  upgradeButton: {fileID: 0}
   orbitStatusText: {fileID: 0}
   enterOrbitButton: {fileID: 0}
   exitOrbitButton: {fileID: 0}
@@ -8227,7 +8156,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3160709327215560646, guid: b18f3a5b8be1c384381d63b14f3599a5, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0.0004892567
+      value: 0.00048828125
       objectReference: {fileID: 0}
     - target: {fileID: 3588747221864139180, guid: b18f3a5b8be1c384381d63b14f3599a5, type: 3}
       propertyPath: m_fontSize
