@@ -57,6 +57,7 @@ MonoBehaviour:
   tradePanel: {fileID: 0}
   tradeButton: {fileID: 0}
   diplomacyPanel: {fileID: 0}
+  diplomacyPanelPrefab: {fileID: 1391631452205546667, guid: d28e0f53134097b498ab316ba3eb020d, type: 3}
   equipmentPanel: {fileID: 0}
   unitInfoPanel: {fileID: 0}
   pauseMenuPanel: {fileID: 0}

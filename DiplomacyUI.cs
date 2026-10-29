@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Full diplomacy negotiation screen.
@@ -41,6 +42,27 @@ public class DiplomacyUI : MonoBehaviour
     public TextMeshProUGUI leaderCivNameText;
     [Tooltip("Leader dialogue / reaction text")]
     public TextMeshProUGUI leaderDialogueText;
+    [SerializeField] private Sprite neutralLeaderPortrait;
+
+    [Header("Ledger Tabs")]
+    [SerializeField] private Button overviewTabButton;
+    [SerializeField] private Button negotiateTabButton;
+    [SerializeField] private Button subjectsTabButton;
+    [SerializeField] private GameObject overviewContent;
+    [SerializeField] private GameObject negotiateContent;
+    [SerializeField] private GameObject subjectsContent;
+    [SerializeField] private TextMeshProUGUI emptyStateText;
+    [SerializeField] private TextMeshProUGUI dealStatusText;
+    [SerializeField] private TextMeshProUGUI subjectSummaryText;
+    [SerializeField] private TextMeshProUGUI subjectCooldownText;
+    [SerializeField] private Sprite ledgerBackgroundSprite;
+    [SerializeField] private Sprite civilizationRowSprite;
+    [SerializeField] private Sprite leaderPortraitFrameSprite;
+    [SerializeField] private Sprite actionButtonSprite;
+    [SerializeField] private Sprite dealItemRowSprite;
+    [SerializeField] private Sprite itemPickerSprite;
+    [SerializeField] private Sprite confirmationDialogSprite;
+    [SerializeField] private DiplomacyConfirmationDialog confirmationDialog;
 
     [Header("Relationship Info")]
     public TextMeshProUGUI relationshipStatusText;
@@ -76,8 +98,12 @@ public class DiplomacyUI : MonoBehaviour
     public GameObject itemPickerRowPrefab;
     public TextMeshProUGUI itemPickerTitleText;
     public Button itemPickerCloseButton;
+    [SerializeField] private Button itemPickerConfirmButton;
+    [SerializeField] private TextMeshProUGUI itemPickerDetailText;
     public TMP_InputField goldInputField;
     public GameObject goldInputPanel;
+    [SerializeField] private TMP_InputField resourceQuantityInputField;
+    [SerializeField] private GameObject resourceQuantityPanel;
 
     [Header("Action Buttons")]
     public Button proposeDealButton;
@@ -101,27 +127,76 @@ public class DiplomacyUI : MonoBehaviour
     private List<GameObject> ourOfferItems = new List<GameObject>();
     private List<GameObject> theirOfferItems = new List<GameObject>();
     private List<GameObject> pickerItems = new List<GameObject>();
+    private readonly Dictionary<Civilization, DiplomaticOffer> outgoingDrafts = new Dictionary<Civilization, DiplomaticOffer>();
     private LeaderMood currentMood = LeaderMood.Idle;
+    private LedgerTab activeTab = LedgerTab.Overview;
+    private bool listenersRegistered;
+    private bool isExecutingOffer;
+    private bool pickerForPlayerGive;
+    private ResourceData pendingResource;
+    private int pendingResourceMaximum;
+    private PickerMode pickerMode;
+
+    private enum LedgerTab
+    {
+        Overview,
+        Negotiate,
+        Subjects
+    }
+
+    private enum PickerMode
+    {
+        None,
+        Gold,
+        ResourceQuantity
+    }
 
     /// <summary>True when the AI has sent a proposal to the player (accept/reject mode).</summary>
     private bool isIncomingProposal;
 
     // ────────────────────────── Lifecycle ──────────────────────────
-    void Start()
+    private void Awake()
     {
         SetupButtonListeners();
-        gameObject.SetActive(false);
+        ApplyAssignedArtwork();
+    }
+
+    private void OnEnable()
+    {
+        if (DiplomacyManager.Instance != null)
+            DiplomacyManager.Instance.OnDiplomacyChanged += HandleDiplomacyChanged;
+        SubjectManager.ContractChanged += HandleSubjectContractChanged;
+    }
+
+    private void OnDisable()
+    {
+        if (DiplomacyManager.Instance != null)
+            DiplomacyManager.Instance.OnDiplomacyChanged -= HandleDiplomacyChanged;
+        SubjectManager.ContractChanged -= HandleSubjectContractChanged;
+        CloseItemPicker();
+        confirmationDialog?.HideWithoutCallback();
+    }
+
+    private void Update()
+    {
+        if (!gameObject.activeInHierarchy || Keyboard.current == null || !Keyboard.current[Key.Escape].wasPressedThisFrame)
+            return;
+
+        if (itemPickerPanel != null && itemPickerPanel.activeInHierarchy)
+            CloseItemPicker();
+        else if (confirmationDialog != null && confirmationDialog.IsVisible)
+            confirmationDialog.Cancel();
+        else
+            Hide();
     }
 
     private void SetupButtonListeners()
     {
-        EnsureRuntimeActionButtons();
+        if (listenersRegistered) return;
+        listenersRegistered = true;
 
         if (closeButton != null)
-        {
-            closeButton.onClick.RemoveAllListeners();
             closeButton.onClick.AddListener(Hide);
-        }
 
         // Add-to-deal buttons (our side)
         if (addGoldButton != null)       addGoldButton.onClick.AddListener(() => OpenGoldInput(true));
@@ -151,33 +226,11 @@ public class DiplomacyUI : MonoBehaviour
 
         // Item picker close
         if (itemPickerCloseButton != null) itemPickerCloseButton.onClick.AddListener(CloseItemPicker);
-    }
+        if (itemPickerConfirmButton != null) itemPickerConfirmButton.onClick.AddListener(ConfirmPickerSelection);
 
-    private void EnsureRuntimeActionButtons()
-    {
-        if (offerVassalageButton != null || declareWarButton == null) return;
-
-        offerVassalageButton = CloneActionButton(declareWarButton, "OfferVassalageButton", "Offer Vassalage");
-        breakVassalageButton = CloneActionButton(declareWarButton, "BreakVassalageButton", "Break Vassalage");
-        raiseTributeButton = CloneActionButton(declareWarButton, "RaiseTributeButton", "Raise Tribute");
-        lowerTributeButton = CloneActionButton(declareWarButton, "LowerTributeButton", "Lower Tribute");
-        forceReligionButton = CloneActionButton(declareWarButton, "ForceReligionButton", "Force Religion");
-        replaceGovernorButton = CloneActionButton(declareWarButton, "ReplaceGovernorButton", "Replace Governor");
-    }
-
-    private static Button CloneActionButton(Button template, string objectName, string label)
-    {
-        if (template == null) return null;
-        var clone = Instantiate(template.gameObject, template.transform.parent);
-        clone.name = objectName;
-        var button = clone.GetComponent<Button>();
-        if (button == null) return null;
-
-        foreach (var text in clone.GetComponentsInChildren<TextMeshProUGUI>(true))
-            text.text = label;
-        foreach (var text in clone.GetComponentsInChildren<Text>(true))
-            text.text = label;
-        return button;
+        if (overviewTabButton != null) overviewTabButton.onClick.AddListener(ShowOverviewTab);
+        if (negotiateTabButton != null) negotiateTabButton.onClick.AddListener(ShowNegotiateTab);
+        if (subjectsTabButton != null) subjectsTabButton.onClick.AddListener(ShowSubjectsTab);
     }
 
     // ────────────────────────── Public API ──────────────────────────
@@ -185,12 +238,23 @@ public class DiplomacyUI : MonoBehaviour
     /// <summary>Open the diplomacy screen from the player's perspective.</summary>
     public void Show(Civilization playerCiv)
     {
+        if (isIncomingProposal && currentOffer != null)
+        {
+            UIManager.Instance?.ShowNotification("Resolve the incoming proposal before opening another negotiation.");
+            if (!gameObject.activeSelf) gameObject.SetActive(true);
+            return;
+        }
+        if (playerCiv == null) return;
+
         this.playerCiv = playerCiv;
         isIncomingProposal = false;
-        currentOffer = new DiplomaticOffer { proposer = playerCiv };
+        selectedCiv = null;
+        currentOffer = null;
+        activeTab = LedgerTab.Overview;
         gameObject.SetActive(true);
         UpdateCivilizationList();
         ClearNegotiationPanel();
+        SetActiveTab(LedgerTab.Overview);
         CloseItemPicker();
     }
 
@@ -200,6 +264,13 @@ public class DiplomacyUI : MonoBehaviour
     /// </summary>
     public void ShowIncomingProposal(Civilization playerCiv, DiplomaticOffer offer)
     {
+        if (playerCiv == null || offer == null || offer.proposer == null || offer.recipient != playerCiv)
+            return;
+        if (isIncomingProposal && currentOffer != null && currentOffer != offer)
+        {
+            UIManager.Instance?.ShowNotification("Resolve the current incoming proposal before viewing another.");
+            return;
+        }
         this.playerCiv = playerCiv;
         this.selectedCiv = offer.proposer;
         isIncomingProposal = true;
@@ -209,6 +280,7 @@ public class DiplomacyUI : MonoBehaviour
         RefreshLeaderPresentation();
         RefreshDealTable();
         RefreshActionButtons();
+        SetActiveTab(LedgerTab.Negotiate);
         SetLeaderMood(LeaderMood.Speaking);
         SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} has a proposal for you.");
         CloseItemPicker();
@@ -216,47 +288,146 @@ public class DiplomacyUI : MonoBehaviour
 
     public void Hide()
     {
+        if (confirmationDialog != null && confirmationDialog.IsVisible)
+        {
+            confirmationDialog.Cancel();
+            return;
+        }
+        if (itemPickerPanel != null && itemPickerPanel.activeInHierarchy)
+        {
+            CloseItemPicker();
+            return;
+        }
+        if (isIncomingProposal && currentOffer != null)
+        {
+            UIManager.Instance?.ShowNotification("Accept or reject the incoming proposal before closing diplomacy.");
+            return;
+        }
         gameObject.SetActive(false);
         selectedCiv = null;
         currentOffer = null;
-        CloseItemPicker();
+    }
+
+    public void ShowOverviewTab() => SetActiveTab(LedgerTab.Overview);
+    public void ShowNegotiateTab() => SetActiveTab(LedgerTab.Negotiate);
+    public void ShowSubjectsTab() => SetActiveTab(LedgerTab.Subjects);
+
+    private void SetActiveTab(LedgerTab tab)
+    {
+        if (tab == LedgerTab.Subjects && !HasRelevantSubjectContract())
+        {
+            RefreshSubjectSummary();
+            return;
+        }
+
+        activeTab = tab;
+        if (overviewContent != null) overviewContent.SetActive(selectedCiv != null && tab == LedgerTab.Overview);
+        if (negotiateContent != null) negotiateContent.SetActive(selectedCiv != null && tab == LedgerTab.Negotiate);
+        if (subjectsContent != null) subjectsContent.SetActive(selectedCiv != null && tab == LedgerTab.Subjects);
+        if (emptyStateText != null) emptyStateText.gameObject.SetActive(selectedCiv == null);
+        if (overviewTabButton != null) overviewTabButton.interactable = selectedCiv != null;
+        if (negotiateTabButton != null) negotiateTabButton.interactable = selectedCiv != null;
+        if (subjectsTabButton != null)
+        {
+            subjectsTabButton.interactable = HasRelevantSubjectContract();
+            if (!subjectsTabButton.interactable)
+                AddTooltip(subjectsTabButton.gameObject, "Subjects", "This civilization has no active subject contract with you.");
+        }
+        RefreshActionButtons();
+        RefreshSubjectSummary();
+    }
+
+    private void ApplyAssignedArtwork()
+    {
+        if (mainPanel != null && ledgerBackgroundSprite != null)
+        {
+            var image = mainPanel.GetComponent<Image>();
+            if (image != null) image.sprite = ledgerBackgroundSprite;
+        }
+        if (leaderPortraitFrameSprite != null && leaderPortraitImage != null)
+        {
+            var frame = leaderPortraitImage.transform.parent != null
+                ? leaderPortraitImage.transform.parent.GetComponent<Image>()
+                : null;
+            if (frame != null) frame.sprite = leaderPortraitFrameSprite;
+        }
+        if (actionButtonSprite != null)
+            foreach (var button in GetComponentsInChildren<Button>(true))
+                if (button != null && button.targetGraphic is Image image) image.sprite = actionButtonSprite;
+        if (itemPickerSprite != null && itemPickerPanel != null)
+        {
+            var image = itemPickerPanel.GetComponent<Image>();
+            if (image != null) image.sprite = itemPickerSprite;
+        }
+    }
+
+    private static void AddTooltip(GameObject target, string title, string description)
+    {
+        if (target == null) return;
+        var tooltip = target.GetComponent<SimpleTooltipTarget>();
+        if (tooltip == null) tooltip = target.AddComponent<SimpleTooltipTarget>();
+        tooltip.Bind(title, description);
     }
 
     // ────────────────────────── Civ List ──────────────────────────
 
     private void UpdateCivilizationList()
     {
-        foreach (var item in civListItems) Destroy(item);
-        civListItems.Clear();
-
         if (CivilizationManager.Instance == null || civListItemPrefab == null || civListContainer == null) return;
 
-        foreach (var civ in CivilizationManager.Instance.GetAllCivs())
+        var civilizations = CivilizationManager.Instance.GetAllCivs()
+            .Where(civ => civ != null && civ != playerCiv)
+            .ToList();
+        for (int i = 0; i < civilizations.Count; i++)
         {
-            if (civ == playerCiv) continue;
-            var listItem = Instantiate(civListItemPrefab, civListContainer);
-            var button = listItem.GetComponent<Button>();
-            var icon = listItem.GetComponentInChildren<Image>();
-            var text = listItem.GetComponentInChildren<TextMeshProUGUI>();
+            if (i >= civListItems.Count)
+            {
+                var instance = Instantiate(civListItemPrefab, civListContainer);
+                civListItems.Add(instance);
+            }
 
-            if (icon != null && civ.civData != null && civ.civData.icon != null)
-                icon.sprite = civ.civData.icon;
-            if (text != null)
-                text.text = civ.civData != null ? civ.civData.civName : "???";
-
-            var captured = civ;
-            if (button != null) button.onClick.AddListener(() => OnCivSelected(captured));
-            civListItems.Add(listItem);
+            var listItem = civListItems[i];
+            listItem.SetActive(true);
+            var row = listItem.GetComponent<CivilizationSelectionRow>();
+            if (row == null) row = listItem.AddComponent<CivilizationSelectionRow>();
+            var civ = civilizations[i];
+            var relation = DiplomacyManager.Instance != null
+                ? DiplomacyManager.Instance.GetRelationship(civ, playerCiv).ToString()
+                : DiplomaticState.Peace.ToString();
+            row.Bind(civ, relation, civ == selectedCiv, OnCivSelected, civilizationRowSprite);
         }
+
+        for (int i = civilizations.Count; i < civListItems.Count; i++)
+            civListItems[i].SetActive(false);
     }
 
     private void OnCivSelected(Civilization civ)
     {
+        if (civ == null || civ == playerCiv) return;
+        if (isIncomingProposal && currentOffer != null && civ != currentOffer.proposer)
+        {
+            UIManager.Instance?.ShowNotification("Resolve the incoming proposal before switching civilizations.");
+            return;
+        }
+
         selectedCiv = civ;
         isIncomingProposal = false;
-        currentOffer = new DiplomaticOffer { proposer = playerCiv, recipient = selectedCiv };
+        if (!outgoingDrafts.TryGetValue(civ, out currentOffer))
+        {
+            currentOffer = new DiplomaticOffer { proposer = playerCiv, recipient = civ };
+            outgoingDrafts[civ] = currentOffer;
+        }
+        else
+        {
+            currentOffer.proposer = playerCiv;
+            currentOffer.recipient = civ;
+        }
+        activeTab = LedgerTab.Overview;
+        UpdateCivilizationList();
         RefreshLeaderPresentation();
         RefreshDealTable();
+        RefreshSubjectSummary();
+        SetActiveTab(LedgerTab.Overview);
         RefreshActionButtons();
         // Determine initial mood from relationship
         var relation = DiplomacyManager.Instance.GetRelationship(selectedCiv, playerCiv);
@@ -268,6 +439,77 @@ public class DiplomacyUI : MonoBehaviour
             SetLeaderMood(LeaderMood.Idle);
 
         SetDialogue(GetGreeting(selectedCiv, relation));
+    }
+
+    private List<DealItem> GetPlayerGiveItems()
+        => currentOffer == null ? null : isIncomingProposal ? currentOffer.recipientItems : currentOffer.proposerItems;
+
+    private List<DealItem> GetPlayerReceiveItems()
+        => currentOffer == null ? null : isIncomingProposal ? currentOffer.proposerItems : currentOffer.recipientItems;
+
+    private bool HasRelevantSubjectContract()
+    {
+        if (playerCiv == null || selectedCiv == null || SubjectManager.Instance == null) return false;
+        return SubjectManager.Instance.GetContract(playerCiv, selectedCiv) != null
+            || SubjectManager.Instance.GetContract(selectedCiv, playerCiv) != null;
+    }
+
+    private void RefreshSubjectSummary()
+    {
+        if (subjectSummaryText == null && subjectCooldownText == null) return;
+        var manager = SubjectManager.Instance;
+        var contract = manager != null && playerCiv != null && selectedCiv != null
+            ? manager.GetContract(playerCiv, selectedCiv)
+            : null;
+        bool isPlayerOverlord = contract != null;
+        contract ??= manager != null && playerCiv != null && selectedCiv != null
+            ? manager.GetContract(selectedCiv, playerCiv)
+            : null;
+
+        if (contract == null)
+        {
+            if (subjectSummaryText != null) subjectSummaryText.text = "No active subject contract with this civilization.";
+            if (subjectCooldownText != null) subjectCooldownText.text = string.Empty;
+            return;
+        }
+
+        if (subjectSummaryText != null)
+        {
+            string perspective = isPlayerOverlord ? "Subject" : "Overlord";
+            subjectSummaryText.text = isPlayerOverlord
+                ? $"Gold tribute: {contract.goldTributePct:P0}\nContract: {(contract.isCapitulated ? "Capitulated" : "Voluntary")}\nSubject opinion: {manager.GetEffectiveSubjectOpinion(contract):0}\nLiberty desire: {contract.libertyDesire:0}"
+                : $"This civilization is your overlord.\nContract: {(contract.isCapitulated ? "Capitulated" : "Voluntary")}\nYour liberty desire: {contract.libertyDesire:0}";
+        }
+
+        if (subjectCooldownText != null)
+        {
+            var check = isPlayerOverlord
+                ? manager.CanInterfere(playerCiv, selectedCiv, TurnManager.Instance?.round ?? 0)
+                : SubjectActionResult.Fail("Only the overlord can change these subject terms.");
+            subjectCooldownText.text = check.success ? "Interventions are available." : check.reason;
+        }
+    }
+
+    private void HandleDiplomacyChanged(Civilization a, Civilization b, DiplomaticState state)
+    {
+        if (!gameObject.activeInHierarchy || playerCiv == null || selectedCiv == null
+            || (a != playerCiv && b != playerCiv && a != selectedCiv && b != selectedCiv))
+            return;
+        UpdateCivilizationList();
+        RefreshLeaderPresentation();
+        RefreshActionButtons();
+        RefreshSubjectSummary();
+    }
+
+    private void HandleSubjectContractChanged(Civilization overlord, Civilization subject)
+    {
+        if (!gameObject.activeInHierarchy || playerCiv == null || selectedCiv == null) return;
+        if ((overlord == playerCiv && subject == selectedCiv)
+            || (overlord == selectedCiv && subject == playerCiv))
+        {
+            RefreshSubjectSummary();
+            RefreshActionButtons();
+        }
     }
 
     // ────────────────────────── Leader Presentation ──────────────────────────
@@ -444,12 +686,9 @@ public class DiplomacyUI : MonoBehaviour
 
         if (currentOffer == null) return;
 
-        // "Our offer" = what the proposer gives
-        var ourItems = isIncomingProposal ? currentOffer.recipientItems : currentOffer.proposerItems;
-        var theirItems = isIncomingProposal ? currentOffer.proposerItems : currentOffer.recipientItems;
-
-        PopulateDealColumn(ourItems, ourOfferContainer, ourOfferItems, !isIncomingProposal);
-        PopulateDealColumn(theirItems, theirOfferContainer, theirOfferItems, !isIncomingProposal);
+        PopulateDealColumn(GetPlayerGiveItems(), ourOfferContainer, ourOfferItems, !isIncomingProposal);
+        PopulateDealColumn(GetPlayerReceiveItems(), theirOfferContainer, theirOfferItems, !isIncomingProposal);
+        if (dealStatusText != null && !isIncomingProposal) dealStatusText.text = string.Empty;
     }
 
     private void PopulateDealColumn(List<DealItem> items, Transform container, List<GameObject> trackedObjects, bool allowRemove)
@@ -531,6 +770,7 @@ public class DiplomacyUI : MonoBehaviour
         if (governmentText != null) governmentText.text = "";
 
         RefreshActionButtons();
+        if (emptyStateText != null) emptyStateText.gameObject.SetActive(true);
     }
 
     // ────────────────────────── Action Buttons ──────────────────────────
@@ -538,7 +778,7 @@ public class DiplomacyUI : MonoBehaviour
     private void RefreshActionButtons()
     {
         bool hasCiv = selectedCiv != null;
-        var relation = hasCiv
+        var relation = hasCiv && DiplomacyManager.Instance != null
             ? DiplomacyManager.Instance.GetRelationship(playerCiv, selectedCiv)
             : DiplomaticState.Peace;
         bool atWar = relation == DiplomaticState.War;
@@ -547,36 +787,78 @@ public class DiplomacyUI : MonoBehaviour
             ? SubjectManager.Instance.GetContract(playerCiv, selectedCiv)
             : null;
         bool isOurSubject = subjectContract != null;
+        bool onOverview = activeTab == LedgerTab.Overview;
+        bool onNegotiation = activeTab == LedgerTab.Negotiate;
+        bool onSubjects = activeTab == LedgerTab.Subjects;
+        bool canEditOffer = hasCiv && onNegotiation && !isIncomingProposal && currentOffer != null;
+        bool canAcceptOffer = hasCiv && onNegotiation && isIncomingProposal;
 
-        // Proposal flow
         if (proposeDealButton != null)
-            proposeDealButton.gameObject.SetActive(hasCiv && !isIncomingProposal);
+        {
+            proposeDealButton.gameObject.SetActive(canEditOffer);
+            bool valid = canEditOffer && DiplomacyManager.Instance != null
+                && DiplomacyManager.Instance.TryValidateComplexDeal(currentOffer, out string reason);
+            proposeDealButton.interactable = valid;
+            if (canEditOffer && !valid)
+                AddTooltip(proposeDealButton.gameObject, "Proposal unavailable", reason ?? "Add a valid item to the offer.");
+        }
         if (acceptDealButton != null)
-            acceptDealButton.gameObject.SetActive(hasCiv && isIncomingProposal);
+            acceptDealButton.gameObject.SetActive(canAcceptOffer);
         if (rejectDealButton != null)
-            rejectDealButton.gameObject.SetActive(hasCiv && isIncomingProposal);
+            rejectDealButton.gameObject.SetActive(canAcceptOffer);
+
+        SetButtonVisible(addGoldButton, canEditOffer);
+        SetButtonVisible(addResourceButton, canEditOffer);
+        SetButtonVisible(addTechButton, canEditOffer);
+        SetButtonVisible(addCityButton, canEditOffer);
+        SetButtonVisible(demandGoldButton, canEditOffer);
+        SetButtonVisible(demandResourceButton, canEditOffer);
+        SetButtonVisible(demandTechButton, canEditOffer);
+        SetButtonVisible(demandCityButton, canEditOffer);
+
         if (offerVassalageButton != null)
-            offerVassalageButton.gameObject.SetActive(hasCiv && !isIncomingProposal && !atWar && !alreadyVassal);
+            offerVassalageButton.gameObject.SetActive(hasCiv && onOverview && !isIncomingProposal && !atWar && !alreadyVassal);
         if (breakVassalageButton != null)
-            breakVassalageButton.gameObject.SetActive(isOurSubject);
+            breakVassalageButton.gameObject.SetActive(isOurSubject && onSubjects);
         if (raiseTributeButton != null)
-            raiseTributeButton.gameObject.SetActive(isOurSubject);
+            raiseTributeButton.gameObject.SetActive(isOurSubject && onSubjects);
         if (lowerTributeButton != null)
-            lowerTributeButton.gameObject.SetActive(isOurSubject);
+            lowerTributeButton.gameObject.SetActive(isOurSubject && onSubjects);
         if (forceReligionButton != null)
-            forceReligionButton.gameObject.SetActive(isOurSubject);
+            forceReligionButton.gameObject.SetActive(isOurSubject && onSubjects);
         if (replaceGovernorButton != null)
-            replaceGovernorButton.gameObject.SetActive(isOurSubject);
+            replaceGovernorButton.gameObject.SetActive(isOurSubject && onSubjects);
 
-        // War / Peace
         if (declareWarButton != null)
-            declareWarButton.gameObject.SetActive(hasCiv && !atWar);
+            declareWarButton.gameObject.SetActive(hasCiv && onOverview && !atWar);
         if (makePeaceButton != null)
-            makePeaceButton.gameObject.SetActive(hasCiv && atWar);
+            makePeaceButton.gameObject.SetActive(hasCiv && onOverview && atWar);
 
-        // Cancel always visible when a civ is selected
         if (cancelButton != null)
-            cancelButton.gameObject.SetActive(hasCiv);
+            cancelButton.gameObject.SetActive(true);
+
+        if (subjectsTabButton != null)
+        {
+            subjectsTabButton.interactable = HasRelevantSubjectContract();
+            if (!subjectsTabButton.interactable)
+                AddTooltip(subjectsTabButton.gameObject, "Subjects unavailable", "A subject contract must exist between these civilizations.");
+        }
+
+        if (isOurSubject && SubjectManager.Instance != null)
+        {
+            var check = SubjectManager.Instance.CanInterfere(playerCiv, selectedCiv, TurnManager.Instance?.round ?? 0);
+            foreach (var button in new[] { raiseTributeButton, lowerTributeButton, forceReligionButton, replaceGovernorButton })
+            {
+                if (button == null) continue;
+                button.interactable = check.success;
+                if (!check.success) AddTooltip(button.gameObject, "Intervention unavailable", check.reason);
+            }
+        }
+    }
+
+    private static void SetButtonVisible(Button button, bool visible)
+    {
+        if (button != null) button.gameObject.SetActive(visible);
     }
 
     // ────────────────────────── Item Pickers ──────────────────────────
@@ -584,8 +866,11 @@ public class DiplomacyUI : MonoBehaviour
     /// <param name="isOurSide">True = adding to our offer; false = adding to our demands.</param>
     private void OpenGoldInput(bool isOurSide)
     {
-        if (selectedCiv == null) return;
+        if (selectedCiv == null || isIncomingProposal) return;
+        pickerForPlayerGive = isOurSide;
+        pickerMode = PickerMode.Gold;
         if (goldInputPanel != null) goldInputPanel.SetActive(true);
+        if (resourceQuantityPanel != null) resourceQuantityPanel.SetActive(false);
         if (itemPickerPanel != null) itemPickerPanel.SetActive(true);
         if (itemPickerContainer != null) itemPickerContainer.gameObject.SetActive(false);
         if (itemPickerTitleText != null)
@@ -594,24 +879,21 @@ public class DiplomacyUI : MonoBehaviour
         if (goldInputField != null)
         {
             goldInputField.text = "";
-            goldInputField.onEndEdit.RemoveAllListeners();
-            goldInputField.onEndEdit.AddListener(val =>
-            {
-                if (int.TryParse(val, out int amount) && amount > 0)
-                {
-                    var di = new DealItem { itemType = DealItemType.Gold, goldAmount = amount };
-                    AddDealItem(di, isOurSide);
-                }
-                CloseItemPicker();
-            });
+            goldInputField.contentType = TMP_InputField.ContentType.IntegerNumber;
         }
+        var giver = GetGiverForUiSide(isOurSide);
+        int available = giver != null ? Mathf.Max(0, giver.gold - GetCommittedGold(isOurSide)) : 0;
+        if (itemPickerDetailText != null) itemPickerDetailText.text = $"Available: {available} Gold";
     }
 
     private void OpenResourcePicker(bool isOurSide)
     {
-        if (selectedCiv == null) return;
+        if (selectedCiv == null || isIncomingProposal) return;
+        pickerForPlayerGive = isOurSide;
+        pickerMode = PickerMode.None;
         OpenItemPicker(isOurSide ? "Offer Resource" : "Demand Resource");
         if (goldInputPanel != null) goldInputPanel.SetActive(false);
+        if (resourceQuantityPanel != null) resourceQuantityPanel.SetActive(false);
 
         // List resources owned by the appropriate civ
         var sourceCiv = isOurSide ? playerCiv : selectedCiv;
@@ -619,20 +901,33 @@ public class DiplomacyUI : MonoBehaviour
 
         foreach (var kvp in sourceCiv.resourceStockpile)
         {
-            if (kvp.Value <= 0) continue;
+            int available = kvp.Value - GetCommittedResourceAmount(isOurSide, kvp.Key);
+            if (available <= 0) continue;
             var res = kvp.Key;
             var row = Instantiate(itemPickerRowPrefab, itemPickerContainer);
             var text = row.GetComponentInChildren<TextMeshProUGUI>();
-            if (text != null) text.text = $"{res.resourceName} (x{kvp.Value})";
+            if (text != null) text.text = $"{res.resourceName} (x{available})";
             var icon = row.transform.Find("Icon")?.GetComponent<Image>();
             if (icon != null && res.icon != null) { icon.sprite = res.icon; icon.gameObject.SetActive(true); }
 
             var capturedRes = res;
+            var capturedAvailable = available;
             var btn = row.GetComponent<Button>();
             if (btn != null) btn.onClick.AddListener(() =>
             {
-                AddDealItem(new DealItem { itemType = DealItemType.Resource, resource = capturedRes, resourceAmount = 1 }, isOurSide);
-                CloseItemPicker();
+                pendingResource = capturedRes;
+                pendingResourceMaximum = capturedAvailable;
+                pickerForPlayerGive = isOurSide;
+                pickerMode = PickerMode.ResourceQuantity;
+                if (itemPickerTitleText != null) itemPickerTitleText.text = $"Choose {capturedRes.resourceName} quantity";
+                if (itemPickerDetailText != null) itemPickerDetailText.text = $"Available: {capturedAvailable}";
+                if (itemPickerContainer != null) itemPickerContainer.gameObject.SetActive(false);
+                if (resourceQuantityPanel != null) resourceQuantityPanel.SetActive(true);
+                if (resourceQuantityInputField != null)
+                {
+                    resourceQuantityInputField.text = "1";
+                    resourceQuantityInputField.contentType = TMP_InputField.ContentType.IntegerNumber;
+                }
             });
             pickerItems.Add(row);
         }
@@ -640,7 +935,7 @@ public class DiplomacyUI : MonoBehaviour
 
     private void OpenTechPicker(bool isOurSide)
     {
-        if (selectedCiv == null) return;
+        if (selectedCiv == null || isIncomingProposal) return;
         OpenItemPicker(isOurSide ? "Offer Technology" : "Demand Technology");
         if (goldInputPanel != null) goldInputPanel.SetActive(false);
 
@@ -648,9 +943,12 @@ public class DiplomacyUI : MonoBehaviour
         var sourceCiv = isOurSide ? playerCiv : selectedCiv;
         var targetCiv = isOurSide ? selectedCiv : playerCiv;
 
+        if (sourceCiv.researchedTechs == null) return;
         foreach (var tech in sourceCiv.researchedTechs)
         {
-            if (targetCiv.researchedTechs.Contains(tech)) continue; // They already have it
+            if (tech == null || targetCiv.researchedTechs == null || targetCiv.researchedTechs.Contains(tech)) continue;
+            if (currentOffer.proposerItems.Concat(currentOffer.recipientItems)
+                .Any(item => item != null && item.itemType == DealItemType.Technology && item.tech == tech)) continue;
             var row = Instantiate(itemPickerRowPrefab, itemPickerContainer);
             var text = row.GetComponentInChildren<TextMeshProUGUI>();
             if (text != null) text.text = tech.techName;
@@ -670,15 +968,18 @@ public class DiplomacyUI : MonoBehaviour
 
     private void OpenCityPicker(bool isOurSide)
     {
-        if (selectedCiv == null) return;
+        if (selectedCiv == null || isIncomingProposal) return;
         OpenItemPicker(isOurSide ? "Offer City" : "Demand City");
         if (goldInputPanel != null) goldInputPanel.SetActive(false);
 
         var sourceCiv = isOurSide ? playerCiv : selectedCiv;
 
+        if (sourceCiv.cities == null) return;
         foreach (var city in sourceCiv.cities)
         {
-            if (city.isCapital) continue; // Can't trade capitals
+            if (city == null || city.owner != sourceCiv || city.isCapital) continue;
+            if (currentOffer.proposerItems.Concat(currentOffer.recipientItems)
+                .Any(item => item != null && item.itemType == DealItemType.City && item.city == city)) continue;
             var row = Instantiate(itemPickerRowPrefab, itemPickerContainer);
             var text = row.GetComponentInChildren<TextMeshProUGUI>();
             if (text != null) text.text = $"{city.cityName} (Pop {city.level})";
@@ -699,6 +1000,8 @@ public class DiplomacyUI : MonoBehaviour
         ClearPickerItems();
         if (itemPickerPanel != null) itemPickerPanel.SetActive(true);
         if (itemPickerContainer != null) itemPickerContainer.gameObject.SetActive(true);
+        if (goldInputPanel != null) goldInputPanel.SetActive(false);
+        if (resourceQuantityPanel != null) resourceQuantityPanel.SetActive(false);
         if (itemPickerTitleText != null) itemPickerTitleText.text = title;
     }
 
@@ -707,6 +1010,81 @@ public class DiplomacyUI : MonoBehaviour
         ClearPickerItems();
         if (itemPickerPanel != null) itemPickerPanel.SetActive(false);
         if (goldInputPanel != null) goldInputPanel.SetActive(false);
+        if (resourceQuantityPanel != null) resourceQuantityPanel.SetActive(false);
+        pendingResource = null;
+        pendingResourceMaximum = 0;
+        pickerMode = PickerMode.None;
+    }
+
+    private void ConfirmPickerSelection()
+    {
+        if (selectedCiv == null || isIncomingProposal || currentOffer == null) return;
+        if (pickerMode == PickerMode.Gold)
+        {
+            if (goldInputField == null || !int.TryParse(goldInputField.text, out int amount) || amount <= 0)
+            {
+                SetDealError("Enter a positive whole-number gold amount.");
+                return;
+            }
+            var giver = GetGiverForUiSide(pickerForPlayerGive);
+            int available = giver != null ? Mathf.Max(0, giver.gold - GetCommittedGold(pickerForPlayerGive)) : 0;
+            if (amount > available)
+            {
+                SetDealError($"The giver has only {available} uncommitted Gold available.");
+                return;
+            }
+            AddDealItem(new DealItem { itemType = DealItemType.Gold, goldAmount = amount }, pickerForPlayerGive);
+            CloseItemPicker();
+        }
+        else if (pickerMode == PickerMode.ResourceQuantity)
+        {
+            if (resourceQuantityInputField == null
+                || !int.TryParse(resourceQuantityInputField.text, out int amount)
+                || amount < 1 || amount > pendingResourceMaximum)
+            {
+                SetDealError($"Choose a whole number from 1 to {pendingResourceMaximum}.");
+                return;
+            }
+            AddDealItem(new DealItem
+            {
+                itemType = DealItemType.Resource,
+                resource = pendingResource,
+                resourceAmount = amount
+            }, pickerForPlayerGive);
+            CloseItemPicker();
+        }
+    }
+
+    private Civilization GetGiverForUiSide(bool playerGive)
+        => playerGive ? playerCiv : selectedCiv;
+
+    private List<DealItem> GetDraftItemsForUiSide(bool playerGive)
+        => playerGive ? currentOffer?.proposerItems : currentOffer?.recipientItems;
+
+    private int GetCommittedGold(bool playerGive)
+    {
+        long total = 0;
+        var items = GetDraftItemsForUiSide(playerGive);
+        if (items == null) return 0;
+        foreach (var item in items)
+        {
+            if (item == null) continue;
+            if (item.itemType == DealItemType.Gold) total += item.goldAmount;
+            else if (item.itemType == DealItemType.GoldPerTurn)
+                total += (long)item.goldPerTurn * item.goldPerTurnDuration;
+        }
+        return total > int.MaxValue ? int.MaxValue : (int)total;
+    }
+
+    private int GetCommittedResourceAmount(bool playerGive, ResourceData resource)
+    {
+        int total = 0;
+        var items = GetDraftItemsForUiSide(playerGive);
+        if (items == null) return 0;
+        foreach (var item in items)
+            if (item != null && item.itemType == DealItemType.Resource && item.resource == resource)
+                total = item.resourceAmount > int.MaxValue - total ? int.MaxValue : total + item.resourceAmount;
+        return total;
     }
 
     private void ClearPickerItems()
@@ -717,43 +1095,119 @@ public class DiplomacyUI : MonoBehaviour
 
     private void AddDealItem(DealItem item, bool isOurSide)
     {
-        if (currentOffer == null) return;
+        if (currentOffer == null || selectedCiv == null || isIncomingProposal || item == null) return;
+        if (item.itemType == DealItemType.Technology
+            && currentOffer.proposerItems.Concat(currentOffer.recipientItems)
+                .Any(existing => existing != null && existing.itemType == DealItemType.Technology && existing.tech == item.tech))
+        {
+            SetDealError("That technology is already included in this deal.");
+            return;
+        }
+        if (item.itemType == DealItemType.City
+            && currentOffer.proposerItems.Concat(currentOffer.recipientItems)
+                .Any(existing => existing != null && existing.itemType == DealItemType.City && existing.city == item.city))
+        {
+            SetDealError("That city is already included in this deal.");
+            return;
+        }
         if (isOurSide)
             currentOffer.proposerItems.Add(item);
         else
             currentOffer.recipientItems.Add(item);
+        if (selectedCiv != null) outgoingDrafts[selectedCiv] = currentOffer;
+        if (dealStatusText != null) dealStatusText.text = string.Empty;
         RefreshDealTable();
+        RefreshActionButtons();
+    }
+
+    private void SetDealError(string message)
+    {
+        if (dealStatusText != null) dealStatusText.text = message;
+        UIManager.Instance?.ShowNotification(message);
     }
 
     // ────────────────────────── Action Handlers ──────────────────────────
 
     private void OnProposeDealClicked()
     {
-        if (selectedCiv == null || currentOffer == null) return;
+        if (selectedCiv == null || currentOffer == null || isIncomingProposal || isExecutingOffer) return;
         currentOffer.recipient = selectedCiv;
+
+        if (DiplomacyManager.Instance == null)
+        {
+            SetDealError("Diplomacy is not initialized.");
+            return;
+        }
+        if (!DiplomacyManager.Instance.TryValidateComplexDeal(currentOffer, out string reason))
+        {
+            SetDealError(reason);
+            return;
+        }
+
+        bool containsCity = currentOffer.proposerItems.Concat(currentOffer.recipientItems)
+            .Any(item => item != null && item.itemType == DealItemType.City);
+        if (containsCity)
+        {
+            if (confirmationDialog == null)
+            {
+                SetDealError("City transfers require the diplomacy confirmation dialog to be assigned.");
+                return;
+            }
+            confirmationDialog.Show("Propose city transfer?",
+                "The city will transfer only if the recipient accepts and the deal remains valid.",
+                "Propose", "Cancel", SubmitOutgoingProposal);
+            return;
+        }
+
+        SubmitOutgoingProposal();
+    }
+
+    private void SubmitOutgoingProposal()
+    {
+        if (selectedCiv == null || currentOffer == null || isIncomingProposal || isExecutingOffer
+            || DiplomacyManager.Instance == null) return;
+        currentOffer.recipient = selectedCiv;
+        if (!DiplomacyManager.Instance.TryValidateComplexDeal(currentOffer, out string reason))
+        {
+            SetDealError(reason);
+            return;
+        }
+
+        isExecutingOffer = true;
+        if (proposeDealButton != null) proposeDealButton.interactable = false;
 
         SetLeaderMood(LeaderMood.Speaking);
         SetDialogue("Hmm… let me consider your proposal.");
 
-        // Ask DiplomacyManager to evaluate
         bool accepted = DiplomacyManager.Instance.EvaluateComplexDeal(selectedCiv, currentOffer);
 
         if (accepted)
         {
-            DiplomacyManager.Instance.ExecuteComplexDeal(currentOffer);
+            if (!DiplomacyManager.Instance.ExecuteComplexDeal(currentOffer))
+            {
+                DiplomacyManager.Instance.TryValidateComplexDeal(currentOffer, out reason);
+                SetDealError(reason ?? "The deal could not be executed. Review it and try again.");
+                isExecutingOffer = false;
+                RefreshActionButtons();
+                return;
+            }
             SetLeaderMood(LeaderMood.Agreement);
             SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} accepts your deal!");
-            UIManager.Instance.ShowNotification($"Deal accepted by {selectedCiv.civData.civName}!");
+            UIManager.Instance?.ShowNotification($"Deal accepted by {selectedCiv.civData?.civName ?? selectedCiv.name}!");
+            outgoingDrafts.Remove(selectedCiv);
         }
         else
         {
             SetLeaderMood(LeaderMood.Angry);
             SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} rejects your proposal.");
-            UIManager.Instance.ShowNotification($"Deal rejected by {selectedCiv.civData.civName}.");
+            UIManager.Instance?.ShowNotification($"Deal rejected by {selectedCiv.civData?.civName ?? selectedCiv.name}. The draft remains available for revision.");
         }
 
-        // Reset deal table after a short pause (player can see reaction)
-        currentOffer = new DiplomaticOffer { proposer = playerCiv, recipient = selectedCiv };
+        if (accepted)
+            currentOffer = new DiplomaticOffer { proposer = playerCiv, recipient = selectedCiv };
+        else
+            outgoingDrafts[selectedCiv] = currentOffer;
+        isExecutingOffer = false;
         RefreshDealTable();
         RefreshActionButtons();
         RefreshLeaderPresentation();
@@ -761,13 +1215,22 @@ public class DiplomacyUI : MonoBehaviour
 
     private void OnAcceptDealClicked()
     {
-        if (currentOffer == null) return;
-        DiplomacyManager.Instance.ExecuteComplexDeal(currentOffer);
+        if (currentOffer == null || !isIncomingProposal || isExecutingOffer || DiplomacyManager.Instance == null) return;
+        isExecutingOffer = true;
+        if (!DiplomacyManager.Instance.ExecuteComplexDeal(currentOffer))
+        {
+            DiplomacyManager.Instance.TryValidateComplexDeal(currentOffer, out string reason);
+            SetDealError(reason ?? "This proposal is no longer valid. It remains open for review.");
+            isExecutingOffer = false;
+            RefreshActionButtons();
+            return;
+        }
         SetLeaderMood(LeaderMood.Agreement);
         SetDialogue("A wise decision.");
-        UIManager.Instance.ShowNotification($"Deal accepted with {selectedCiv.civData.civName}!");
+        UIManager.Instance?.ShowNotification($"Deal accepted with {selectedCiv.civData?.civName ?? selectedCiv.name}!");
         isIncomingProposal = false;
         currentOffer = new DiplomaticOffer { proposer = playerCiv, recipient = selectedCiv };
+        isExecutingOffer = false;
         RefreshDealTable();
         RefreshActionButtons();
         RefreshLeaderPresentation();
@@ -775,13 +1238,13 @@ public class DiplomacyUI : MonoBehaviour
 
     private void OnRejectDealClicked()
     {
-        if (currentOffer == null) return;
+        if (currentOffer == null || !isIncomingProposal || isExecutingOffer) return;
         SetLeaderMood(LeaderMood.Angry);
         SetDialogue("You will regret this.");
         // Record refusal in diplomatic memory
         var memory = DiplomacyManager.Instance.GetDiplomaticMemory(selectedCiv);
         memory.RecordEvent(playerCiv, DiplomaticEventType.RefusedTrade);
-        UIManager.Instance.ShowNotification($"Deal rejected from {selectedCiv.civData.civName}.");
+        UIManager.Instance?.ShowNotification($"Deal rejected from {selectedCiv.civData?.civName ?? selectedCiv.name}.");
         isIncomingProposal = false;
         currentOffer = new DiplomaticOffer { proposer = playerCiv, recipient = selectedCiv };
         RefreshDealTable();
@@ -790,15 +1253,19 @@ public class DiplomacyUI : MonoBehaviour
 
     private void OnDeclareWarClicked()
     {
-        if (selectedCiv == null) return;
-        SetLeaderMood(LeaderMood.DeclareWar);
-        SetDialogue($"So be it! {ElectionManager.GetCurrentRulerName(selectedCiv)} prepares for war!");
-
-        DiplomacyManager.Instance.SetState(playerCiv, selectedCiv, DiplomaticState.War);
-        UIManager.Instance.ShowNotification($"War declared against {selectedCiv.civData.civName}!");
-
-        RefreshLeaderPresentation();
-        RefreshActionButtons();
+        if (selectedCiv == null || DiplomacyManager.Instance == null || confirmationDialog == null) return;
+        var target = selectedCiv;
+        confirmationDialog.Show("Declare war?", $"This will place your civilization at war with {target.civData?.civName ?? target.name}.",
+            "Declare War", "Cancel", () =>
+            {
+                if (DiplomacyManager.Instance == null || playerCiv == null || target == null) return;
+                DiplomacyManager.Instance.SetState(playerCiv, target, DiplomaticState.War);
+                SetLeaderMood(LeaderMood.DeclareWar);
+                SetDialogue($"So be it! {ElectionManager.GetCurrentRulerName(target)} prepares for war!");
+                UIManager.Instance?.ShowNotification($"War declared against {target.civData?.civName ?? target.name}.");
+                RefreshLeaderPresentation();
+                RefreshActionButtons();
+            });
     }
 
     private void OnOfferVassalageClicked()
@@ -827,14 +1294,12 @@ public class DiplomacyUI : MonoBehaviour
 
     private void OnBreakVassalageClicked()
     {
-        if (selectedCiv == null || SubjectManager.Instance == null) return;
-        if (!SubjectManager.Instance.DissolveContract(playerCiv, selectedCiv)) return;
-
-        SetLeaderMood(LeaderMood.Angry);
-        SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} is released from vassalage.");
-        UIManager.Instance.ShowNotification($"Vassalage ended with {selectedCiv.civData?.civName ?? selectedCiv.name}.");
-        RefreshLeaderPresentation();
-        RefreshActionButtons();
+        if (selectedCiv == null || SubjectManager.Instance == null || confirmationDialog == null) return;
+        var subject = selectedCiv;
+        confirmationDialog.Show("Release this subject?", "The contract ends peacefully and all tribute stops.",
+            "Release", "Cancel", () => ReportSubjectAction(
+                SubjectManager.Instance.TryReleaseSubject(playerCiv, subject, TurnManager.Instance?.round ?? 0),
+                $"Vassalage ended with {subject.civData?.civName ?? subject.name}."));
     }
 
     private void OnRaiseTributeClicked()
@@ -843,10 +1308,15 @@ public class DiplomacyUI : MonoBehaviour
         var contract = SubjectManager.Instance.GetContract(playerCiv, selectedCiv);
         if (contract == null) return;
 
-        float newRate = Mathf.Clamp(contract.goldTributePct + 0.05f, 0f, 0.50f);
-        SubjectManager.Instance.InterfereAlterTribute(playerCiv, selectedCiv, newRate, TurnManager.Instance?.round ?? 0);
-        SetDialogue($"Your envoys impose a heavier tribute on {ElectionManager.GetCurrentRulerName(selectedCiv)}.");
-        UIManager.Instance.ShowNotification($"Tribute raised to {Mathf.RoundToInt(newRate * 100f)}% for {selectedCiv.civData?.civName ?? selectedCiv.name}.");
+        float newRate = Mathf.Clamp(contract.goldTributePct + 0.05f, 0f, SubjectManager.MaxTributePct);
+        if (Mathf.Approximately(newRate, contract.goldTributePct))
+        {
+            UIManager.Instance?.ShowNotification("Gold tribute is already at its maximum.");
+            return;
+        }
+        ReportSubjectAction(SubjectManager.Instance.TrySetTributeTerms(playerCiv, selectedCiv, newRate,
+            contract.foodTributePct, TurnManager.Instance?.round ?? 0),
+            $"Tribute raised to {Mathf.RoundToInt(newRate * 100f)}% for {selectedCiv.civData?.civName ?? selectedCiv.name}.");
     }
 
     private void OnLowerTributeClicked()
@@ -855,33 +1325,34 @@ public class DiplomacyUI : MonoBehaviour
         var contract = SubjectManager.Instance.GetContract(playerCiv, selectedCiv);
         if (contract == null) return;
 
-        float newRate = Mathf.Clamp(contract.goldTributePct - 0.05f, 0f, 0.50f);
-        SubjectManager.Instance.InterfereAlterTribute(playerCiv, selectedCiv, newRate, TurnManager.Instance?.round ?? 0);
-        contract.subjectOpinion = Mathf.Clamp(contract.subjectOpinion + 8f, -100f, 100f);
-        contract.libertyDesire = Mathf.Clamp(contract.libertyDesire - 5f, 0f, 100f);
-        SetDialogue($"You ease the burden on {ElectionManager.GetCurrentRulerName(selectedCiv)}.");
-        UIManager.Instance.ShowNotification($"Tribute lowered to {Mathf.RoundToInt(newRate * 100f)}% for {selectedCiv.civData?.civName ?? selectedCiv.name}.");
+        float newRate = Mathf.Clamp(contract.goldTributePct - 0.05f, 0f, SubjectManager.MaxTributePct);
+        if (Mathf.Approximately(newRate, contract.goldTributePct))
+        {
+            UIManager.Instance?.ShowNotification("Gold tribute is already at its minimum.");
+            return;
+        }
+        ReportSubjectAction(SubjectManager.Instance.TrySetTributeTerms(playerCiv, selectedCiv, newRate,
+            contract.foodTributePct, TurnManager.Instance?.round ?? 0),
+            $"Tribute lowered to {Mathf.RoundToInt(newRate * 100f)}% for {selectedCiv.civData?.civName ?? selectedCiv.name}.");
     }
 
     private void OnForceReligionClicked()
     {
         if (selectedCiv == null || SubjectManager.Instance == null) return;
-        SubjectManager.Instance.InterfereForceReligion(playerCiv, selectedCiv, TurnManager.Instance?.round ?? 0);
-        SetDialogue($"{ElectionManager.GetCurrentRulerName(selectedCiv)} is commanded to conform in matters of faith.");
-        UIManager.Instance.ShowNotification($"Religion pressure applied to {selectedCiv.civData?.civName ?? selectedCiv.name}.");
+        ReportSubjectAction(SubjectManager.Instance.InterfereForceReligion(playerCiv, selectedCiv, TurnManager.Instance?.round ?? 0),
+            $"Religion pressure applied to {selectedCiv.civData?.civName ?? selectedCiv.name}.");
     }
 
     private void OnReplaceGovernorClicked()
     {
         if (selectedCiv == null || SubjectManager.Instance == null) return;
-        SubjectManager.Instance.InterfereReplaceGovernor(playerCiv, selectedCiv, null, TurnManager.Instance?.round ?? 0);
-        SetDialogue($"A new appointee is installed to watch over {ElectionManager.GetCurrentRulerName(selectedCiv)}'s lands.");
-        UIManager.Instance.ShowNotification($"Governor replaced in {selectedCiv.civData?.civName ?? selectedCiv.name}.");
+        ReportSubjectAction(SubjectManager.Instance.InterfereReplaceGovernor(playerCiv, selectedCiv, null, TurnManager.Instance?.round ?? 0),
+            $"Governor replaced in {selectedCiv.civData?.civName ?? selectedCiv.name}.");
     }
 
     private void OnMakePeaceClicked()
     {
-        if (selectedCiv == null) return;
+        if (selectedCiv == null || DiplomacyManager.Instance == null || isExecutingOffer) return;
 
         // Add peace as a deal item and propose
         currentOffer = new DiplomaticOffer { proposer = playerCiv, recipient = selectedCiv };
@@ -891,21 +1362,40 @@ public class DiplomacyUI : MonoBehaviour
         bool accepted = DiplomacyManager.Instance.EvaluateComplexDeal(selectedCiv, currentOffer);
         if (accepted)
         {
-            DiplomacyManager.Instance.ExecuteComplexDeal(currentOffer);
+            if (!DiplomacyManager.Instance.ExecuteComplexDeal(currentOffer))
+            {
+                DiplomacyManager.Instance.TryValidateComplexDeal(currentOffer, out string reason);
+                SetDealError(reason ?? "The peace offer could not be executed.");
+                return;
+            }
             SetLeaderMood(LeaderMood.Agreement);
             SetDialogue("Peace at last. Let us rebuild.");
-            UIManager.Instance.ShowNotification($"Peace established with {selectedCiv.civData.civName}!");
+            UIManager.Instance?.ShowNotification($"Peace established with {selectedCiv.civData?.civName ?? selectedCiv.name}!");
         }
         else
         {
             SetLeaderMood(LeaderMood.Angry);
             SetDialogue("There will be no peace. Not yet.");
-            UIManager.Instance.ShowNotification($"{selectedCiv.civData.civName} refuses peace.");
+            UIManager.Instance?.ShowNotification($"{selectedCiv.civData?.civName ?? selectedCiv.name} refuses peace.");
         }
 
         currentOffer = new DiplomaticOffer { proposer = playerCiv, recipient = selectedCiv };
         RefreshDealTable();
         RefreshActionButtons();
         RefreshLeaderPresentation();
+    }
+
+    private void ReportSubjectAction(SubjectActionResult result, string successMessage)
+    {
+        string message = result.success ? successMessage : result.reason;
+        if (dealStatusText != null && activeTab == LedgerTab.Subjects) dealStatusText.text = message;
+        UIManager.Instance?.ShowNotification(message);
+        if (result.success)
+        {
+            SetDialogue(successMessage);
+            RefreshLeaderPresentation();
+        }
+        RefreshSubjectSummary();
+        RefreshActionButtons();
     }
 }

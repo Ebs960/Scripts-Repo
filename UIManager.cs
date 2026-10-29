@@ -53,6 +53,7 @@ public class UIManager : MonoBehaviour
     [Header("Trade UI")]
     public UnityEngine.UI.Button tradeButton; // Optional: main trade button on player UI
     public GameObject diplomacyPanel;
+    [SerializeField] private GameObject diplomacyPanelPrefab;
     public GameObject equipmentPanel;
     public GameObject militaryPanel;
     public GameObject unitInfoPanel;
@@ -157,6 +158,12 @@ public class UIManager : MonoBehaviour
             bandPanel = Instantiate(bandPanelPrefab, transform);
             bandPanel.name = "Band Panel";
             bandPanel.SetActive(false);
+        }
+        if (diplomacyPanel == null && diplomacyPanelPrefab != null)
+        {
+            diplomacyPanel = Instantiate(diplomacyPanelPrefab, transform);
+            diplomacyPanel.name = "Diplomacy Panel";
+            diplomacyPanel.SetActive(false);
         }
         transform.SetParent(null, true);
         DontDestroyOnLoad(gameObject);

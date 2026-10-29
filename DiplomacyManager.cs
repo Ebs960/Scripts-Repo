@@ -684,27 +684,152 @@ public class DiplomacyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Execute all items in a <see cref="DiplomaticOffer"/>.
-    /// Transfers gold, resources, techs, cities, and applies diplomatic state changes.
+    /// Validates every transfer against the live state before execution. The check is
+    /// centralized here so incoming offers and other callers cannot bypass it.
     /// </summary>
-    public void ExecuteComplexDeal(DiplomaticOffer offer)
+    public bool TryValidateComplexDeal(DiplomaticOffer offer, out string reason)
     {
-        if (offer == null) return;
+        reason = null;
+        if (offer == null) return FailDealValidation("There is no offer to execute.", out reason);
+        if (offer.proposer == null || offer.recipient == null || offer.proposer == offer.recipient)
+            return FailDealValidation("The proposer and recipient must be distinct existing civilizations.", out reason);
+        if (offer.proposerItems == null || offer.recipientItems == null)
+            return FailDealValidation("The offer contains an invalid item list.", out reason);
+        if (offer.IsEmpty)
+            return FailDealValidation("The offer is empty.", out reason);
+
+        var goldTotals = new Dictionary<Civilization, long>();
+        var resourceTotals = new Dictionary<Civilization, Dictionary<ResourceData, long>>();
+        var transferredTechs = new HashSet<TechData>();
+        var transferredCities = new HashSet<City>();
+
+        if (!ValidateDealItems(offer.proposerItems, offer.proposer, offer.recipient, goldTotals,
+                resourceTotals, transferredTechs, transferredCities, out reason)
+            || !ValidateDealItems(offer.recipientItems, offer.recipient, offer.proposer, goldTotals,
+                resourceTotals, transferredTechs, transferredCities, out reason))
+            return false;
+
+        foreach (var total in goldTotals)
+            if (total.Value > total.Key.gold)
+                return FailDealValidation($"{total.Key.civData?.civName ?? total.Key.name} no longer has enough gold.", out reason);
+
+        foreach (var giverTotals in resourceTotals)
+            foreach (var total in giverTotals.Value)
+                if (giverTotals.Key.GetResourceCount(total.Key) < total.Value)
+                    return FailDealValidation($"{giverTotals.Key.civData?.civName ?? giverTotals.Key.name} no longer has enough {total.Key.resourceName}.", out reason);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Executes all items only after the complete offer passes validation. GoldPerTurn
+    /// retains its existing lump-sum-equivalent execution behavior.
+    /// </summary>
+    public bool ExecuteComplexDeal(DiplomaticOffer offer)
+    {
+        if (!TryValidateComplexDeal(offer, out string reason))
+        {
+            Debug.LogWarning($"[DiplomacyManager] Deal was not executed: {reason}");
+            return false;
+        }
 
         var from = offer.proposer;
-        var to   = offer.recipient;
+        var to = offer.recipient;
 
-        // Execute items the proposer gives to the recipient
         foreach (var item in offer.proposerItems)
             ExecuteDealItem(item, from, to);
 
-        // Execute items the recipient gives to the proposer
         foreach (var item in offer.recipientItems)
             ExecuteDealItem(item, to, from);
 
-        // Record positive diplomatic event
         GetDiplomaticMemory(from).RecordEvent(to, DiplomaticEventType.HonoredTreaty);
         GetDiplomaticMemory(to).RecordEvent(from, DiplomaticEventType.HonoredTreaty);
+        return true;
+    }
+
+    private static bool ValidateDealItems(List<DealItem> items, Civilization giver, Civilization receiver,
+        Dictionary<Civilization, long> goldTotals,
+        Dictionary<Civilization, Dictionary<ResourceData, long>> resourceTotals,
+        HashSet<TechData> transferredTechs, HashSet<City> transferredCities, out string reason)
+    {
+        reason = null;
+        foreach (var item in items)
+        {
+            if (item == null)
+                return FailDealValidation("The offer contains an empty item.", out reason);
+
+            switch (item.itemType)
+            {
+                case DealItemType.Gold:
+                    if (item.goldAmount <= 0)
+                        return FailDealValidation("Gold amounts must be positive.", out reason);
+                    AddGoldTotal(goldTotals, giver, item.goldAmount);
+                    break;
+                case DealItemType.GoldPerTurn:
+                    if (item.goldPerTurn <= 0 || item.goldPerTurnDuration <= 0)
+                        return FailDealValidation("Gold-per-turn amounts and durations must be positive.", out reason);
+                    AddGoldTotal(goldTotals, giver, (long)item.goldPerTurn * item.goldPerTurnDuration);
+                    break;
+                case DealItemType.Resource:
+                    if (item.resource == null || item.resourceAmount <= 0)
+                        return FailDealValidation("Resource transfers require a resource and a positive quantity.", out reason);
+                    if (!resourceTotals.TryGetValue(giver, out var byResource))
+                    {
+                        byResource = new Dictionary<ResourceData, long>();
+                        resourceTotals[giver] = byResource;
+                    }
+                    byResource[item.resource] = byResource.GetValueOrDefault(item.resource) + item.resourceAmount;
+                    break;
+                case DealItemType.Technology:
+                    if (item.tech == null || giver.researchedTechs == null || !giver.researchedTechs.Contains(item.tech))
+                        return FailDealValidation("A transferred technology must still be known by its giver.", out reason);
+                    if (receiver.researchedTechs != null && receiver.researchedTechs.Contains(item.tech))
+                        return FailDealValidation($"{receiver.civData?.civName ?? receiver.name} already knows {item.tech.techName}.", out reason);
+                    if (!transferredTechs.Add(item.tech))
+                        return FailDealValidation("A technology cannot be transferred more than once in one deal.", out reason);
+                    break;
+                case DealItemType.City:
+                    if (item.city == null || item.city.owner != giver || giver.cities == null || !giver.cities.Contains(item.city))
+                        return FailDealValidation("A transferred city must still belong to its giver.", out reason);
+                    if (item.city.isCapital)
+                        return FailDealValidation("A civilization's capital cannot be transferred.", out reason);
+                    if (!transferredCities.Add(item.city))
+                        return FailDealValidation("A city cannot be transferred more than once in one deal.", out reason);
+                    break;
+                case DealItemType.MakePeace:
+                    if (DiplomacyManager.Instance == null
+                        || DiplomacyManager.Instance.GetRelationship(giver, receiver) != DiplomaticState.War)
+                        return FailDealValidation("A peace treaty can only be executed while the civilizations are at war.", out reason);
+                    break;
+                case DealItemType.Alliance:
+                    if (DiplomacyManager.Instance == null)
+                        return FailDealValidation("Diplomacy is not initialized.", out reason);
+                    var state = DiplomacyManager.Instance.GetRelationship(giver, receiver);
+                    if (state != DiplomaticState.Peace && state != DiplomaticState.Trade)
+                        return FailDealValidation("An alliance can only be formed from peace or trade.", out reason);
+                    break;
+                case DealItemType.DeclareWarOn:
+                    if (item.targetCiv == null || item.targetCiv == giver || item.targetCiv == receiver)
+                        return FailDealValidation("A war declaration requires a distinct target civilization.", out reason);
+                    if (DiplomacyManager.Instance != null
+                        && DiplomacyManager.Instance.GetRelationship(giver, item.targetCiv) == DiplomaticState.War)
+                        return FailDealValidation("The giver is already at war with that target.", out reason);
+                    break;
+                default:
+                    return FailDealValidation("The offer contains an unsupported item type.", out reason);
+            }
+        }
+
+        return true;
+    }
+
+    private static void AddGoldTotal(Dictionary<Civilization, long> totals, Civilization giver, long amount)
+        => totals[giver] = totals.GetValueOrDefault(giver) + amount;
+
+    private static bool FailDealValidation(string message, out string reason)
+    {
+        reason = message;
+        return false;
     }
 
     private void ExecuteDealItem(DealItem item, Civilization giver, Civilization receiver)
