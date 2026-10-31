@@ -383,12 +383,52 @@ public class TechUI : MonoBehaviour
         TechButtonUI techButtonUI = techNode.GetComponent<TechButtonUI>();
         if (techButtonUI == null) techButtonUI = techNode.AddComponent<TechButtonUI>();
         techButtonUI.Initialize(tech, this);
+        ResearchHoverTarget hover = techNode.GetComponent<ResearchHoverTarget>();
+        if (hover == null) hover = techNode.AddComponent<ResearchHoverTarget>();
+        hover.Configure(screenPosition => ShowTechHover(tech, screenPosition), HideResearchHover);
         techButtons.Add(techButtonUI);
 
         // Wire UI interactions for dynamically created tech node
         if (UIManager.Instance != null)
             UIManager.Instance.WireUIInteractions(techNode);
     }
+
+
+    // Reuse the established info-panel calculations for the hover card, including
+    // reverse-lookup unlocks and economic impact. Legacy info fields may remain
+    // assigned but their parent panel can be visually hidden in the new shell.
+    private void ShowTechHover(TechData item, Vector2 screenPosition)
+    {
+        if (item == null) return;
+        UpdateInfoPanel(item);
+        var popup = ResearchHoverPopup.For(transform);
+        if (popup == null) return;
+
+        var parts = new List<string>();
+        AppendHoverField(parts, selectedTechDescriptionText);
+        AppendHoverField(parts, selectedTechCostText);
+        AppendHoverField(parts, selectedTechTurnsRemainingText);
+        AppendHoverField(parts, selectedTechPrerequisitesText);
+        AppendHoverField(parts, selectedTechUnlocksText);
+        AppendHoverField(parts, selectedTechBuildingsText);
+        AppendHoverField(parts, selectedTechImprovementsText);
+        AppendHoverField(parts, selectedTechEconomicImpactText);
+        popup.Show(item.techName, string.Join("\n\n", parts), screenPosition);
+    }
+
+    private static void AppendHoverField(List<string> parts, TextMeshProUGUI field)
+    {
+        if (field != null && !string.IsNullOrWhiteSpace(field.text))
+            parts.Add(field.text);
+    }
+
+    private void HideResearchHover()
+    {
+        var popup = ResearchHoverPopup.For(transform);
+        if (popup != null) popup.Hide();
+    }
+
+    private void OnDisable() => HideResearchHover();
 
     private void CreateConnectionLines()
     {
