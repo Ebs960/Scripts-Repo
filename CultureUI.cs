@@ -350,11 +350,47 @@ public class CultureUI : MonoBehaviour
         CultureButtonUI cultureButtonUI = cultureNode.GetComponent<CultureButtonUI>();
         if (cultureButtonUI == null) cultureButtonUI = cultureNode.AddComponent<CultureButtonUI>();
         cultureButtonUI.Initialize(culture, this);
+        ResearchHoverTarget hover = cultureNode.GetComponent<ResearchHoverTarget>();
+        if (hover == null) hover = cultureNode.AddComponent<ResearchHoverTarget>();
+        hover.Configure(positionOnScreen => ShowCultureHover(culture, positionOnScreen), HideResearchHover);
         cultureButtons.Add(cultureButtonUI);
 
         if (UIManager.Instance != null)
             UIManager.Instance.WireUIInteractions(cultureNode);
     }
+
+
+    private void ShowCultureHover(CultureData culture, Vector2 screenPosition)
+    {
+        if (culture == null) return;
+        UpdateInfoPanel(culture);
+        ResearchHoverPopup popup = ResearchHoverPopup.For(transform);
+        if (popup == null) return;
+        var parts = new List<string>();
+        AppendHoverField(parts, selectedCultureDescriptionText);
+        AppendHoverField(parts, selectedCultureCostText);
+        AppendHoverField(parts, selectedCultureTurnsRemainingText);
+        AppendHoverField(parts, selectedCulturePrerequisitesText);
+        AppendHoverField(parts, selectedCultureUnlocksText);
+        AppendHoverField(parts, selectedCultureBuildingsText);
+        AppendHoverField(parts, selectedCultureImprovementsText);
+        AppendHoverField(parts, selectedCultureEconomicImpactText);
+        popup.Show(culture.cultureName, string.Join("\n\n", parts), screenPosition);
+    }
+
+    private static void AppendHoverField(List<string> parts, TextMeshProUGUI field)
+    {
+        if (field != null && !string.IsNullOrWhiteSpace(field.text))
+            parts.Add(field.text);
+    }
+
+    private void HideResearchHover()
+    {
+        ResearchHoverPopup popup = ResearchHoverPopup.For(transform);
+        if (popup != null) popup.Hide();
+    }
+
+    private void OnDisable() => HideResearchHover();
 
     private void CreateConnectionLines()
     {
