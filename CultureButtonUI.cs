@@ -8,7 +8,7 @@ using UnityEngine.EventSystems;
 /// It displays the culture name and updates its appearance based on state/selection.
 /// </summary>
 [RequireComponent(typeof(Button))]
-public class CultureButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public class CultureButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler, ISelectHandler
 {
     public enum CultureState { Available, Researched, Researching, Locked }
 
@@ -25,6 +25,8 @@ public class CultureButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExit
     [SerializeField] private Color availableColor = Color.white;
     [SerializeField] private Color lockedColor = Color.gray;
     [SerializeField] private Color selectedColor = Color.cyan;
+    [SerializeField] private bool useModernVisuals = true;
+    private TreeNodeVisual nodeVisual;
 
     public CultureData RepresentedCulture { get; private set; }
 
@@ -37,6 +39,13 @@ public class CultureButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExit
     {
         RepresentedCulture = culture;
         cultureUI = ownerUI;
+        if (culture == null) return;
+        if (useModernVisuals)
+        {
+            nodeVisual = GetComponent<TreeNodeVisual>();
+            if (nodeVisual == null) nodeVisual = gameObject.AddComponent<TreeNodeVisual>();
+            if (ownerUI != null && ownerUI.NodeButtonSprite != null) nodeVisual.backgroundSprite = ownerUI.NodeButtonSprite;
+        }
 
         if (cultureNameText == null)
             cultureNameText = GetComponentInChildren<TextMeshProUGUI>();
@@ -95,13 +104,19 @@ public class CultureButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
     public void SetQueueOrder(int order)
     {
-        bool show = order > 0;
+        bool show = !useModernVisuals && order > 0;
         if (queueOrderContainer != null) queueOrderContainer.SetActive(show);
         if (queueOrderText != null) queueOrderText.text = show ? order.ToString() : string.Empty;
     }
 
     private void RefreshColor()
     {
+        if (nodeVisual != null)
+        {
+            if (cultureUI != null && cultureUI.NodeButtonSprite != null) nodeVisual.backgroundSprite = cultureUI.NodeButtonSprite;
+            nodeVisual.Apply(backgroundImage, button, cultureNameText, (int)currentState, isSelected, iconImage);
+            return;
+        }
         if (backgroundImage == null) return;
         if (isSelected)
         {
@@ -127,6 +142,7 @@ public class CultureButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExit
 
     private void RefreshButtonColorBlock()
     {
+        if (nodeVisual != null) return;
         if (button == null) return;
 
         Color baseColor = GetDisplayColorForCurrentState();
@@ -170,11 +186,29 @@ public class CultureButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExit
     public void OnPointerEnter(PointerEventData eventData)
     {
         if (RepresentedCulture == null) return;
+        if (cultureUI != null && cultureUI.ShowHoverPopup(RepresentedCulture, transform as RectTransform))
+        {
+            TooltipSystem.Instance?.RequestHideTooltip();
+            return;
+        }
         TooltipSystem.Instance?.ShowCultureTooltip(RepresentedCulture, null);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
+        if (cultureUI != null) cultureUI.LeaveHoverPopup(transform as RectTransform);
         TooltipSystem.Instance?.RequestHideTooltip();
+    }
+
+    public void OnSelect(BaseEventData eventData)
+    {
+        if (!(eventData is PointerEventData) && cultureUI != null)
+            cultureUI.PinPopup(RepresentedCulture, transform as RectTransform, true);
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Right && cultureUI != null)
+            cultureUI.PreviewCulture(RepresentedCulture);
     }
 } 

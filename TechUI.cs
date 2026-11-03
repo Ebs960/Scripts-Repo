@@ -12,6 +12,25 @@ public class TechUI : MonoBehaviour
     [SerializeField] private ScrollRect techScrollRect; // The ScrollRect for the tech tree
     [SerializeField] private RectTransform techContent; // The content area of the ScrollRect
     [SerializeField] private GameObject techButtonPrefab; // Prefab for tech buttons
+    [Header("Shared Presentation")]
+    [SerializeField] private TreePanelView panelView;
+    [SerializeField] private TreeNavigation navigation;
+    [SerializeField] private bool enableNavigation = true;
+    [SerializeField, Min(0)] private float edgePadding = 80f;
+    [SerializeField] private bool useFloatingPopups = true;
+    [Tooltip("Optional shared scene popup or popup prefab. A runtime popup is created when unassigned.")]
+    [SerializeField] private ResearchHoverPopup hoverPopup;
+    [Header("Custom Tree Artwork")]
+    [Tooltip("Tech/Culture Main Shell: transparent central opening with blue header and gold frame.")]
+    [SerializeField] private Sprite mainShellSprite;
+    [Tooltip("Tech/Culture Node Button: shared blue/gold background without text or icons.")]
+    [SerializeField] private Sprite nodeButtonSprite;
+    [Tooltip("Research Progress Bar Background: new blue/gold artwork, not the parchment HUD bar.")]
+    [SerializeField] private Sprite researchProgressSprite;
+    [Tooltip("Technology/Culture Hover Popup Background: tall blue/gold panel with title divider.")]
+    [SerializeField] private Sprite hoverPopupSprite;
+    [SerializeField] private GameObject[] legacyInformationPanels;
+    public Sprite NodeButtonSprite => nodeButtonSprite;
 
     [Header("Tech Tree Integration")]
     [SerializeField] private TechTreeBackgroundData backgroundData; // Background system
@@ -39,12 +58,18 @@ public class TechUI : MonoBehaviour
 
     private Civilization playerCiv;
     private TechData currentlySelectedTech;
+    private TechData displayedTech;
     private List<TechButtonUI> techButtons = new List<TechButtonUI>(); // To manage button states
     
     // Build-once caching to avoid Destroy/Recreate churn every time the panel opens.
     private bool _treeBuilt = false;
     private int _builtTechCount = -1;
     private bool _builtUsedCustomLayout = false;
+    private TechData observedTech;
+    private float observedProgress;
+    private int observedCompletedCount;
+    private float nextHeaderRefresh;
+    private bool followsPlayerCivilization;
 
     void Start()
     {
@@ -53,6 +78,7 @@ public class TechUI : MonoBehaviour
             closeButton.onClick.RemoveAllListeners();
             closeButton.onClick.AddListener(() => 
             {
+                ClosePopup();
                 if (UIManager.Instance != null)
                 {
                     UIManager.Instance.HidePanel("techPanel");
@@ -71,7 +97,9 @@ public class TechUI : MonoBehaviour
 
     public void Show(Civilization civ)
     {
+        if (playerCiv != civ) currentlySelectedTech = null;
         playerCiv = civ;
+        followsPlayerCivilization = CivilizationManager.Instance != null && CivilizationManager.Instance.playerCiv == civ;
         if (playerCiv == null)
         {
             Debug.LogError("TechUI Show called with null civ");
@@ -85,7 +113,9 @@ public class TechUI : MonoBehaviour
                 UIManager.Instance.cityPanel.SetActive(false);
             // Add more panels here if needed
         }
-        UIManager.Instance.ShowPanel("techPanel");
+        if (UIManager.Instance != null) UIManager.Instance.ShowPanel("techPanel");
+        else if (techPanel != null) techPanel.SetActive(true);
+        ConfigurePresentation();
         PopulateTechTree();
         // Preserve any prior explicit selection when reopening the UI.
         // RefreshUI will reapply selection for `playerCiv.currentTech` or `currentlySelectedTech` if set.
@@ -94,7 +124,9 @@ public class TechUI : MonoBehaviour
 
     public void Hide()
     {
-        UIManager.Instance.HidePanel("techPanel");
+        ClosePopup();
+        if (UIManager.Instance != null) UIManager.Instance.HidePanel("techPanel");
+        else if (techPanel != null) techPanel.SetActive(false);
         // Restore other panels (unit info, city, etc) when Tech UI is closed
         if (UIManager.Instance != null) {
             if (UIManager.Instance.unitInfoPanel != null)
@@ -105,6 +137,7 @@ public class TechUI : MonoBehaviour
 
     void PopulateTechTree()
     {
+        if (techContent == null || techButtonPrefab == null) return;
         if (TechManager.Instance == null || TechManager.Instance.allTechs == null)
         {
             Debug.LogError("TechManager or its techs not available.");
@@ -130,10 +163,11 @@ public class TechUI : MonoBehaviour
         {
             foreach (Transform child in techContent)
             {
-                if (child != null) Destroy(child.gameObject);
+                if (child != null) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             }
         }
         techButtons.Clear();
+        TreeContentBounds.ResetOrigin(techContent);
 
         // Create background first
         CreateTechTreeBackground();
@@ -150,6 +184,7 @@ public class TechUI : MonoBehaviour
 
         // Create connection lines between prerequisites
         CreateConnectionLines();
+        TreeContentBounds.Fit(techContent, new Vector2(3000, 1200), edgePadding);
 
         RefreshTechButtonStates();
 
@@ -160,58 +195,7 @@ public class TechUI : MonoBehaviour
 
     private void CreateTechTreeBackground()
     {
-        if (backgroundData == null) return;
-
-        // Calculate total background width
-        float totalWidth = backgroundData.GetTotalWidth();
-        float imageHeight = 1024f * backgroundData.backgroundScale;
-
-        // Adjust content size
-        float contentWidth = Mathf.Max(totalWidth, 3000f); // Minimum width for grid
-        float contentHeight = Mathf.Max(imageHeight, 1200f); // Minimum height for grid
-        techContent.sizeDelta = new Vector2(contentWidth, contentHeight);
-
-        // Create background container
-        GameObject backgroundContainer = new GameObject("BackgroundContainer");
-        backgroundContainer.transform.SetParent(techContent, false);
-
-        RectTransform bgRect = backgroundContainer.AddComponent<RectTransform>();
-        bgRect.anchorMin = new Vector2(0, 1);
-        bgRect.anchorMax = new Vector2(0, 1);
-        bgRect.pivot = new Vector2(0, 1);
-        bgRect.sizeDelta = new Vector2(totalWidth, imageHeight);
-        bgRect.anchoredPosition = Vector2.zero;
-        bgRect.transform.SetAsFirstSibling(); // Behind everything
-
-        // Create age backgrounds
-        var allAges = System.Enum.GetValues(typeof(TechAge));
-        float currentX = 0f;
-
-        foreach (TechAge age in allAges)
-        {
-            Sprite ageBackground = backgroundData.GetBackgroundForAge(age);
-            if (ageBackground == null) continue;
-
-            GameObject bgImageObj = new GameObject($"Background_{age}");
-            bgImageObj.transform.SetParent(backgroundContainer.transform, false);
-
-            RectTransform imageRect = bgImageObj.AddComponent<RectTransform>();
-            imageRect.anchorMin = new Vector2(0, 1);
-            imageRect.anchorMax = new Vector2(0, 1);
-            imageRect.pivot = new Vector2(0, 1);
-
-            float ageWidth = backgroundData.GetWidthForAge(age);
-            imageRect.sizeDelta = new Vector2(ageWidth, imageHeight);
-            imageRect.anchoredPosition = new Vector2(currentX, 0);
-
-            Image bgImage = bgImageObj.AddComponent<Image>();
-            bgImage.sprite = ageBackground;
-            bgImage.type = Image.Type.Simple;
-            bgImage.raycastTarget = false;
-            bgImage.preserveAspect = true;
-
-            currentX += ageWidth + backgroundData.imageSpacing;
-        }
+        if (backgroundData != null) TreePanorama.Render(techContent, backgroundData.GetPlacements(), backgroundData.showEraMarkers);
     }
 
     private void CreateTechNodesWithGridLayout()
@@ -347,23 +331,13 @@ public class TechUI : MonoBehaviour
             return;
         }
 
-        float maxX = 0f;
-        float minY = 0f;
-        foreach (var kvp in resolvedPositions)
-        {
-            Vector2 pos = kvp.Value;
-            maxX = Mathf.Max(maxX, pos.x + techNodeSize.x);
-            minY = Mathf.Min(minY, pos.y - techNodeSize.y);
-        }
-        techContent.sizeDelta = new Vector2(maxX + 100f, Mathf.Abs(minY) + 100f);
-        Debug.Log($"[TechUI] Set techContent size to {techContent.sizeDelta}");
-
         foreach (var kvp in resolvedPositions)
             CreateTechNode(kvp.Key, kvp.Value, techNodeSize);
     }
 
     private void CreateTechNode(TechData tech, Vector2 position, Vector2 nodeSize = default)
     {
+        if (tech == null || techButtonPrefab == null || techContent == null) return;
         if (nodeSize == default)
             nodeSize = techNodeSize;
 
@@ -377,6 +351,7 @@ public class TechUI : MonoBehaviour
         rect.anchorMin = new Vector2(0, 1);
         rect.anchorMax = new Vector2(0, 1);
         rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = nodeSize;
         rect.anchoredPosition = position;
 
         // Initialize the TechButtonUI component
@@ -418,7 +393,7 @@ public class TechUI : MonoBehaviour
 
         RectTransform lineRect = lineObj.AddComponent<RectTransform>();
         Image lineImage = lineObj.AddComponent<Image>();
-        lineImage.color = new Color(0.5f, 0.8f, 0.5f, 0.7f); // Semi-transparent green
+        lineImage.color = new Color(0.55f, 0.49f, 0.33f, 0.75f);
         lineImage.raycastTarget = false;
 
         // Position line between the two nodes
@@ -441,7 +416,7 @@ public class TechUI : MonoBehaviour
     {
         if (playerCiv == null) return Color.gray;
 
-        if (playerCiv.researchedTechs.Contains(tech))
+        if (playerCiv.researchedTechs != null && playerCiv.researchedTechs.Contains(tech))
             return Color.green;
         else if (playerCiv.currentTech == tech)
             return Color.yellow;
@@ -462,8 +437,116 @@ public class TechUI : MonoBehaviour
             btnUI.SetSelected(tech == btnUI.RepresentedTech);
     }
 
+    public void PreviewTech(TechData tech)
+    {
+        SelectTechInfoOnly(tech);
+        var button = techButtons.FirstOrDefault(item => item != null && item.RepresentedTech == tech);
+        if (button != null) PinPopup(tech, button.transform as RectTransform);
+    }
+
+    public bool ShowHoverPopup(TechData tech, RectTransform anchor)
+    {
+        if (!useFloatingPopups || tech == null || anchor == null) return false;
+        hoverPopup = ResearchHoverPopup.GetOrCreate(this, hoverPopup);
+        if (hoverPopup == null) return false;
+        hoverPopup.Request(this, anchor, () => BuildPopupInfo(tech));
+        return true;
+    }
+
+    public void PinPopup(TechData tech, RectTransform anchor, bool fromNavigation = false)
+    {
+        if (!useFloatingPopups || tech == null || anchor == null) return;
+        hoverPopup = ResearchHoverPopup.GetOrCreate(this, hoverPopup);
+        if (hoverPopup != null && (!fromNavigation || hoverPopup.pinOnNavigationSelection))
+            hoverPopup.Request(this, anchor, () => BuildPopupInfo(tech), true);
+    }
+
+    public void LeaveHoverPopup(RectTransform anchor)
+    {
+        if (hoverPopup != null) hoverPopup.Leave(this, anchor);
+    }
+
+    public void ClosePopup() { if (hoverPopup != null) hoverPopup.HideForOwner(this); }
+    private void OnDisable() { ClosePopup(); }
+
+    private void LateUpdate()
+    {
+        if (techPanel != null && !techPanel.activeInHierarchy) return;
+        var currentPlayer = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+        if (followsPlayerCivilization && currentPlayer != null && currentPlayer != playerCiv) { Show(currentPlayer); return; }
+        if (playerCiv == null || panelView == null) return;
+        if (observedTech != playerCiv.currentTech || observedProgress != playerCiv.currentTechProgress ||
+            observedCompletedCount != (playerCiv.researchedTechs != null ? playerCiv.researchedTechs.Count : 0))
+            RefreshUI();
+        else if (Time.unscaledTime >= nextHeaderRefresh) UpdateHeader();
+    }
+
+    private void UpdateHeader()
+    {
+        if (panelView == null) return;
+        panelView.UpdateFocus(playerCiv != null && playerCiv.currentTech != null ? playerCiv.currentTech.techName : "No Active Research",
+            playerCiv != null ? playerCiv.currentTechProgress : 0, playerCiv != null && playerCiv.currentTech != null ? playerCiv.currentTech.scienceCost : 0,
+            GetTotalSciencePerTurn(playerCiv), playerCiv != null && playerCiv.currentTech != null);
+        nextHeaderRefresh = Time.unscaledTime + 0.25f;
+    }
+
+    private void ConfigurePresentation()
+    {
+        if (enableNavigation && techScrollRect != null)
+        {
+            if (navigation == null) navigation = techScrollRect.GetComponent<TreeNavigation>();
+            if (navigation != null) navigation.Configure(techScrollRect);
+        }
+        if (panelView == null) panelView = TreePanelView.GetOrCreateShell(this, techPanel, techScrollRect, closeButton);
+        else panelView.PrepareShell(this, techPanel, techScrollRect, closeButton);
+        if (panelView != null)
+        {
+            if (mainShellSprite != null) panelView.mainShellSprite = mainShellSprite;
+            if (researchProgressSprite != null) panelView.researchProgressSprite = researchProgressSprite;
+            if (legacyInformationPanels != null && legacyInformationPanels.Length > 0) panelView.legacyInformationPanels = legacyInformationPanels;
+            panelView.Configure("TECHNOLOGY TREE", navigation, ResearchSelectedTech, FocusCurrentResearch, Hide);
+            if (useFloatingPopups) panelView.HideLegacyDetails(selectedTechNameText, selectedTechDescriptionText,
+                selectedTechCostText, selectedTechTurnsRemainingText, selectedTechPrerequisitesText, selectedTechUnlocksText,
+                selectedTechBuildingsText, selectedTechImprovementsText, selectedTechIconImage, selectedTechEconomicImpactText);
+        }
+            hoverPopup = ResearchHoverPopup.GetOrCreate(this, hoverPopup);
+            if (hoverPopup != null && hoverPopupSprite != null) hoverPopup.backgroundSprite = hoverPopupSprite;
+    }
+
+    public void ResearchSelectedTech()
+    {
+        if (displayedTech != null && playerCiv != null && playerCiv.currentTech != displayedTech && playerCiv.CanResearch(displayedTech))
+            SelectTech(displayedTech);
+    }
+
+    public void FocusCurrentResearch()
+    {
+        if (playerCiv == null || playerCiv.currentTech == null) return;
+        var button = techButtons.FirstOrDefault(item => item != null && item.RepresentedTech == playerCiv?.currentTech);
+        if (navigation != null && button != null) navigation.Focus(button.transform as RectTransform);
+    }
+
+    public void ResetView() { if (navigation != null) navigation.ResetView(); }
+
+    [ContextMenu("Rebuild Tree")]
+    public void RebuildTree()
+    {
+        ClosePopup();
+        _treeBuilt = false;
+        if (playerCiv != null) { PopulateTechTree(); RefreshUI(); }
+    }
+
+    public void FocusAge(int ageIndex)
+    {
+        if (navigation == null || backgroundData == null || techContent == null) return;
+        Vector2 point = TreeContentBounds.ToContentPosition(techContent,
+            new Vector2(backgroundData.GetAgeStartPosition((TechAge)ageIndex), -backgroundData.displayHeight * backgroundData.backgroundScale * 0.5f));
+        navigation.FocusPoint(techContent.TransformPoint(point));
+    }
+
     public void SelectTech(TechData tech)
     {
+        if (tech == null) return;
         currentlySelectedTech = tech;
         UpdateInfoPanel(tech);
         if (playerCiv != null)
@@ -494,42 +577,55 @@ public class TechUI : MonoBehaviour
 
     void UpdateInfoPanel(TechData tech)
     {
+        displayedTech = tech;
+        if (useFloatingPopups) return;
         if (tech == null)
         {
             ClearInfoPanel();
             return;
         }
-        // Set icon if assigned
+        ResearchPopupInfo info = BuildPopupInfo(tech);
         if (selectedTechIconImage != null)
         {
             selectedTechIconImage.gameObject.SetActive(tech.techIcon != null);
             selectedTechIconImage.sprite = tech.techIcon;
         }
+        TreePanelView.SetText(selectedTechNameText, info.name);
+        TreePanelView.SetText(selectedTechDescriptionText, info.description);
+        TreePanelView.SetText(selectedTechCostText, $"Cost: {info.cost:0} {info.currency}");
+        TreePanelView.SetText(selectedTechTurnsRemainingText, info.turnsRemaining.HasValue ? $"~{info.turnsRemaining} turns" : "");
+        TreePanelView.SetText(selectedTechPrerequisitesText, info.prerequisites);
+        TreePanelView.SetText(selectedTechBuildingsText, info.buildings);
+        TreePanelView.SetText(selectedTechImprovementsText, info.improvements);
+        TreePanelView.SetText(selectedTechUnlocksText, info.units + (string.IsNullOrEmpty(info.otherUnlocks) ? "" : "\n" + info.otherUnlocks) + (string.IsNullOrEmpty(info.yields) ? "" : "\n" + info.yields));
+        TreePanelView.SetText(selectedTechEconomicImpactText, info.economicEffects);
+        if (panelView != null) panelView.UpdateSelection(info.progress, info.cost, info.canStart, info.actionLabel);
+    }
 
-        selectedTechNameText.text = tech.techName;
-        selectedTechDescriptionText.text = tech.description;
-        // Calculate turns remaining
-        int sciPerTurn = GetTotalSciencePerTurn(playerCiv);
-        float remaining = tech.scienceCost;
-        if (playerCiv != null && playerCiv.currentTech == tech)
-            remaining = tech.scienceCost - playerCiv.currentTechProgress;
-        selectedTechCostText.text = $"Cost: {tech.scienceCost} Science";
-        if (selectedTechTurnsRemainingText != null)
-            selectedTechTurnsRemainingText.text = sciPerTurn > 0 ? $"~{Mathf.CeilToInt(remaining / sciPerTurn)} turns" : "";
-
-        string prereqs = "Prerequisites: ";
+    public ResearchPopupInfo BuildPopupInfo(TechData tech)
+    {
+        if (tech == null) return null;
+        bool completed = playerCiv?.researchedTechs != null && playerCiv.researchedTechs.Contains(tech);
+        bool active = playerCiv != null && playerCiv.currentTech == tech;
+        bool available = !completed && playerCiv != null && playerCiv.CanResearch(tech);
+        var info = ResearchPopupInfo.Create(tech.techName, tech.techIcon, tech.techAge,
+            completed ? ResearchPopupStatus.Completed : active ? ResearchPopupStatus.Active : available ? ResearchPopupStatus.Available : ResearchPopupStatus.Locked,
+            tech.scienceCost, active ? playerCiv.currentTechProgress : 0, GetTotalSciencePerTurn(playerCiv), "Science");
+        info.description = tech.description;
+        info.canStart = available && !active;
+        info.actionLabel = completed ? "Completed" : active ? "Researching" : "Research";
+        var prereqItems = new List<string>();
         if (tech.requiredTechnologies != null && tech.requiredTechnologies.Length > 0)
-        {
-            prereqs += string.Join(", ", tech.requiredTechnologies.Select(t => t.techName));
-        }
-        else
-        {
-            prereqs += "None";
-        }
-        selectedTechPrerequisitesText.text = prereqs;
+            foreach (var prerequisite in tech.requiredTechnologies)
+                if (prerequisite != null) AddUniqueUnlock(prereqItems, prerequisite.techName);
+        if (tech.requiredCityCount > 0) prereqItems.Add($"{tech.requiredCityCount} cities");
+        if (tech.requiredControlledBiomes != null)
+            foreach (var biome in tech.requiredControlledBiomes) AddUniqueUnlock(prereqItems, "Control " + biome);
+        info.prerequisites = ResearchPopupInfo.JoinRelevant(prereqItems);
 
         List<string> buildingUnlocks = new List<string>();
         List<string> improvementUnlocks = new List<string>();
+        List<string> unitUnlocks = new List<string>();
         List<string> unlockItems = new List<string>();
 
         // Reverse-lookup: find all data assets that require this tech
@@ -550,14 +646,14 @@ public class TechUI : MonoBehaviour
             foreach (var u in combatUnits)
                 if (u != null && u.requiredTechs != null)
                     foreach (var rt in u.requiredTechs)
-                        if (rt == tech) { AddUniqueUnlock(unlockItems, u.unitName); break; }
+                        if (rt == tech) { AddUniqueUnlock(unitUnlocks, u.unitName); break; }
 
         var workerUnits = ResourceCache.GetAllWorkerUnits();
         if (workerUnits != null)
             foreach (var w in workerUnits)
                 if (w != null && w.requiredTechs != null)
                     foreach (var rt in w.requiredTechs)
-                        if (rt == tech) { AddUniqueUnlock(unlockItems, w.unitName); break; }
+                        if (rt == tech) { AddUniqueUnlock(unitUnlocks, w.unitName); break; }
 
         var improvements = ResourceCache.GetAllImprovements();
         if (improvements != null)
@@ -613,19 +709,14 @@ public class TechUI : MonoBehaviour
         if (tech.unlocksReligion)
             AddUniqueUnlock(unlockItems, "Religion Mechanics");
 
-        if (selectedTechBuildingsText != null)
-            selectedTechBuildingsText.text = FormatUnlockField("Buildings", buildingUnlocks);
-        if (selectedTechImprovementsText != null)
-            selectedTechImprovementsText.text = FormatUnlockField("Improvements", improvementUnlocks);
-
-        selectedTechUnlocksText.text = FormatUnlockField("Unlocks", unlockItems);
-        // Append yield modifiers (percent + flat) to unlocks section so players see immediate benefits
-        string techYieldInfo = FormatYieldInfo(tech);
-        if (!string.IsNullOrEmpty(techYieldInfo) && selectedTechUnlocksText != null)
-            selectedTechUnlocksText.text = selectedTechUnlocksText.text + "\n" + techYieldInfo;
-        
-        // Display economic impact preview
-        UpdateEconomicImpactDisplay(tech);
+        info.buildings = ResearchPopupInfo.JoinRelevant(buildingUnlocks);
+        info.improvements = ResearchPopupInfo.JoinRelevant(improvementUnlocks);
+        info.units = ResearchPopupInfo.JoinRelevant(unitUnlocks);
+        info.otherUnlocks = ResearchPopupInfo.JoinRelevant(unlockItems.Except(buildingUnlocks).Except(improvementUnlocks).ToList());
+        info.yields = FormatYieldInfo(tech);
+        info.bonuses = ResearchPopupInfo.FormatBonuses(tech.attackBonus, tech.defenseBonus, tech.movementBonus);
+        info.economicEffects = BuildEconomicImpact(tech);
+        return info;
     }
 
     private string FormatYieldInfo(TechData tech)
@@ -682,12 +773,15 @@ public class TechUI : MonoBehaviour
     
     void ClearInfoPanel()
     {
-        selectedTechNameText.text = "No Research";
-        selectedTechDescriptionText.text = "You are not researching any technology. Select one from the tech tree to begin earning progress toward it.";
-        selectedTechCostText.text = "";
+        displayedTech = null;
+        if (useFloatingPopups) return;
+        TreePanelView.SetText(selectedTechNameText, "No Research");
+        TreePanelView.SetText(selectedTechDescriptionText, "You are not researching any technology. Select one from the tech tree to begin earning progress toward it.");
+        TreePanelView.SetText(selectedTechCostText, "");
+        if (panelView != null) panelView.UpdateSelection(0, 0, false, "Research");
         if (selectedTechTurnsRemainingText != null) selectedTechTurnsRemainingText.text = "";
-        selectedTechPrerequisitesText.text = "";
-        selectedTechUnlocksText.text = "";
+        TreePanelView.SetText(selectedTechPrerequisitesText, "");
+        TreePanelView.SetText(selectedTechUnlocksText, "");
         if (selectedTechBuildingsText != null) selectedTechBuildingsText.text = "";
         if (selectedTechImprovementsText != null) selectedTechImprovementsText.text = "";
         if (selectedTechIconImage != null)
@@ -705,10 +799,10 @@ public class TechUI : MonoBehaviour
         if (selectedTechEconomicImpactText != null) selectedTechEconomicImpactText.text = "";
     }
 
-    private void UpdateEconomicImpactDisplay(TechData tech)
+    private string BuildEconomicImpact(TechData tech)
     {
         if (playerCiv == null || tech == null)
-            return;
+            return string.Empty;
 
         int currentGold = GetTotalGoldPerTurn(playerCiv);
         int currentScience = GetTotalSciencePerTurn(playerCiv);
@@ -731,20 +825,16 @@ public class TechUI : MonoBehaviour
         int foodDiff = projectedFood - currentFood;
         int policyDiff = projectedPolicy - currentPolicy;
 
-        if (selectedTechEconomicImpactText != null)
         {
             string impactSummary = "";
-            if (goldDiff != 0) impactSummary += $"\n<color=yellow>Gold:</color> {currentGold} → {projectedGold} ({(goldDiff > 0 ? "+" : "")}{goldDiff})";
-            if (scienceDiff != 0) impactSummary += $"\n<color=cyan>Science:</color> {currentScience} → {projectedScience} ({(scienceDiff > 0 ? "+" : "")}{scienceDiff})";
-            if (cultureDiff != 0) impactSummary += $"\n<color=magenta>Culture:</color> {currentCulture} → {projectedCulture} ({(cultureDiff > 0 ? "+" : "")}{cultureDiff})";
-            if (faithDiff != 0) impactSummary += $"\n<color=white>Faith:</color> {currentFaith} → {projectedFaith} ({(faithDiff > 0 ? "+" : "")}{faithDiff})";
-            if (foodDiff != 0) impactSummary += $"\n<color=green>Food:</color> {currentFood} → {projectedFood} ({(foodDiff > 0 ? "+" : "")}{foodDiff})";
-            if (policyDiff != 0) impactSummary += $"\n<color=#FFA500>Policy:</color> {currentPolicy} → {projectedPolicy} ({(policyDiff > 0 ? "+" : "")}{policyDiff})";
+            if (goldDiff != 0) impactSummary += $"\nGold: {currentGold} -> {projectedGold} ({(goldDiff > 0 ? "+" : "")}{goldDiff})";
+            if (scienceDiff != 0) impactSummary += $"\nScience: {currentScience} -> {projectedScience} ({(scienceDiff > 0 ? "+" : "")}{scienceDiff})";
+            if (cultureDiff != 0) impactSummary += $"\nCulture: {currentCulture} -> {projectedCulture} ({(cultureDiff > 0 ? "+" : "")}{cultureDiff})";
+            if (faithDiff != 0) impactSummary += $"\nFaith: {currentFaith} -> {projectedFaith} ({(faithDiff > 0 ? "+" : "")}{faithDiff})";
+            if (foodDiff != 0) impactSummary += $"\nFood: {currentFood} -> {projectedFood} ({(foodDiff > 0 ? "+" : "")}{foodDiff})";
+            if (policyDiff != 0) impactSummary += $"\nPolicy: {currentPolicy} -> {projectedPolicy} ({(policyDiff > 0 ? "+" : "")}{policyDiff})";
             
-            if (!string.IsNullOrEmpty(impactSummary))
-                selectedTechEconomicImpactText.text = "<b>Economic Impact:</b>" + impactSummary;
-            else
-                selectedTechEconomicImpactText.text = "<b>Economic Impact:</b>\n<i>No yield changes</i>";
+            return impactSummary.TrimStart();
         }
 
 
@@ -863,7 +953,12 @@ public class TechUI : MonoBehaviour
 
     public void RefreshUI()
     {
-if (playerCiv == null) return;
+        UpdateHeader();
+        if (playerCiv == null) return;
+        observedTech = playerCiv.currentTech;
+        observedProgress = playerCiv.currentTechProgress;
+        observedCompletedCount = playerCiv.researchedTechs != null ? playerCiv.researchedTechs.Count : 0;
+        if (hoverPopup != null) hoverPopup.RefreshForOwner(this);
         // Update button states
         RefreshTechButtonStates();
         // Update info panel for the currently selected tech or current research
@@ -895,7 +990,7 @@ if (playerCiv == null) return;
         if (background != null)
             background.color = GetTechStateColor(tech);
 
-        if (playerCiv.researchedTechs.Contains(tech))
+        if (playerCiv.researchedTechs != null && playerCiv.researchedTechs.Contains(tech))
         {
             buttonUI.SetState(TechButtonUI.TechState.Researched);
         }
@@ -918,7 +1013,7 @@ if (playerCiv == null) return;
         foreach (var btnUI in techButtons)
         {
             UpdateTechButtonState(btnUI, btnUI.RepresentedTech);
-            int queueIndex = playerCiv != null ? playerCiv.queuedTechs.IndexOf(btnUI.RepresentedTech) : -1;
+            int queueIndex = playerCiv?.queuedTechs != null ? playerCiv.queuedTechs.IndexOf(btnUI.RepresentedTech) : -1;
             btnUI.SetQueueOrder(queueIndex >= 0 ? queueIndex + 1 : 0);
         }
     }

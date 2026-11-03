@@ -91,7 +91,7 @@ public class CulturePaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler
                 Vector2 localPoint;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(
                     Builder.builderContent, eventData.position, eventData.pressEventCamera, out localPoint);
-                SetPosition(localPoint);
+                SetPosition(TreeContentBounds.ToLayoutPosition(Builder.builderContent, localPoint));
             }
         }
         else
@@ -123,7 +123,7 @@ public class CulturePaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler
                     Builder.builderContent, eventData.position, eventData.pressEventCamera, out localPoint))
                 {
                     if (Builder.builderContent.rect.Contains(localPoint))
-                        Builder.AddCultureToBuilder(RepresentedCulture, localPoint);
+                        Builder.AddCultureToBuilder(RepresentedCulture, TreeContentBounds.ToLayoutPosition(Builder.builderContent, localPoint));
                 }
             }
         }

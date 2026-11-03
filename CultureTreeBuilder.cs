@@ -155,85 +155,13 @@ layoutElement.enabled = false;
             
             CreateBackgroundImages();
             CreateGridCells();
+            TreeContentBounds.Fit(builderContent, new Vector2(gridColumns * cellSize.x, gridRows * cellSize.y));
         }
     }
     
     private void CreateBackgroundImages()
     {
-        if (backgroundData == null)
-        {
-return;
-        }
-        
-        // Get all backgrounds in age order
-        Sprite[] backgroundImages = backgroundData.GetAllBackgroundsInOrder();
-        
-        if (backgroundImages.Length == 0)
-        {
-return;
-        }
-        
-        // Calculate total background width using the ScriptableObject
-        float totalBackgroundWidth = backgroundData.GetTotalWidth();
-        float imageHeight = 1024f * backgroundData.backgroundScale;
-        
-        // Adjust content size to accommodate both grid and background
-        float contentWidth = Mathf.Max(gridColumns * cellSize.x, totalBackgroundWidth);
-        float contentHeight = Mathf.Max(gridRows * cellSize.y, imageHeight);
-        builderContent.sizeDelta = new Vector2(contentWidth, contentHeight);
-        
-        // Create background container
-        GameObject backgroundContainer = new GameObject("BackgroundContainer");
-        backgroundContainer.transform.SetParent(builderContent, false);
-        
-        RectTransform bgRect = backgroundContainer.AddComponent<RectTransform>();
-        bgRect.anchorMin = new Vector2(0, 1); // Top-left origin
-        bgRect.anchorMax = new Vector2(0, 1);
-        bgRect.pivot = new Vector2(0, 1);
-        bgRect.sizeDelta = new Vector2(totalBackgroundWidth, imageHeight);
-        bgRect.anchoredPosition = Vector2.zero;
-        
-        // Set background to render behind everything else
-        backgroundContainer.transform.SetAsFirstSibling();
-        
-        // Create individual background images for each age
-        var allAges = System.Enum.GetValues(typeof(TechAge));
-        float currentX = 0f;
-        int imageIndex = 0;
-        
-        foreach (TechAge age in allAges)
-        {
-            Sprite ageBackground = backgroundData.GetBackgroundForAge(age);
-            if (ageBackground == null) continue;
-            
-            GameObject bgImageObj = new GameObject($"Background_{age}");
-            bgImageObj.transform.SetParent(backgroundContainer.transform, false);
-            
-            RectTransform imageRect = bgImageObj.AddComponent<RectTransform>();
-            imageRect.anchorMin = new Vector2(0, 1); // Top-left origin
-            imageRect.anchorMax = new Vector2(0, 1);
-            imageRect.pivot = new Vector2(0, 1);
-            
-            // Get width for this age
-            float ageWidth = backgroundData.GetWidthForAge(age);
-            imageRect.sizeDelta = new Vector2(ageWidth, imageHeight);
-            
-            // Position based on current X
-            imageRect.anchoredPosition = new Vector2(currentX, 0);
-            
-            // Add Image component
-            Image bgImage = bgImageObj.AddComponent<Image>();
-            bgImage.sprite = ageBackground;
-            bgImage.type = Image.Type.Simple;
-            bgImage.raycastTarget = false; // Don't block interactions
-            
-            // Ensure proper aspect ratio
-            bgImage.preserveAspect = true;
-            
-            // Move to next position
-            currentX += ageWidth + backgroundData.imageSpacing;
-            imageIndex++;
-        }
+        if (backgroundData != null) TreePanorama.Render(builderContent, backgroundData.GetPlacements(), backgroundData.showEraMarkers);
 }
     
     private void CreateGridCells()
@@ -631,6 +559,7 @@ return;
         }
         
         // Register in our systems
+        TreeContentBounds.AlignChild(builderContent, node.transform as RectTransform);
         cultureNodes[culture] = node;
         gridOccupancy[finalGridPos] = node;
         UpdateCellVisual(finalGridPos, true);
@@ -658,6 +587,7 @@ return;
             }
 
             cultureNodes.Remove(culture);
+            node.gameObject.SetActive(false);
             Destroy(node.gameObject);
             RefreshConnections();
             UpdateStatus($"Removed {culture.cultureName} from builder.");
@@ -725,7 +655,7 @@ return;
         // Clear existing connection lines
         foreach (var line in connectionLines)
         {
-            if (line != null) Destroy(line);
+            if (line != null) { line.SetActive(false); Destroy(line); }
         }
         connectionLines.Clear();
 
@@ -746,6 +676,7 @@ return;
                 }
             }
         }
+        TreeContentBounds.Fit(builderContent, new Vector2(gridColumns * cellSize.x, gridRows * cellSize.y));
     }
     
     private void CreateConnectionLine(CulturePaletteItem fromNode, CulturePaletteItem toNode)
@@ -824,7 +755,8 @@ isConnecting = false;
                 builderContent, Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero, null, out mousePos);
 
             Vector2 from = selectedNode.GetPosition();
-            LayoutLineBetween(connectionPreviewLine.GetComponent<RectTransform>(), from, mousePos, connectionThickness);
+            LayoutLineBetween(connectionPreviewLine.GetComponent<RectTransform>(), from,
+                TreeContentBounds.ToLayoutPosition(builderContent, mousePos), connectionThickness);
         }
         else
         {
@@ -846,6 +778,7 @@ isConnecting = false;
         rect.anchoredPosition = (a + b) * 0.5f;
         rect.sizeDelta = new Vector2(length, Mathf.Max(1f, thickness));
         rect.localRotation = Quaternion.Euler(0f, 0f, angle);
+        TreeContentBounds.AlignChild(builderContent, rect);
     }
     
     private Vector2 GetRandomPosition()
@@ -882,7 +815,6 @@ isConnecting = false;
 #if UNITY_EDITOR
         string path = UnityEditor.EditorUtility.OpenFilePanel(
             "Load Culture Tree Layout", Application.dataPath, "json");
-        // Prefer an explicitly assigned ResearchDatabase
         if (researchDatabase != null && researchDatabase.cultures != null && researchDatabase.cultures.Length > 0)
         {
             foreach (var culture in researchDatabase.cultures)
@@ -894,9 +826,6 @@ isConnecting = false;
                 }
             }
         }
-        else
-        {
-        
         if (!string.IsNullOrEmpty(path))
         {
             string json = System.IO.File.ReadAllText(path);
@@ -914,7 +843,6 @@ isConnecting = false;
             UpdateStatus($"Layout loaded from {path}");
         }
 #endif
-    }
     }
     
     public void ClearLayout()

@@ -1,42 +1,95 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8de559a088a5d4d48bb00ae8ccc21165, type: 3}
   m_Name: Drought
+  m_EditorClassIdentifier: 
   crisisName: Drought
-  resolutionSplash: {fileID: 21300000, guid: 5ced8dec15553dc44ac5560180c89ec4, type: 3}
-  crisisStartSplash: {fileID: 21300000, guid: dd0d22cf9d4100b40906e769c98c6fe2, type: 3}
-  obviousWarningSplash: {fileID: 21300000, guid: a36d8f87e50c2b940a5c64becd18576d, type: 3}
+  icon: {fileID: 0}
   ominousWarningSplash: {fileID: 21300000, guid: a7a3b67aff3f7df4b9aa83b4afc7433a, type: 3}
-  ominousWarningText: "The rains do not come. Streams that once ran freely through the valleys have narrowed to shallow channels, and ponds shrink farther from their banks with each passing day. Farmers dig deeper into the soil searching for moisture, but cracks already spread between rows of young crops. Livestock gather around muddy watering holes long after they would normally have moved on, and distant hills have begun to lose their color beneath the relentless sun. Elders remember dry seasons before and insist that rain may yet arrive, but clouds form and disappear without breaking. Every morning the fields are a little browner, and every evening the wells stand a little lower."
-  obviousWarningText: "The wells are nearly dry. Fields that survived the first weeks of heat are now failing across entire districts, while livestock weaken around watering places that can no longer sustain them. Villages have begun rationing water, and arguments break out over access to streams that once seemed inexhaustible. Grain stores are being opened earlier than planned as farmers realize that much of this season's harvest may never reach maturity. Dust rises from roads and abandoned fields whenever the wind blows, turning the horizon into a dull brown haze. There is still time to preserve what remains, but the land can no longer wait for rain. If the skies stay empty, hunger will follow."
-  crisisStartText: "The rains have failed, and the drought has settled across the land. Rivers retreat from their banks, wells produce less water, and farms struggle to sustain the harvest beneath relentless heat. Food production in affected regions will remain depressed while the drought continues, placing greater pressure on stored reserves and alternative sources of food. Hunting, foraging, raiding, and careful stewardship may become as important as the fields themselves. If our stores are deep enough, our people may endure until the weather changes. If they are not, the dry earth will soon become a crisis of hunger."
-  resolutionText: "The rains have returned. Rivers that shrank to muddy trickles are running again, wells are rising back toward their old levels, and the cracked earth of the fields is finally softening beneath fresh water. Farmers who rationed every remaining store now begin replanting what the dry season destroyed, though it will be seasons before the harvest fully recovers. Livestock that survived on dwindling water sources are led back to pastures greening for the first time in months. The hardship of the drought will be remembered in every granary that ran empty and every well that nearly failed. The sky has finally kept its promise. The land is learning to trust it again."
+  ominousWarningText: The rains do not come. Streams that once ran freely through
+    the valleys have narrowed to shallow channels, and ponds shrink farther from
+    their banks with each passing day. Farmers dig deeper into the soil searching
+    for moisture, but cracks already spread between rows of young crops. Livestock
+    gather around muddy watering holes long after they would normally have moved
+    on, and distant hills have begun to lose their color beneath the relentless sun.
+    Elders remember dry seasons before and insist that rain may yet arrive, but clouds
+    form and disappear without breaking. Every morning the fields are a little browner,
+    and every evening the wells stand a little lower.
+  obviousWarningSplash: {fileID: 21300000, guid: a36d8f87e50c2b940a5c64becd18576d, type: 3}
+  obviousWarningText: The wells are nearly dry. Fields that survived the first weeks
+    of heat are now failing across entire districts, while livestock weaken around
+    watering places that can no longer sustain them. Villages have begun rationing
+    water, and arguments break out over access to streams that once seemed inexhaustible.
+    Grain stores are being opened earlier than planned as farmers realize that much
+    of this season's harvest may never reach maturity. Dust rises from roads and
+    abandoned fields whenever the wind blows, turning the horizon into a dull brown
+    haze. There is still time to preserve what remains, but the land can no longer
+    wait for rain. If the skies stay empty, hunger will follow.
+  crisisStartSplash: {fileID: 21300000, guid: dd0d22cf9d4100b40906e769c98c6fe2, type: 3}
+  crisisStartText: The rains have failed, and the drought has settled across the
+    land. Rivers retreat from their banks, wells produce less water, and farms struggle
+    to sustain the harvest beneath relentless heat. Food production in affected regions
+    will remain depressed while the drought continues, placing greater pressure on
+    stored reserves and alternative sources of food. Hunting, foraging, raiding,
+    and careful stewardship may become as important as the fields themselves. If
+    our stores are deep enough, our people may endure until the weather changes.
+    If they are not, the dry earth will soon become a crisis of hunger.
+  escalationSplash: {fileID: 0}
+  escalationText: 
+  climaxSplash: {fileID: 0}
+  climaxText: 
+  resolutionSplash: {fileID: 21300000, guid: 5ced8dec15553dc44ac5560180c89ec4, type: 3}
+  resolutionText: The rains have returned. Rivers that shrank to muddy trickles are
+    running again, wells are rising back toward their old levels, and the cracked
+    earth of the fields is finally softening beneath fresh water. Farmers who rationed
+    every remaining store now begin replanting what the dry season destroyed, though
+    it will be seasons before the harvest fully recovers. Livestock that survived
+    on dwindling water sources are led back to pastures greening for the first time
+    in months. The hardship of the drought will be remembered in every granary that
+    ran empty and every well that nearly failed. The sky has finally kept its promise.
+    The land is learning to trust it again.
   ominousWarningTurns: 1
   obviousWarningTurns: 1
   durationTurns: 12
+  escalationAtTurn: 0
+  climaxAtTurn: 0
+  earliestTurn: 0
+  latestTurn: 0
   useAgeWindow: 1
   minimumAge: 1
   maximumAge: 9
-  mechanic: 3
-  minimumRiskScore: 0
   scope: 0
+  mechanic: 3
   repeatMode: 1
   cooldownTurns: 20
   maximumOccurrences: 0
   useSeasonFilter: 0
-  allowedSeasons:
+  allowedSeasons: 
   mustStartAtSeasonBoundary: 0
+  minimumRiskScore: 0
+  crisisDisease: {fileID: 0}
+  crisisProjects: []
   repeatCompletionReward:
     gold: 25
     food: 25
     policyPoints: 1
+  requiredTechs: []
+  requiredCultures: []
   crisisMissions:
   - {fileID: 11400000, guid: 4d992fc1879d488f8bfcb8b11b71c50a, type: 2}
   - {fileID: 11400000, guid: 13da43ddac43405bbe8a8f19e88d7eba, type: 2}
   - {fileID: 11400000, guid: bd23d396aee5450da45268893ebde493, type: 2}
+  crisisActorUnits: []
+  initialCrisisActorCount: 1
   worldOverrides:
   - type: 1
     value: 1

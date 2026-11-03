@@ -119,6 +119,8 @@ MonoBehaviour:
   techScrollRect: {fileID: 8099367705376717884}
   techContent: {fileID: 6462512842241935721}
   techButtonPrefab: {fileID: 775882823123382107, guid: 3cdfe2fe4ed26e94587ee15787a32455, type: 3}
+  legacyInformationPanels:
+  - {fileID: 3262743799022354127}
   backgroundData: {fileID: 11400000, guid: ae1a488d51498ae42a37026965672825, type: 2}
   useCustomLayout: 1
   layoutJson: {fileID: 4900000, guid: 20bfd133f61bc29439ac55055f7966ee, type: 3}

@@ -13,6 +13,25 @@ public class CultureUI : MonoBehaviour
     [SerializeField] private RectTransform cultureContent;
     [SerializeField] private Transform cultureButtonContainer;
     [SerializeField] private GameObject cultureButtonPrefab;
+    [Header("Shared Presentation")]
+    [SerializeField] private TreePanelView panelView;
+    [SerializeField] private TreeNavigation navigation;
+    [SerializeField] private bool enableNavigation = true;
+    [SerializeField, Min(0)] private float edgePadding = 80f;
+    [SerializeField] private bool useFloatingPopups = true;
+    [Tooltip("Optional shared scene popup or popup prefab. A runtime popup is created when unassigned.")]
+    [SerializeField] private ResearchHoverPopup hoverPopup;
+    [Header("Custom Tree Artwork")]
+    [Tooltip("Tech/Culture Main Shell: transparent central opening with blue header and gold frame.")]
+    [SerializeField] private Sprite mainShellSprite;
+    [Tooltip("Tech/Culture Node Button: shared blue/gold background without text or icons.")]
+    [SerializeField] private Sprite nodeButtonSprite;
+    [Tooltip("Research Progress Bar Background: new blue/gold artwork, not the parchment HUD bar.")]
+    [SerializeField] private Sprite researchProgressSprite;
+    [Tooltip("Technology/Culture Hover Popup Background: tall blue/gold panel with title divider.")]
+    [SerializeField] private Sprite hoverPopupSprite;
+    [SerializeField] private GameObject[] legacyInformationPanels;
+    public Sprite NodeButtonSprite => nodeButtonSprite;
 
     [Header("Culture Tree Integration")]
     [SerializeField] private CultureTreeBackgroundData backgroundData;
@@ -40,11 +59,17 @@ public class CultureUI : MonoBehaviour
 
     private Civilization playerCiv;
     private CultureData currentlySelectedCulture;
+    private CultureData displayedCulture;
     private readonly List<CultureButtonUI> cultureButtons = new();
 
     private bool _treeBuilt = false;
     private int _builtCultureCount = -1;
     private bool _builtUsedCustomLayout = false;
+    private CultureData observedCulture;
+    private float observedProgress;
+    private int observedCompletedCount;
+    private float nextHeaderRefresh;
+    private bool followsPlayerCivilization;
 
     void Start()
     {
@@ -53,6 +78,7 @@ public class CultureUI : MonoBehaviour
             closeButton.onClick.RemoveAllListeners();
             closeButton.onClick.AddListener(() =>
             {
+                ClosePopup();
                 if (UIManager.Instance != null)
                 {
                     UIManager.Instance.HidePanel("culturePanel");
@@ -71,7 +97,9 @@ public class CultureUI : MonoBehaviour
 
     public void Show(Civilization civ)
     {
+        if (playerCiv != civ) currentlySelectedCulture = null;
         playerCiv = civ;
+        followsPlayerCivilization = CivilizationManager.Instance != null && CivilizationManager.Instance.playerCiv == civ;
         if (playerCiv == null)
         {
             Debug.LogError("CultureUI Show called with null civ");
@@ -86,7 +114,9 @@ public class CultureUI : MonoBehaviour
                 UIManager.Instance.cityPanel.SetActive(false);
         }
 
-        UIManager.Instance.ShowPanel("culturePanel");
+        if (UIManager.Instance != null) UIManager.Instance.ShowPanel("culturePanel");
+        else if (culturePanel != null) culturePanel.SetActive(true);
+        ConfigurePresentation();
         PopulateCultureTree();
         // Preserve any prior explicit selection when reopening the UI.
         RefreshUI();
@@ -94,13 +124,16 @@ public class CultureUI : MonoBehaviour
 
     public void Hide()
     {
-        UIManager.Instance.HidePanel("culturePanel");
+        ClosePopup();
+        if (UIManager.Instance != null) UIManager.Instance.HidePanel("culturePanel");
+        else if (culturePanel != null) culturePanel.SetActive(false);
         if (UIManager.Instance != null && UIManager.Instance.unitInfoPanel != null)
             UIManager.Instance.unitInfoPanel.SetActive(true);
     }
 
     void PopulateCultureTree()
     {
+        if (cultureButtonPrefab == null || (cultureContent == null && cultureButtonContainer == null)) return;
         if (CultureManager.Instance == null || CultureManager.Instance.allCultures == null)
         {
             Debug.LogError("CultureManager or its cultures not available.");
@@ -125,10 +158,11 @@ public class CultureUI : MonoBehaviour
         {
             foreach (Transform child in container)
             {
-                if (child != null) Destroy(child.gameObject);
+                if (child != null) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             }
         }
         cultureButtons.Clear();
+        TreeContentBounds.ResetOrigin(cultureContent);
 
         CreateCultureTreeBackground();
 
@@ -138,6 +172,7 @@ public class CultureUI : MonoBehaviour
             CreateCultureNodesWithGridLayout();
 
         CreateConnectionLines();
+        TreeContentBounds.Fit(cultureContent, new Vector2(3000, 1200), edgePadding);
         RefreshCultureButtonStates();
 
         _treeBuilt = true;
@@ -147,54 +182,7 @@ public class CultureUI : MonoBehaviour
 
     private void CreateCultureTreeBackground()
     {
-        if (backgroundData == null || cultureContent == null) return;
-
-        float totalWidth = backgroundData.GetTotalWidth();
-        float imageHeight = 1024f * backgroundData.backgroundScale;
-
-        float contentWidth = Mathf.Max(totalWidth, 3000f);
-        float contentHeight = Mathf.Max(imageHeight, 1200f);
-        cultureContent.sizeDelta = new Vector2(contentWidth, contentHeight);
-
-        GameObject backgroundContainer = new GameObject("BackgroundContainer");
-        backgroundContainer.transform.SetParent(cultureContent, false);
-
-        RectTransform bgRect = backgroundContainer.AddComponent<RectTransform>();
-        bgRect.anchorMin = new Vector2(0, 1);
-        bgRect.anchorMax = new Vector2(0, 1);
-        bgRect.pivot = new Vector2(0, 1);
-        bgRect.sizeDelta = new Vector2(totalWidth, imageHeight);
-        bgRect.anchoredPosition = Vector2.zero;
-        bgRect.transform.SetAsFirstSibling();
-
-        var allAges = System.Enum.GetValues(typeof(TechAge));
-        float currentX = 0f;
-
-        foreach (TechAge age in allAges)
-        {
-            Sprite ageBackground = backgroundData.GetBackgroundForAge(age);
-            if (ageBackground == null) continue;
-
-            GameObject bgImageObj = new GameObject($"Background_{age}");
-            bgImageObj.transform.SetParent(backgroundContainer.transform, false);
-
-            RectTransform imageRect = bgImageObj.AddComponent<RectTransform>();
-            imageRect.anchorMin = new Vector2(0, 1);
-            imageRect.anchorMax = new Vector2(0, 1);
-            imageRect.pivot = new Vector2(0, 1);
-
-            float ageWidth = backgroundData.GetWidthForAge(age);
-            imageRect.sizeDelta = new Vector2(ageWidth, imageHeight);
-            imageRect.anchoredPosition = new Vector2(currentX, 0);
-
-            Image bgImage = bgImageObj.AddComponent<Image>();
-            bgImage.sprite = ageBackground;
-            bgImage.type = Image.Type.Simple;
-            bgImage.raycastTarget = false;
-            bgImage.preserveAspect = true;
-
-            currentX += ageWidth + backgroundData.imageSpacing;
-        }
+        if (backgroundData != null) TreePanorama.Render(cultureContent, backgroundData.GetPlacements(), backgroundData.showEraMarkers);
     }
 
     private void CreateCultureNodesWithGridLayout()
@@ -314,24 +302,13 @@ public class CultureUI : MonoBehaviour
             return;
         }
 
-        float maxX = 0f;
-        float minY = 0f;
-        foreach (var kvp in resolvedPositions)
-        {
-            Vector2 pos = kvp.Value;
-            maxX = Mathf.Max(maxX, pos.x + cultureNodeSize.x);
-            minY = Mathf.Min(minY, pos.y - cultureNodeSize.y);
-        }
-
-        if (cultureContent != null)
-            cultureContent.sizeDelta = new Vector2(maxX + 100f, Mathf.Abs(minY) + 100f);
-
         foreach (var kvp in resolvedPositions)
             CreateCultureNode(kvp.Key, kvp.Value, cultureNodeSize);
     }
 
     private void CreateCultureNode(CultureData culture, Vector2 position, Vector2 nodeSize = default)
     {
+        if (culture == null || cultureButtonPrefab == null) return;
         if (nodeSize == default)
             nodeSize = cultureNodeSize;
 
@@ -382,7 +359,7 @@ public class CultureUI : MonoBehaviour
 
         RectTransform lineRect = lineObj.AddComponent<RectTransform>();
         Image lineImage = lineObj.AddComponent<Image>();
-        lineImage.color = new Color(0.5f, 0.8f, 0.5f, 0.7f);
+        lineImage.color = new Color(0.55f, 0.49f, 0.33f, 0.75f);
         lineImage.raycastTarget = false;
 
         Vector2 fromPos = from.GetComponent<RectTransform>().anchoredPosition;
@@ -407,8 +384,116 @@ public class CultureUI : MonoBehaviour
             btnUI.SetSelected(culture == btnUI.RepresentedCulture);
     }
 
+    public void PreviewCulture(CultureData culture)
+    {
+        SelectCultureInfoOnly(culture);
+        var button = cultureButtons.FirstOrDefault(item => item != null && item.RepresentedCulture == culture);
+        if (button != null) PinPopup(culture, button.transform as RectTransform);
+    }
+
+    public bool ShowHoverPopup(CultureData culture, RectTransform anchor)
+    {
+        if (!useFloatingPopups || culture == null || anchor == null) return false;
+        hoverPopup = ResearchHoverPopup.GetOrCreate(this, hoverPopup);
+        if (hoverPopup == null) return false;
+        hoverPopup.Request(this, anchor, () => BuildPopupInfo(culture));
+        return true;
+    }
+
+    public void PinPopup(CultureData culture, RectTransform anchor, bool fromNavigation = false)
+    {
+        if (!useFloatingPopups || culture == null || anchor == null) return;
+        hoverPopup = ResearchHoverPopup.GetOrCreate(this, hoverPopup);
+        if (hoverPopup != null && (!fromNavigation || hoverPopup.pinOnNavigationSelection))
+            hoverPopup.Request(this, anchor, () => BuildPopupInfo(culture), true);
+    }
+
+    public void LeaveHoverPopup(RectTransform anchor)
+    {
+        if (hoverPopup != null) hoverPopup.Leave(this, anchor);
+    }
+
+    public void ClosePopup() { if (hoverPopup != null) hoverPopup.HideForOwner(this); }
+    private void OnDisable() { ClosePopup(); }
+
+    private void LateUpdate()
+    {
+        if (culturePanel != null && !culturePanel.activeInHierarchy) return;
+        var currentPlayer = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+        if (followsPlayerCivilization && currentPlayer != null && currentPlayer != playerCiv) { Show(currentPlayer); return; }
+        if (playerCiv == null || panelView == null) return;
+        if (observedCulture != playerCiv.currentCulture || observedProgress != playerCiv.currentCultureProgress ||
+            observedCompletedCount != (playerCiv.researchedCultures != null ? playerCiv.researchedCultures.Count : 0))
+            RefreshUI();
+        else if (Time.unscaledTime >= nextHeaderRefresh) UpdateHeader();
+    }
+
+    private void UpdateHeader()
+    {
+        if (panelView == null) return;
+        panelView.UpdateFocus(playerCiv != null && playerCiv.currentCulture != null ? playerCiv.currentCulture.cultureName : "No Active Culture",
+            playerCiv != null ? playerCiv.currentCultureProgress : 0, playerCiv != null && playerCiv.currentCulture != null ? playerCiv.currentCulture.cultureCost : 0,
+            GetTotalCulturePerTurn(playerCiv), playerCiv != null && playerCiv.currentCulture != null);
+        nextHeaderRefresh = Time.unscaledTime + 0.25f;
+    }
+
+    private void ConfigurePresentation()
+    {
+        if (enableNavigation && cultureScrollRect != null)
+        {
+            if (navigation == null) navigation = cultureScrollRect.GetComponent<TreeNavigation>();
+            if (navigation != null) navigation.Configure(cultureScrollRect);
+        }
+        if (panelView == null) panelView = TreePanelView.GetOrCreateShell(this, culturePanel, cultureScrollRect, closeButton);
+        else panelView.PrepareShell(this, culturePanel, cultureScrollRect, closeButton);
+        if (panelView != null)
+        {
+            if (mainShellSprite != null) panelView.mainShellSprite = mainShellSprite;
+            if (researchProgressSprite != null) panelView.researchProgressSprite = researchProgressSprite;
+            if (legacyInformationPanels != null && legacyInformationPanels.Length > 0) panelView.legacyInformationPanels = legacyInformationPanels;
+            panelView.Configure("CULTURE TREE", navigation, AdoptSelectedCulture, FocusCurrentResearch, Hide);
+            if (useFloatingPopups) panelView.HideLegacyDetails(selectedCultureNameText, selectedCultureDescriptionText,
+                selectedCultureCostText, selectedCultureTurnsRemainingText, selectedCulturePrerequisitesText, selectedCultureUnlocksText,
+                selectedCultureBuildingsText, selectedCultureImprovementsText, selectedCultureIconImage, selectedCultureEconomicImpactText);
+        }
+            hoverPopup = ResearchHoverPopup.GetOrCreate(this, hoverPopup);
+            if (hoverPopup != null && hoverPopupSprite != null) hoverPopup.backgroundSprite = hoverPopupSprite;
+    }
+
+    public void AdoptSelectedCulture()
+    {
+        if (displayedCulture != null && playerCiv != null && playerCiv.currentCulture != displayedCulture && playerCiv.CanCultivate(displayedCulture))
+            SelectCulture(displayedCulture);
+    }
+
+    public void FocusCurrentResearch()
+    {
+        if (playerCiv == null || playerCiv.currentCulture == null) return;
+        var button = cultureButtons.FirstOrDefault(item => item != null && item.RepresentedCulture == playerCiv?.currentCulture);
+        if (navigation != null && button != null) navigation.Focus(button.transform as RectTransform);
+    }
+
+    public void ResetView() { if (navigation != null) navigation.ResetView(); }
+
+    [ContextMenu("Rebuild Tree")]
+    public void RebuildTree()
+    {
+        ClosePopup();
+        _treeBuilt = false;
+        if (playerCiv != null) { PopulateCultureTree(); RefreshUI(); }
+    }
+
+    public void FocusAge(int ageIndex)
+    {
+        if (navigation == null || backgroundData == null || cultureContent == null) return;
+        Vector2 point = TreeContentBounds.ToContentPosition(cultureContent,
+            new Vector2(backgroundData.GetAgeStartPosition((TechAge)ageIndex), -backgroundData.displayHeight * backgroundData.backgroundScale * 0.5f));
+        navigation.FocusPoint(cultureContent.TransformPoint(point));
+    }
+
     public void SelectCulture(CultureData culture)
     {
+        if (culture == null) return;
         currentlySelectedCulture = culture;
         UpdateInfoPanel(culture);
 
@@ -437,30 +522,44 @@ public class CultureUI : MonoBehaviour
 
     void UpdateInfoPanel(CultureData culture)
     {
+        displayedCulture = culture;
+        if (useFloatingPopups) return;
         if (culture == null)
         {
             ClearInfoPanel();
             return;
         }
-
+        ResearchPopupInfo info = BuildPopupInfo(culture);
         if (selectedCultureIconImage != null)
         {
             selectedCultureIconImage.gameObject.SetActive(culture.cultureIcon != null);
             selectedCultureIconImage.sprite = culture.cultureIcon;
         }
 
-        selectedCultureNameText.text = culture.cultureName;
-        selectedCultureDescriptionText.text = culture.description;
+        TreePanelView.SetText(selectedCultureNameText, info.name);
+        TreePanelView.SetText(selectedCultureDescriptionText, info.description);
+        TreePanelView.SetText(selectedCultureCostText, $"Cost: {info.cost:0} {info.currency}");
+        TreePanelView.SetText(selectedCultureTurnsRemainingText, info.turnsRemaining.HasValue ? $"~{info.turnsRemaining} turns" : "");
+        TreePanelView.SetText(selectedCulturePrerequisitesText, info.prerequisites);
+        TreePanelView.SetText(selectedCultureBuildingsText, info.buildings);
+        TreePanelView.SetText(selectedCultureImprovementsText, info.improvements);
+        TreePanelView.SetText(selectedCultureUnlocksText, info.units + (string.IsNullOrEmpty(info.otherUnlocks) ? "" : "\n" + info.otherUnlocks) + (string.IsNullOrEmpty(info.yields) ? "" : "\n" + info.yields));
+        TreePanelView.SetText(selectedCultureEconomicImpactText, info.economicEffects);
+        if (panelView != null) panelView.UpdateSelection(info.progress, info.cost, info.canStart, info.actionLabel);
+    }
 
-        int culturePerTurn = GetTotalCulturePerTurn(playerCiv);
-        float remaining = culture.cultureCost;
-        if (playerCiv != null && playerCiv.currentCulture == culture)
-            remaining = culture.cultureCost - playerCiv.currentCultureProgress;
-        selectedCultureCostText.text = $"Cost: {culture.cultureCost} Culture";
-        if (selectedCultureTurnsRemainingText != null)
-            selectedCultureTurnsRemainingText.text = culturePerTurn > 0 ? $"~{Mathf.CeilToInt(remaining / culturePerTurn)} turns" : "";
-
-        string prereqs = "Prerequisites: ";
+    public ResearchPopupInfo BuildPopupInfo(CultureData culture)
+    {
+        if (culture == null) return null;
+        bool completed = playerCiv?.researchedCultures != null && playerCiv.researchedCultures.Contains(culture);
+        bool active = playerCiv != null && playerCiv.currentCulture == culture;
+        bool available = !completed && playerCiv != null && playerCiv.CanCultivate(culture);
+        var info = ResearchPopupInfo.Create(culture.cultureName, culture.cultureIcon, culture.cultureAge,
+            completed ? ResearchPopupStatus.Completed : active ? ResearchPopupStatus.Active : available ? ResearchPopupStatus.Available : ResearchPopupStatus.Locked,
+            culture.cultureCost, active ? playerCiv.currentCultureProgress : 0, GetTotalCulturePerTurn(playerCiv), "Culture");
+        info.description = culture.description;
+        info.canStart = available && !active;
+        info.actionLabel = completed ? "Completed" : active ? "Adopting" : "Adopt";
         List<string> prereqItems = new List<string>();
         if (culture.requiredTechnologies != null)
             foreach (var tech in culture.requiredTechnologies)
@@ -468,11 +567,15 @@ public class CultureUI : MonoBehaviour
         if (culture.requiredCultures != null)
             foreach (var reqCulture in culture.requiredCultures)
                 if (reqCulture != null) AddUniqueUnlock(prereqItems, reqCulture.cultureName);
-        prereqs += prereqItems.Count > 0 ? string.Join(", ", prereqItems) : "None";
-        selectedCulturePrerequisitesText.text = prereqs;
+        if (culture.requiredCityCount > 0) prereqItems.Add($"{culture.requiredCityCount} cities");
+        if (culture.requiredControlledBiomes != null)
+            foreach (var biome in culture.requiredControlledBiomes) AddUniqueUnlock(prereqItems, "Control " + biome);
+        prereqItems.Add("Age reached: " + culture.cultureAge.ToString().Replace("Age", " Age"));
+        info.prerequisites = ResearchPopupInfo.JoinRelevant(prereqItems);
 
         List<string> buildingUnlocks = new List<string>();
         List<string> improvementUnlocks = new List<string>();
+        List<string> unitUnlocks = new List<string>();
         List<string> unlockItems = new List<string>();
 
         var buildings = ResourceCache.GetAllBuildings();
@@ -492,14 +595,14 @@ public class CultureUI : MonoBehaviour
             foreach (var u in combatUnits)
                 if (u != null && u.requiredCultures != null)
                     foreach (var rc in u.requiredCultures)
-                        if (rc == culture) { AddUniqueUnlock(unlockItems, u.unitName); break; }
+                        if (rc == culture) { AddUniqueUnlock(unitUnlocks, u.unitName); break; }
 
         var workerUnits = ResourceCache.GetAllWorkerUnits();
         if (workerUnits != null)
             foreach (var w in workerUnits)
                 if (w != null && w.requiredCultures != null)
                     foreach (var rc in w.requiredCultures)
-                        if (rc == culture) { AddUniqueUnlock(unlockItems, w.unitName); break; }
+                        if (rc == culture) { AddUniqueUnlock(unitUnlocks, w.unitName); break; }
 
         var improvements = ResourceCache.GetAllImprovements();
         if (improvements != null)
@@ -568,19 +671,14 @@ public class CultureUI : MonoBehaviour
             foreach (var belief in culture.unlocksBeliefs)
                 if (belief != null) AddUniqueUnlock(unlockItems, belief.beliefName);
 
-        if (selectedCultureBuildingsText != null)
-            selectedCultureBuildingsText.text = FormatUnlockField("Buildings", buildingUnlocks);
-        if (selectedCultureImprovementsText != null)
-            selectedCultureImprovementsText.text = FormatUnlockField("Improvements", improvementUnlocks);
-
-        selectedCultureUnlocksText.text = FormatUnlockField("Unlocks", unlockItems);
-        // Append yield modifiers (percent + flat) to unlocks so players can see what this culture changes
-        string cultYieldInfo = FormatYieldInfo(culture);
-        if (!string.IsNullOrEmpty(cultYieldInfo) && selectedCultureUnlocksText != null)
-            selectedCultureUnlocksText.text = selectedCultureUnlocksText.text + "\n" + cultYieldInfo;
-        
-        // Display economic impact preview
-        UpdateEconomicImpactDisplay(culture);
+        info.buildings = ResearchPopupInfo.JoinRelevant(buildingUnlocks);
+        info.improvements = ResearchPopupInfo.JoinRelevant(improvementUnlocks);
+        info.units = ResearchPopupInfo.JoinRelevant(unitUnlocks);
+        info.otherUnlocks = ResearchPopupInfo.JoinRelevant(unlockItems.Except(buildingUnlocks).Except(improvementUnlocks).ToList());
+        info.yields = FormatYieldInfo(culture);
+        info.bonuses = ResearchPopupInfo.FormatBonuses(culture.attackBonus, culture.defenseBonus, culture.movementBonus);
+        info.economicEffects = BuildEconomicImpact(culture);
+        return info;
     }
 
     private string FormatYieldInfo(CultureData culture)
@@ -640,12 +738,15 @@ public class CultureUI : MonoBehaviour
 
     void ClearInfoPanel()
     {
-        selectedCultureNameText.text = "No Culture";
-        selectedCultureDescriptionText.text = "You are not adopting any culture. Select one from the culture tree to begin earning progress toward it.";
-        selectedCultureCostText.text = "";
+        displayedCulture = null;
+        if (useFloatingPopups) return;
+        TreePanelView.SetText(selectedCultureNameText, "No Culture");
+        TreePanelView.SetText(selectedCultureDescriptionText, "You are not adopting any culture. Select one from the culture tree to begin earning progress toward it.");
+        TreePanelView.SetText(selectedCultureCostText, "");
+        if (panelView != null) panelView.UpdateSelection(0, 0, false, "Adopt");
         if (selectedCultureTurnsRemainingText != null) selectedCultureTurnsRemainingText.text = "";
-        selectedCulturePrerequisitesText.text = "";
-        selectedCultureUnlocksText.text = "";
+        TreePanelView.SetText(selectedCulturePrerequisitesText, "");
+        TreePanelView.SetText(selectedCultureUnlocksText, "");
         if (selectedCultureBuildingsText != null) selectedCultureBuildingsText.text = "";
         if (selectedCultureImprovementsText != null) selectedCultureImprovementsText.text = "";
         if (selectedCultureIconImage != null)
@@ -663,10 +764,10 @@ public class CultureUI : MonoBehaviour
         if (selectedCultureEconomicImpactText != null) selectedCultureEconomicImpactText.text = "";
     }
 
-    private void UpdateEconomicImpactDisplay(CultureData culture)
+    private string BuildEconomicImpact(CultureData culture)
     {
         if (playerCiv == null || culture == null)
-            return;
+            return string.Empty;
 
         int currentGold = GetTotalGoldPerTurn(playerCiv);
         int currentScience = GetTotalSciencePerTurn(playerCiv);
@@ -689,20 +790,16 @@ public class CultureUI : MonoBehaviour
         int foodDiff = projectedFood - currentFood;
         int policyDiff = projectedPolicy - currentPolicy;
 
-        if (selectedCultureEconomicImpactText != null)
         {
             string impactSummary = "";
-            if (goldDiff != 0) impactSummary += $"\n<color=yellow>Gold:</color> {currentGold} → {projectedGold} ({(goldDiff > 0 ? "+" : "")}{goldDiff})";
-            if (scienceDiff != 0) impactSummary += $"\n<color=cyan>Science:</color> {currentScience} → {projectedScience} ({(scienceDiff > 0 ? "+" : "")}{scienceDiff})";
-            if (cultureDiff != 0) impactSummary += $"\n<color=magenta>Culture:</color> {currentCulture} → {projectedCulture} ({(cultureDiff > 0 ? "+" : "")}{cultureDiff})";
-            if (faithDiff != 0) impactSummary += $"\n<color=white>Faith:</color> {currentFaith} → {projectedFaith} ({(faithDiff > 0 ? "+" : "")}{faithDiff})";
-            if (foodDiff != 0) impactSummary += $"\n<color=green>Food:</color> {currentFood} → {projectedFood} ({(foodDiff > 0 ? "+" : "")}{foodDiff})";
-            if (policyDiff != 0) impactSummary += $"\n<color=#FFA500>Policy:</color> {currentPolicy} → {projectedPolicy} ({(policyDiff > 0 ? "+" : "")}{policyDiff})";
+            if (goldDiff != 0) impactSummary += $"\nGold: {currentGold} -> {projectedGold} ({(goldDiff > 0 ? "+" : "")}{goldDiff})";
+            if (scienceDiff != 0) impactSummary += $"\nScience: {currentScience} -> {projectedScience} ({(scienceDiff > 0 ? "+" : "")}{scienceDiff})";
+            if (cultureDiff != 0) impactSummary += $"\nCulture: {currentCulture} -> {projectedCulture} ({(cultureDiff > 0 ? "+" : "")}{cultureDiff})";
+            if (faithDiff != 0) impactSummary += $"\nFaith: {currentFaith} -> {projectedFaith} ({(faithDiff > 0 ? "+" : "")}{faithDiff})";
+            if (foodDiff != 0) impactSummary += $"\nFood: {currentFood} -> {projectedFood} ({(foodDiff > 0 ? "+" : "")}{foodDiff})";
+            if (policyDiff != 0) impactSummary += $"\nPolicy: {currentPolicy} -> {projectedPolicy} ({(policyDiff > 0 ? "+" : "")}{policyDiff})";
             
-            if (!string.IsNullOrEmpty(impactSummary))
-                selectedCultureEconomicImpactText.text = "<b>Economic Impact:</b>" + impactSummary;
-            else
-                selectedCultureEconomicImpactText.text = "<b>Economic Impact:</b>\n<i>No yield changes</i>";
+            return impactSummary.TrimStart();
         }
 
 
@@ -826,7 +923,7 @@ public class CultureUI : MonoBehaviour
     {
         if (playerCiv == null) return;
 
-        if (playerCiv.researchedCultures.Contains(culture))
+        if (playerCiv.researchedCultures != null && playerCiv.researchedCultures.Contains(culture))
         {
             buttonUI.SetState(CultureButtonUI.CultureState.Researched);
         }
@@ -849,7 +946,7 @@ public class CultureUI : MonoBehaviour
         foreach (var btnUI in cultureButtons)
         {
             UpdateCultureButtonState(btnUI, btnUI.RepresentedCulture);
-            int queueIndex = playerCiv != null ? playerCiv.queuedCultures.IndexOf(btnUI.RepresentedCulture) : -1;
+            int queueIndex = playerCiv?.queuedCultures != null ? playerCiv.queuedCultures.IndexOf(btnUI.RepresentedCulture) : -1;
             btnUI.SetQueueOrder(queueIndex >= 0 ? queueIndex + 1 : 0);
         }
     }
@@ -859,7 +956,12 @@ public class CultureUI : MonoBehaviour
     /// </summary>
     public void RefreshUI()
     {
+        UpdateHeader();
         if (playerCiv == null) return;
+        observedCulture = playerCiv.currentCulture;
+        observedProgress = playerCiv.currentCultureProgress;
+        observedCompletedCount = playerCiv.researchedCultures != null ? playerCiv.researchedCultures.Count : 0;
+        if (hoverPopup != null) hoverPopup.RefreshForOwner(this);
         RefreshCultureButtonStates();
 
         if (playerCiv.currentCulture != null)

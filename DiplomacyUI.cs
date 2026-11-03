@@ -796,8 +796,9 @@ public class DiplomacyUI : MonoBehaviour
         if (proposeDealButton != null)
         {
             proposeDealButton.gameObject.SetActive(canEditOffer);
+            string reason = null;
             bool valid = canEditOffer && DiplomacyManager.Instance != null
-                && DiplomacyManager.Instance.TryValidateComplexDeal(currentOffer, out string reason);
+                && DiplomacyManager.Instance.TryValidateComplexDeal(currentOffer, out reason);
             proposeDealButton.interactable = valid;
             if (canEditOffer && !valid)
                 AddTooltip(proposeDealButton.gameObject, "Proposal unavailable", reason ?? "Add a valid item to the offer.");

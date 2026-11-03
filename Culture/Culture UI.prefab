@@ -1312,6 +1312,8 @@ MonoBehaviour:
   cultureContent: {fileID: 8822332238012605378}
   cultureButtonContainer: {fileID: 8822332238012605378}
   cultureButtonPrefab: {fileID: 775882823123382107, guid: 1f026d986a6965a4e8145e4af40ff9b6, type: 3}
+  legacyInformationPanels:
+  - {fileID: 1816222923006180840}
   backgroundData: {fileID: 11400000, guid: 9a63fa7a1e5595249a4e654aae3180b9, type: 2}
   useCustomLayout: 1
   layoutJson: {fileID: 4900000, guid: a18b7138504ac864e8c09b280719322b, type: 3}

@@ -14,7 +14,7 @@ public class CultureTreeBackgroundData : ScriptableObject
         [Tooltip("The tech/culture age this background represents")]
         public TechAge age;
 
-        [Tooltip("Background image for this age (recommended 1792x1024)")]
+        [Tooltip("Legacy age background. Any sprite aspect ratio is supported.")]
         public Sprite backgroundImage;
 
         [Tooltip("Use custom width instead of default 1792")]
@@ -27,6 +27,24 @@ public class CultureTreeBackgroundData : ScriptableObject
     [Header("Age-Based Backgrounds")]
     [Tooltip("Assign a background image for each age. Images will be arranged in age order.")]
     public AgeBackground[] ageBackgrounds;
+    [Header("Panoramic Segments (overrides age backgrounds when populated)")]
+    public TreePanoramaSegment[] segments;
+    [Min(1)] public float displayHeight = 1024f;
+    public bool showEraMarkers;
+
+    public List<TreePanoramaPlacement> GetPlacements()
+    {
+        if (segments != null && segments.Length > 0)
+            return TreePanorama.Resolve(segments, backgroundScale, displayHeight, imageSpacing);
+        var legacy = new List<TreePanoramaSegment>();
+        if (ageBackgrounds != null)
+            foreach (var entry in ageBackgrounds)
+                if (entry != null)
+                    legacy.Add(new TreePanoramaSegment { sprite = entry.backgroundImage,
+                        startAge = entry.age, endAge = entry.age,
+                        displayWidth = entry.useCustomWidth ? entry.customWidth : 1792f });
+        return TreePanorama.Resolve(legacy, backgroundScale, displayHeight, imageSpacing);
+    }
 
     [Header("Display Settings")]
     [Tooltip("Scale factor for all background images")]
@@ -67,12 +85,9 @@ public class CultureTreeBackgroundData : ScriptableObject
     /// </summary>
     public Sprite GetBackgroundForAge(TechAge age)
     {
-        if (ageBackgrounds == null) return null;
-        foreach (var ageBackground in ageBackgrounds)
-        {
-            if (ageBackground.age == age)
-                return ageBackground.backgroundImage;
-        }
+        foreach (var placement in GetPlacements())
+            if ((int)age >= (int)placement.startAge && (int)age <= (int)placement.endAge)
+                return placement.sprite;
         return null;
     }
 
@@ -82,17 +97,7 @@ public class CultureTreeBackgroundData : ScriptableObject
     public Sprite[] GetAllBackgroundsInOrder()
     {
         var backgrounds = new List<Sprite>();
-        var allAges = System.Enum.GetValues(typeof(TechAge));
-
-        foreach (TechAge age in allAges)
-        {
-            var background = GetBackgroundForAge(age);
-            if (background != null)
-            {
-                backgrounds.Add(background);
-            }
-        }
-
+        foreach (var placement in GetPlacements()) backgrounds.Add(placement.sprite);
         return backgrounds.ToArray();
     }
 
@@ -101,16 +106,7 @@ public class CultureTreeBackgroundData : ScriptableObject
     /// </summary>
     public float GetWidthForAge(TechAge age)
     {
-        if (ageBackgrounds == null) return 1792f * backgroundScale;
-        foreach (var ageBackground in ageBackgrounds)
-        {
-            if (ageBackground.age == age)
-            {
-                float width = ageBackground.useCustomWidth ? ageBackground.customWidth : 1792f;
-                return width * backgroundScale;
-            }
-        }
-        return 1792f * backgroundScale;
+        return TreePanorama.AgeWidth(GetPlacements(), age);
     }
 
     /// <summary>
@@ -118,19 +114,7 @@ public class CultureTreeBackgroundData : ScriptableObject
     /// </summary>
     public float GetTotalWidth()
     {
-        float totalWidth = 0f;
-        var allAges = System.Enum.GetValues(typeof(TechAge));
-
-        foreach (TechAge age in allAges)
-        {
-            var background = GetBackgroundForAge(age);
-            if (background != null)
-            {
-                totalWidth += GetWidthForAge(age) + imageSpacing;
-            }
-        }
-
-        return Mathf.Max(0f, totalWidth - imageSpacing);
+        return TreePanorama.Size(GetPlacements()).x;
     }
 
     /// <summary>
@@ -138,21 +122,6 @@ public class CultureTreeBackgroundData : ScriptableObject
     /// </summary>
     public float GetAgeStartPosition(TechAge targetAge)
     {
-        float currentX = 0f;
-        var allAges = System.Enum.GetValues(typeof(TechAge));
-
-        foreach (TechAge age in allAges)
-        {
-            if (age == targetAge)
-                return currentX;
-
-            var background = GetBackgroundForAge(age);
-            if (background != null)
-            {
-                currentX += GetWidthForAge(age) + imageSpacing;
-            }
-        }
-
-        return currentX;
+        return TreePanorama.AgeStart(GetPlacements(), targetAge);
     }
 }

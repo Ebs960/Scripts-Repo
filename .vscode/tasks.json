@@ -1,0 +1,26 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Tree Redesign Compile (temporary)",
+			"type": "shell",
+			"command": "& { $ErrorActionPreference = 'Stop'; Set-Location 'C:\\Users\\emman\\OneDrive\\Documents\\DeepSeek FreakGeek\\New Map'; $rsp = Get-ChildItem 'Library\\Bee\\artifacts' -Recurse -Filter Assembly-CSharp.rsp | Sort-Object LastWriteTime -Descending | Select-Object -First 1; & 'C:\\Program Files\\Unity\\Hub\\Editor\\6000.4.9f1\\Editor\\Data\\NetCoreRuntime\\dotnet.exe' 'C:\\Program Files\\Unity\\Hub\\Editor\\6000.4.9f1\\Editor\\Data\\DotNetSdkRoslyn\\csc.dll' ('@' + $rsp.FullName) '-out:C:\\Users\\emman\\AppData\\Local\\Temp\\TreeRedesignCheck.dll' '-refout:C:\\Users\\emman\\AppData\\Local\\Temp\\TreeRedesignCheck.ref.dll' '-pdb:C:\\Users\\emman\\AppData\\Local\\Temp\\TreeRedesignCheck.pdb'; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; Write-Output 'PASS: full Unity game source compilation.' }",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Tree Redesign Behavior Checks (temporary)",
+			"type": "shell",
+			"command": "& { $ErrorActionPreference = 'Stop'; Set-Location 'C:\\Users\\emman\\OneDrive\\Documents\\DeepSeek FreakGeek\\New Map'; $unity = 'C:\\Program Files\\Unity\\Hub\\Editor\\6000.4.9f1\\Editor\\Data'; $rsp = Get-ChildItem 'Library\\Bee\\artifacts' -Recurse -Filter Assembly-CSharp.rsp | Sort-Object LastWriteTime -Descending | Select-Object -First 1; $filtered = Get-Content $rsp.FullName | Where-Object { $_ -notmatch '\\.cs\\x22?$|^-out:|^-refout:|^-pdb:|^-target:' }; $testRsp = Join-Path $env:TEMP 'TreeRedesignBehavior.rsp'; $filtered | Set-Content $testRsp; $output = Join-Path $env:TEMP 'research-popup-tests.dll'; & (Join-Path $unity 'NetCoreRuntime\\dotnet.exe') (Join-Path $unity 'DotNetSdkRoslyn\\csc.dll') ('@' + $testRsp) ('-r:' + (Join-Path $env:TEMP 'TreeRedesignCheck.dll')) '-target:exe' ('-out:' + $output) (Join-Path $env:TEMP 'research-popup-tests.cs'); if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $version = Get-ChildItem (Join-Path $unity 'NetCoreRuntime\\shared\\Microsoft.NETCore.App') -Directory | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name; @{ runtimeOptions = @{ tfm = 'net8.0'; framework = @{ name = 'Microsoft.NETCore.App'; version = $version } } } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $env:TEMP 'research-popup-tests.runtimeconfig.json'); & (Join-Path $unity 'NetCoreRuntime\\dotnet.exe') $output; exit $LASTEXITCODE }",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Tree Artwork Inventory (temporary)",
+			"type": "shell",
+			"command": "& { Set-Location 'C:\\Users\\emman\\OneDrive\\Documents\\DeepSeek FreakGeek\\New Map'; git --no-pager -C 'Assets/Scripts Repo' branch -a --list '*tech-culture*'; git --no-pager -C 'Assets/Scripts Repo' log -5 --oneline -- TreePanelView.cs ResearchHoverPopup.cs TechUI.cs CultureUI.cs; $images = Get-ChildItem 'Assets' -Recurse -File -Include '*.png','*.jpg','*.jpeg','*.psd','*.tga','*.tif'; Write-Output 'TREE/POPUP/SHELL/PROGRESS ARTWORK PATHS'; $images | Where-Object { $_.Name -match 'Shell|Panorama|Mural|Hover|Popup|Progress|Tree|Node|Technology|TechCulture' -and $_.FullName -notmatch 'Textures|Materials|Units|Buildings|Improvements|Animations' } | Select-Object -First 100 | ForEach-Object { $_.FullName }; Write-Output 'MOST RECENT UI IMAGE FILES'; $images | Where-Object { $_.FullName -notmatch 'Textures|Materials|Units|Buildings|Improvements|Animations' } | Sort-Object LastWriteTime -Descending | Select-Object -First 20 | ForEach-Object { '{0}: {1}' -f $_.LastWriteTime, $_.FullName }; git --no-pager -C 'Assets/Scripts Repo' diff --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }",
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}

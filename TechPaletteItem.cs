@@ -135,7 +135,7 @@ public class TechPaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler, I
                 Vector2 localPoint;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(
                     Builder.builderContent, eventData.position, eventData.pressEventCamera, out localPoint);
-                SetPosition(localPoint);
+                SetPosition(TreeContentBounds.ToLayoutPosition(Builder.builderContent, localPoint));
             }
         }
         else
@@ -165,7 +165,7 @@ public class TechPaletteItem : MonoBehaviour, IBeginDragHandler, IDragHandler, I
                     Builder.builderContent, eventData.position, eventData.pressEventCamera, out localPoint))
                 {
                     if (Builder.builderContent.rect.Contains(localPoint))
-                        Builder.AddTechToBuilder(RepresentedTech, localPoint);
+                        Builder.AddTechToBuilder(RepresentedTech, TreeContentBounds.ToLayoutPosition(Builder.builderContent, localPoint));
                 }
             }
         }

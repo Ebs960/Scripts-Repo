@@ -9,7 +9,7 @@ using UnityEngine.EventSystems;
 /// based on research state and selection.
 /// </summary>
 [RequireComponent(typeof(Button))]
-public class TechButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public class TechButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler, ISelectHandler
 {
     public enum TechState { Available, Researched, Researching, Locked }
 
@@ -26,6 +26,8 @@ public class TechButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     [SerializeField] private Color availableColor = Color.white;
     [SerializeField] private Color lockedColor = Color.gray;
     [SerializeField] private Color selectedColor = Color.cyan;
+    [SerializeField] private bool useModernVisuals = true;
+    private TreeNodeVisual nodeVisual;
 
     public TechData RepresentedTech { get; private set; }
 
@@ -44,6 +46,13 @@ public class TechButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     {
         RepresentedTech = tech;
         techUI = ownerUI;
+        if (tech == null) return;
+        if (useModernVisuals)
+        {
+            nodeVisual = GetComponent<TreeNodeVisual>();
+            if (nodeVisual == null) nodeVisual = gameObject.AddComponent<TreeNodeVisual>();
+            if (ownerUI != null && ownerUI.NodeButtonSprite != null) nodeVisual.backgroundSprite = ownerUI.NodeButtonSprite;
+        }
 
         // Auto-find components if not assigned (for procedurally created nodes)
 
@@ -105,13 +114,19 @@ public class TechButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
 
     public void SetQueueOrder(int order)
     {
-        bool show = order > 0;
+        bool show = !useModernVisuals && order > 0;
         if (queueOrderContainer != null) queueOrderContainer.SetActive(show);
         if (queueOrderText != null) queueOrderText.text = show ? order.ToString() : string.Empty;
     }
 
     private void RefreshColor()
     {
+        if (nodeVisual != null)
+        {
+            if (techUI != null && techUI.NodeButtonSprite != null) nodeVisual.backgroundSprite = techUI.NodeButtonSprite;
+            nodeVisual.Apply(backgroundImage, button, techNameText, (int)currentState, isSelected, iconImage);
+            return;
+        }
         if (backgroundImage == null) return;
         if (isSelected)
         {
@@ -139,6 +154,7 @@ public class TechButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
 
     private void RefreshButtonColorBlock()
     {
+        if (nodeVisual != null) return;
         if (button == null) return;
 
         Color baseColor = GetDisplayColorForCurrentState();
@@ -185,11 +201,29 @@ public class TechButtonUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     public void OnPointerEnter(PointerEventData eventData)
     {
         if (RepresentedTech == null) return;
+        if (techUI != null && techUI.ShowHoverPopup(RepresentedTech, transform as RectTransform))
+        {
+            TooltipSystem.Instance?.RequestHideTooltip();
+            return;
+        }
         TooltipSystem.Instance?.ShowTechTooltip(RepresentedTech, null);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
+        if (techUI != null) techUI.LeaveHoverPopup(transform as RectTransform);
         TooltipSystem.Instance?.RequestHideTooltip();
+    }
+
+    public void OnSelect(BaseEventData eventData)
+    {
+        if (!(eventData is PointerEventData) && techUI != null)
+            techUI.PinPopup(RepresentedTech, transform as RectTransform, true);
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Right && techUI != null)
+            techUI.PreviewTech(RepresentedTech);
     }
 } 
