@@ -73,4 +73,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 89d2129ed9cca354db64ad8655e81c0d, type: 2}
   - {fileID: 11400000, guid: 35c253e6569830548918c1c8136c50a3, type: 2}
   - {fileID: 11400000, guid: 3bbd49bd0f67c124ba85fee23e0ba118, type: 2}
+  - {fileID: 11400000, guid: 0c3de23525b34c04b23a90f31d2357f6, type: 2}
+  - {fileID: 11400000, guid: 69025c0c133b456ba36853873ae10a6c, type: 2}
+  - {fileID: 11400000, guid: 46cea3626c044c2ab3ca25c3302ac817, type: 2}
+  - {fileID: 11400000, guid: 9e490822520c4f33aa1a82aaa7aea2e9, type: 2}
+  - {fileID: 11400000, guid: 472432aa07af41cd9f6de997805f68f9, type: 2}
   playerCiv: {fileID: 0}

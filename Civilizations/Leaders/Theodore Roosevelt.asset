@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aefb638669e6c094ea8c69559008949a, type: 3}
+  m_Name: Theodore Roosevelt
+  m_EditorClassIdentifier:
+  leaderName: Theodore Roosevelt
+  portrait: {fileID: 0}
+  historicalEra: "Early 20th century"
+  biography: "Theodore Roosevelt served as the twenty-sixth president of the United States. His administration pursued conservation, economic regulation, a more active federal government, and an assertive international role."
+  aggressiveness: 6
+  diplomacy: 6
+  science: 7
+  expansion: 6
+  religion: 3
+  primaryAgenda: 13
+  secondaryAgenda: 4
+  likesTraits: 0c00000005000000
+  dislikesTraits: 0000000003000000
+  preferredVictory: 2
+  militaryFocus: 1.1
+  economicFocus: 1.1
+  scientificFocus: 1.3
+  culturalFocus: 1.2
+  religiousFocus: 0.6
+  uniqueUnits: []
+  uniqueBuildings: []
+  abilityName: Stewardship and Progress
+  abilityDescription: "+10% Science and +10% Culture."
+  goldModifier: 0
+  scienceModifier: 0.1
+  productionModifier: 0
+  foodModifier: 0
+  cultureModifier: 0.1
+  faithModifier: 0
+  militaryStrengthModifier: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  unitBonuses: []
+  workerBonuses: []
+  herdYieldBonuses: []
+  background: {fileID: 0}
+  leaderAnimator: {fileID: 0}
+  prefersAlliance: 1
+  prefersTrade: 1
+  isWarmonger: 0
+  isIsolationist: 0

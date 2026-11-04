@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aefb638669e6c094ea8c69559008949a, type: 3}
+  m_Name: Pachacuti
+  m_EditorClassIdentifier:
+  leaderName: Pachacuti
+  portrait: {fileID: 0}
+  historicalEra: "15th century"
+  biography: "Pachacuti transformed the Cusco kingdom into the expanding Inca state of Tawantinsuyu. He is associated with major administrative reforms, the rebuilding of Cusco, and ambitious construction across the Andes."
+  aggressiveness: 6
+  diplomacy: 5
+  science: 6
+  expansion: 8
+  religion: 7
+  primaryAgenda: 3
+  secondaryAgenda: 11
+  likesTraits: 0200000009000000
+  dislikesTraits: 03000000
+  preferredVictory: 2
+  militaryFocus: 1.2
+  economicFocus: 1.2
+  scientificFocus: 1
+  culturalFocus: 1.3
+  religiousFocus: 1.1
+  uniqueUnits: []
+  uniqueBuildings: []
+  abilityName: Reordering the Realm
+  abilityDescription: "+10% Production and +10% Culture."
+  goldModifier: 0
+  scienceModifier: 0
+  productionModifier: 0.1
+  foodModifier: 0
+  cultureModifier: 0.1
+  faithModifier: 0
+  militaryStrengthModifier: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  unitBonuses: []
+  workerBonuses: []
+  herdYieldBonuses: []
+  background: {fileID: 0}
+  leaderAnimator: {fileID: 0}
+  prefersAlliance: 0
+  prefersTrade: 1
+  isWarmonger: 0
+  isIsolationist: 0

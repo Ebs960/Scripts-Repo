@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aefb638669e6c094ea8c69559008949a, type: 3}
+  m_Name: Philip II
+  m_EditorClassIdentifier:
+  leaderName: Philip II
+  portrait: {fileID: 0}
+  historicalEra: "16th century"
+  biography: "Philip II governed Spain and a far-reaching composite monarchy through councils, taxation, and maritime connections. His rule linked imperial administration with Catholic patronage and prolonged European conflicts."
+  aggressiveness: 6
+  diplomacy: 5
+  science: 6
+  expansion: 6
+  religion: 8
+  primaryAgenda: 7
+  secondaryAgenda: 12
+  likesTraits: 0700000004000000
+  dislikesTraits: 00000000
+  preferredVictory: 5
+  militaryFocus: 1.3
+  economicFocus: 1.5
+  scientificFocus: 1
+  culturalFocus: 1
+  religiousFocus: 1.3
+  uniqueUnits: []
+  uniqueBuildings: []
+  abilityName: Royal Administration
+  abilityDescription: "+10% Production and +10% Gold."
+  goldModifier: 0.1
+  scienceModifier: 0
+  productionModifier: 0.1
+  foodModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  militaryStrengthModifier: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  unitBonuses: []
+  workerBonuses: []
+  herdYieldBonuses: []
+  background: {fileID: 0}
+  leaderAnimator: {fileID: 0}
+  prefersAlliance: 1
+  prefersTrade: 1
+  isWarmonger: 0
+  isIsolationist: 0

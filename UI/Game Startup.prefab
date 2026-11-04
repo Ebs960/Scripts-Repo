@@ -25369,8 +25369,10 @@ GameObject:
   - component: {fileID: 8045105009115644271}
   - component: {fileID: 7680488214064800739}
   - component: {fileID: 3796208909422653088}
+  - component: {fileID: 8886902023111043110}
+  - component: {fileID: 8886902023111043111}
   m_Layer: 5
-  m_Name: Main Menu
+  m_Name: MainMenuRoot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -25437,6 +25439,41 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &8886902023111043110
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7665446675435556154}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2be96f9931a94e90a9031ed2165aa7ea, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  menuManager: {fileID: 3464161262442599705}
+  MainMenuShellSprite: {fileID: 0}
+  GenericMenuButtonSprite: {fileID: 0}
+  backgroundRotator: {fileID: 8886902023111043111}
+  titleFont: {fileID: 0}
+  gameTitle: "CAVEMAN\nTO COSMOS"
+  showVersion: 1
+--- !u!114 &8886902023111043111
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7665446675435556154}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 194dd985b1ed47e0a37a2785416089db, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  backgroundSprites: []
+  backgroundImage: {fileID: 0}
+  fallbackSprite: {fileID: 0}
+  persistenceKey: MainMenu.HistoricalBackgrounds.v1
 --- !u!1 &7742024001006065625
 GameObject:
   m_ObjectHideFlags: 0
@@ -26232,12 +26269,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_UiScaleMode: 0
+  m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
+  m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -26285,83 +26322,6 @@ MonoBehaviour:
   selectedCivBonuses: {fileID: 3435283900644910846}
   selectCivButton: {fileID: 2976428671851259230}
   backFromCivButton: {fileID: 5970420862294223929}
-  civSelectionEntries:
-  - civData: {fileID: 11400000, guid: 301a6892b8ad50c4e90e5244e555991b, type: 2}
-    civButton: {fileID: 3394272478668659532}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: 0ed59d111cff1514987a0163705c44c8, type: 3}
-  - civData: {fileID: 11400000, guid: fd40c750163cf0b40965f2a2cb5e7b94, type: 2}
-    civButton: {fileID: 1852651188772660575}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: 7e86d5c7526e05c4c94af2b518766780, type: 3}
-  - civData: {fileID: 11400000, guid: e07c9ddbee3f7da498fe718a19dcb22c, type: 2}
-    civButton: {fileID: 7886252840096991535}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: d7919e2f66d2b6544baa033ef9663da4, type: 3}
-  - civData: {fileID: 11400000, guid: b89280a654ebe92459449d6a66fe50ab, type: 2}
-    civButton: {fileID: 55938960718229776}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: ffeae7b5486e0f4458eeda47362f6f99, type: 3}
-  - civData: {fileID: 11400000, guid: e1dc68799771f004ba736d9c23ecca7a, type: 2}
-    civButton: {fileID: 2523682036305409769}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: 8d595da31d4be0146946ee6c6cd03830, type: 3}
-  - civData: {fileID: 11400000, guid: 46b9be47a06809e4baf66e0dca03588b, type: 2}
-    civButton: {fileID: 6499128370589339790}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: 0054230a29c6bcc449587b853c950eb6, type: 3}
-  - civData: {fileID: 11400000, guid: f26bd0858db1b4649942db951f2293bc, type: 2}
-    civButton: {fileID: 4389594758314351659}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: 4770e871e23e33f449286be87fcab532, type: 3}
-  - civData: {fileID: 11400000, guid: 39129248f5e9fdc4d954bad65646a4b9, type: 2}
-    civButton: {fileID: 9212107544006287215}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: c8f641ee270db974e831b2fa93630daa, type: 3}
-  - civData: {fileID: 11400000, guid: 92e2060b45e33304793fe94ddc5bdc8e, type: 2}
-    civButton: {fileID: 6826616162765306496}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: 0ac3be9fbdfdf5f46a23dc3c371d49b3, type: 3}
-  - civData: {fileID: 11400000, guid: 1cc28ad13461eba4c826afe555c7f74d, type: 2}
-    civButton: {fileID: 4277622249009804843}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: a267a285d5a1047418685c642e9f95ea, type: 3}
-  - civData: {fileID: 11400000, guid: 4097346a033d8bd469056a6fcfef8ac5, type: 2}
-    civButton: {fileID: 4727213681896931099}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: e4d55face74d76e438c6cc7bd5c7dfd4, type: 3}
-  - civData: {fileID: 11400000, guid: 92376482cce3093429fb6878de9eae19, type: 2}
-    civButton: {fileID: 3558653828976748541}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: 400a0b854d08d104eacf0fc717d5ccb4, type: 3}
-  - civData: {fileID: 11400000, guid: 616044bb37c77984cb61b75e569f6c1d, type: 2}
-    civButton: {fileID: 1609159235876868858}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: fbc95c0af1b83144f8f03d34cbc299bc, type: 3}
-  - civData: {fileID: 11400000, guid: 3bbd49bd0f67c124ba85fee23e0ba118, type: 2}
-    civButton: {fileID: 1438534251728978553}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: d0225a9f30848ec40b4c035b0c85d6cc, type: 3}
-  - civData: {fileID: 11400000, guid: d1a7bd9d5509edd4e99ce59ea636b262, type: 2}
-    civButton: {fileID: 984259264531703761}
-    buttonIconImage: {fileID: 0}
-    backgroundTargetImage: {fileID: 4455260892027446425}
-    backgroundSprite: {fileID: 21300000, guid: 6c8bc7b54ce22724c96dddb064f3fa35, type: 3}
-  enableCivEntryBackgroundOverrides: 1
   leaderButtonContainer: {fileID: 8094600615348097157}
   leaderButtonPrefab: {fileID: 1013359019465320292, guid: 2183837270751e64581dfec73cd695c5, type: 3}
   leaderSelectionBackgroundImage: {fileID: 4349922690676506333}

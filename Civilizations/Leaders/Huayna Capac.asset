@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aefb638669e6c094ea8c69559008949a, type: 3}
+  m_Name: Huayna Capac
+  m_EditorClassIdentifier:
+  leaderName: Huayna Capac
+  portrait: {fileID: 0}
+  historicalEra: "Late 15th to early 16th century"
+  biography: "Huayna Capac ruled Tawantinsuyu near its greatest territorial extent, extending its northern reach and developing administrative centers. His reign depended on roads, agricultural production, and the redistribution of stored goods."
+  aggressiveness: 5
+  diplomacy: 6
+  science: 5
+  expansion: 7
+  religion: 6
+  primaryAgenda: 7
+  secondaryAgenda: 3
+  likesTraits: 0b00000007000000
+  dislikesTraits: 00000000
+  preferredVictory: 5
+  militaryFocus: 1
+  economicFocus: 1.4
+  scientificFocus: 1
+  culturalFocus: 1
+  religiousFocus: 1.1
+  uniqueUnits: []
+  uniqueBuildings: []
+  abilityName: Roads of Tawantinsuyu
+  abilityDescription: "+10% Food and +10% Gold."
+  goldModifier: 0.1
+  scienceModifier: 0
+  productionModifier: 0
+  foodModifier: 0.1
+  cultureModifier: 0
+  faithModifier: 0
+  militaryStrengthModifier: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  unitBonuses: []
+  workerBonuses: []
+  herdYieldBonuses: []
+  background: {fileID: 0}
+  leaderAnimator: {fileID: 0}
+  prefersAlliance: 1
+  prefersTrade: 1
+  isWarmonger: 0
+  isIsolationist: 0

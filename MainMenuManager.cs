@@ -41,25 +41,11 @@ public class MainMenuManager : MonoBehaviour
     public Button selectCivButton;         // Confirm civ selection
     public Button backFromCivButton;       // Back button to return to main menu
 
-    [System.Serializable]
-    public struct CivilizationSelectionEntry
-    {
-        public CivData civData;
-        public Button civButton;
-        [Tooltip("Optional icon image on the civ button entry.")]
-        public Image buttonIconImage;
-        [Tooltip("Optional panel/image target whose Source Image will be replaced for this civ entry when enabled.")]
-        public Image backgroundTargetImage;
-        [Tooltip("Optional background sprite to apply to the target image for this civ entry.")]
-        public Sprite backgroundSprite;
-    }
-
-    [Header("Manual Civilization Button Entries")]
-    public List<CivilizationSelectionEntry> civSelectionEntries = new List<CivilizationSelectionEntry>();
-
-    [Header("Civ Entry Background Overrides")]
-    [Tooltip("Optional feature toggle. When enabled, each civ entry can apply its own background sprite to an assigned Image.")]
-    public bool enableCivEntryBackgroundOverrides = false;
+    [Header("Faction Selection Artwork")]
+    [Tooltip("Dedicated hero illustration Image. Created at runtime when unassigned; never use the civilization emblem or shell here.")]
+    public Image selectedCivArtwork;
+    [Tooltip("Optional illustration shown when civilization artwork is unassigned. Otherwise a navy placeholder is shown.")]
+    public Sprite fallbackCivSelectionArtwork;
 
     [Header("Leader Selection")]
     public Transform leaderButtonContainer;
@@ -178,8 +164,11 @@ public class MainMenuManager : MonoBehaviour
     private LeaderData selectedLeader;
     private List<Button> civButtons = new List<Button>();
     private List<Button> leaderButtons = new List<Button>();
-    private Color selectedButtonColor = new Color(0.9f, 0.8f, 0.1f, 1f);
-    private Color normalButtonColor = Color.white;
+    private readonly Dictionary<CivData, Button> generatedCivButtons = new Dictionary<CivData, Button>();
+    private readonly Dictionary<Button, UnityEngine.Events.UnityAction> civSelectionCallbacks = new Dictionary<Button, UnityEngine.Events.UnityAction>();
+    private FactionSelectionPresentation factionSelectionPresentation;
+    private Color selectedButtonColor = new Color(.13f, .20f, .30f, 1f);
+    private Color normalButtonColor = new Color(.055f, .085f, .14f, 1f);
     
     // Game Setup values
     private int aiCount = 4;
@@ -1115,7 +1104,18 @@ public class MainMenuManager : MonoBehaviour
     // Populates the civilization list with available civilizations
     void PopulateCivilizationList()
     {
+        if (factionSelectionPresentation == null)
+            factionSelectionPresentation = civSelectionPanel.GetComponent<FactionSelectionPresentation>()
+                ?? civSelectionPanel.AddComponent<FactionSelectionPresentation>();
+        factionSelectionPresentation.Initialize(this);
+
+        foreach (var callback in civSelectionCallbacks)
+            if (callback.Key != null) callback.Key.onClick.RemoveListener(callback.Value);
+        civSelectionCallbacks.Clear();
+        foreach (var button in generatedCivButtons.Values)
+            if (button != null) button.gameObject.SetActive(false);
         civButtons.Clear();
+        ApplyCivilizationArtwork(null);
         
         // Show placeholder civ icon until a civ is selected
         if (selectedCivIcon != null)
@@ -1126,7 +1126,7 @@ public class MainMenuManager : MonoBehaviour
         
         if (selectedCivName != null)
         {
-            selectedCivName.text = "";
+            selectedCivName.text = "Choose a Civilization";
         }
         
         if (selectedCivDescription != null)
@@ -1144,122 +1144,81 @@ public class MainMenuManager : MonoBehaviour
         
         selectedCivilization = null;
 
-        bool hasManualEntries = civSelectionEntries != null && civSelectionEntries.Count > 0;
-        if (hasManualEntries)
+        var playableCivs = GetPlayableCivilizations(ResourceCache.GetAllCivDatas());
+        if (playableCivs.Count == 0)
         {
-            foreach (var entry in civSelectionEntries)
-            {
-                if (entry.civData == null || entry.civButton == null)
-                    continue;
-
-                if (entry.civData.isTribe || entry.civData.isCityState)
-                {
-                    entry.civButton.gameObject.SetActive(false);
-                    continue;
-                }
-
-                var button = entry.civButton;
-                var civData = entry.civData;
-                button.onClick.RemoveAllListeners();
-                button.onClick.AddListener(() => OnCivButtonClicked(button, civData));
-
-                var buttonText = button.GetComponentInChildren<TextMeshProUGUI>();
-                if (buttonText != null)
-                    buttonText.text = civData.civName;
-                if (entry.buttonIconImage != null)
-                    entry.buttonIconImage.sprite = civData.icon != null ? civData.icon : placeholderCivIcon;
-
-                button.gameObject.SetActive(true);
-                civButtons.Add(button);
-            }
-
+            Debug.LogError("No playable civilizations configured. Assign GameManager.civilizationCatalog or the base-game content database.");
             return;
         }
-        
-        // Fallback: use the catalog registered by GameManager.
-        CivData[] allCivs = ResourceCache.GetAllCivDatas();
-        if (allCivs == null || allCivs.Length == 0)
-        {
-            Debug.LogError("No civilizations configured. Assign GameManager.civilizationCatalog or manual civilization entries.");
-            return;
-        }
-        
-        // Only show playable civs (not tribes or city-states)
-        var playableCivs = new List<CivData>();
-        foreach (var civData in allCivs)
-        {
-            if (civData != null && !civData.isTribe && !civData.isCityState)
-                playableCivs.Add(civData);
-        }
-        
-        // Create buttons for each civilization
+
         foreach (var civData in playableCivs)
         {
-            if (civData == null || civButtonContainer == null || civButtonPrefab == null)
-                continue;
-                
-            // Create a button for this civilization
-            Button button = Instantiate(civButtonPrefab, civButtonContainer);
-            
-            // Set the button text to the civilization name
-            TextMeshProUGUI buttonText = button.GetComponentInChildren<TextMeshProUGUI>();
-            if (buttonText != null)
+            if (!generatedCivButtons.TryGetValue(civData, out var button) || button == null)
             {
-                buttonText.text = civData.civName;
+                button = civButtonPrefab != null
+                    ? Instantiate(civButtonPrefab, civButtonContainer)
+                    : factionSelectionPresentation.CreateCivilizationButton();
+                generatedCivButtons[civData] = button;
             }
-                
-            // Add click handler
-            button.onClick.AddListener(() => OnCivButtonClicked(button, civData));
-            
-            // Add to button list
+
+            factionSelectionPresentation.ConfigureCivilizationButton(button, civData, placeholderCivIcon);
+            var boundButton = button;
+            UnityEngine.Events.UnityAction callback = () => OnCivButtonClicked(boundButton, civData);
+            button.onClick.AddListener(callback);
+            civSelectionCallbacks.Add(button, callback);
+            button.gameObject.SetActive(true);
             civButtons.Add(button);
         }
+        UpdateCivilizationHighlights(null);
+        factionSelectionPresentation.ResetScroll();
     }
-    
-    private void ApplyCivEntryBackground(CivData civData)
+
+    private List<CivData> GetPlayableCivilizations(CivData[] catalog)
     {
-        if (!enableCivEntryBackgroundOverrides || civData == null || civSelectionEntries == null)
-            return;
+        var result = new List<CivData>();
+        var seen = new HashSet<CivData>();
+        if (catalog != null)
+            foreach (var civ in catalog)
+                if (civ != null && !civ.isTribe && !civ.isCityState && seen.Add(civ))
+                    result.Add(civ);
+        return result;
+    }
 
-        for (int i = 0; i < civSelectionEntries.Count; i++)
+    private void ApplyCivilizationArtwork(CivData civData)
+    {
+        Sprite artwork = civData != null ? civData.factionSelectionArtwork : null;
+        factionSelectionPresentation.ShowArtwork(artwork != null ? artwork : fallbackCivSelectionArtwork, civData != null);
+    }
+
+    private void UpdateCivilizationHighlights(Button clickedButton)
+    {
+        foreach (var button in civButtons)
         {
-            var entry = civSelectionEntries[i];
-            if (entry.civData != civData) continue;
-
-            if (entry.backgroundTargetImage != null && entry.backgroundSprite != null)
-            {
-                entry.backgroundTargetImage.sprite = entry.backgroundSprite;
-            }
-            return;
+            bool selected = button == clickedButton;
+            ColorBlock colors = button.colors;
+            colors.normalColor = selected ? selectedButtonColor : normalButtonColor;
+            colors.highlightedColor = new Color(.17f, .23f, .32f, 1f);
+            colors.selectedColor = colors.normalColor;
+            colors.pressedColor = new Color(.09f, .14f, .22f, 1f);
+            colors.colorMultiplier = 1f;
+            button.colors = colors;
+            var outline = button.GetComponent<Outline>();
+            if (outline != null) outline.enabled = selected;
+            var label = button.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (label != null) label.color = selected ? new Color(.78f, .70f, .49f, 1f) : new Color(.88f, .89f, .91f, 1f);
         }
     }
 
     // Called when a civilization button is clicked
     void OnCivButtonClicked(Button clickedButton, CivData civData)
     {
-        // Update button colors for all buttons
-        foreach (var button in civButtons)
-        {
-            ColorBlock colors = button.colors;
-            if (button == clickedButton)
-            {
-                colors.normalColor = selectedButtonColor;
-                colors.highlightedColor = selectedButtonColor;
-                colors.selectedColor = selectedButtonColor;
-            }
-            else
-            {
-                colors.normalColor = normalButtonColor;
-                colors.highlightedColor = new Color(0.9f, 0.9f, 0.9f);
-                colors.selectedColor = normalButtonColor;
-            }
-            button.colors = colors;
-        }
-        
+        UpdateCivilizationHighlights(clickedButton);
+
         // Store the selected civilization
         selectedCivilization = civData;
 
-        ApplyCivEntryBackground(civData);
+        ApplyCivilizationArtwork(civData);
+        factionSelectionPresentation.ResetDetailsScroll();
         
         // Show the civilization name
         if (selectedCivName != null)
@@ -1624,6 +1583,7 @@ public class MainMenuManager : MonoBehaviour
     {
         leaderSelectionPanel.SetActive(false);
         civSelectionPanel.SetActive(true);
+        ApplyCivilizationArtwork(selectedCivilization);
     }
 
     // --- End New Leader Selection Methods ---

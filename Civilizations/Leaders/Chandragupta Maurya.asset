@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aefb638669e6c094ea8c69559008949a, type: 3}
+  m_Name: Chandragupta Maurya
+  m_EditorClassIdentifier:
+  leaderName: Chandragupta Maurya
+  portrait: {fileID: 0}
+  historicalEra: "Late 4th to early 3rd century BCE"
+  biography: "Chandragupta Maurya founded the Mauryan Empire and consolidated a large state in northern India. His reign combined military campaigns, administrative organization, and diplomacy with the Seleucid kingdom."
+  aggressiveness: 7
+  diplomacy: 6
+  science: 5
+  expansion: 8
+  religion: 5
+  primaryAgenda: 3
+  secondaryAgenda: 2
+  likesTraits: 0800000007000000
+  dislikesTraits: 03000000
+  preferredVictory: 0
+  militaryFocus: 1.4
+  economicFocus: 1.3
+  scientificFocus: 1
+  culturalFocus: 0.9
+  religiousFocus: 0.9
+  uniqueUnits: []
+  uniqueBuildings: []
+  abilityName: Mauryan Statecraft
+  abilityDescription: "+10% Gold and +10% military attack strength."
+  goldModifier: 0.1
+  scienceModifier: 0
+  productionModifier: 0
+  foodModifier: 0
+  cultureModifier: 0
+  faithModifier: 0
+  militaryStrengthModifier: 0.1
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  unitBonuses: []
+  workerBonuses: []
+  herdYieldBonuses: []
+  background: {fileID: 0}
+  leaderAnimator: {fileID: 0}
+  prefersAlliance: 1
+  prefersTrade: 1
+  isWarmonger: 1
+  isIsolationist: 0

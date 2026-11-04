@@ -10,7 +10,8 @@ public enum CultureGroup
     Mesoamerican = 9,
     NativeNorthAmerican = 10,
     MiddleEastern = 12,
-    SouthAsian = 13
+    SouthAsian = 13,
+    Andean = 14
 }
 
 /// <summary>
@@ -22,6 +23,8 @@ public class CivData : ScriptableObject
     [Header("Identification")]
     public string civName;
     public Sprite icon;
+    [Tooltip("Optional cinematic illustration for faction selection. Use a 16:9 landscape master; the civilization emblem remains in icon.")]
+    public Sprite factionSelectionArtwork;
     public List<string> cityNames; // List of historical or thematic city names
     public List<string> herdNames; // List of thematic herd names (used when spawning new herds)
     public List<LeaderData> availableLeaders; // Replaced single leader with a list

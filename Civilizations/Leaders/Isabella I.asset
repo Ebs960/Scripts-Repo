@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aefb638669e6c094ea8c69559008949a, type: 3}
+  m_Name: Isabella I
+  m_EditorClassIdentifier:
+  leaderName: Isabella I
+  portrait: {fileID: 0}
+  historicalEra: "Late 15th to early 16th century"
+  biography: "Isabella I ruled Castile and, with Ferdinand of Aragon, strengthened royal institutions and supported Atlantic voyages. Her reign also imposed religious uniformity through coercion, expulsion, and the Spanish Inquisition."
+  aggressiveness: 5
+  diplomacy: 6
+  science: 5
+  expansion: 7
+  religion: 9
+  primaryAgenda: 6
+  secondaryAgenda: 7
+  likesTraits: 040000000b000000
+  dislikesTraits: 03000000
+  preferredVictory: 3
+  militaryFocus: 1.1
+  economicFocus: 1.3
+  scientificFocus: 0.9
+  culturalFocus: 1
+  religiousFocus: 1.5
+  uniqueUnits: []
+  uniqueBuildings: []
+  abilityName: Patronage of the Crown
+  abilityDescription: "+10% Faith and +10% Gold."
+  goldModifier: 0.1
+  scienceModifier: 0
+  productionModifier: 0
+  foodModifier: 0
+  cultureModifier: 0
+  faithModifier: 0.1
+  militaryStrengthModifier: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  tileYieldBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  unitBonuses: []
+  workerBonuses: []
+  herdYieldBonuses: []
+  background: {fileID: 0}
+  leaderAnimator: {fileID: 0}
+  prefersAlliance: 1
+  prefersTrade: 1
+  isWarmonger: 0
+  isIsolationist: 0

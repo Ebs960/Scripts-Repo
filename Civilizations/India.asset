@@ -1,0 +1,158 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62fc5d8f3b04c014090052f5bffbad37, type: 3}
+  m_Name: India
+  m_EditorClassIdentifier:
+  civName: India
+  icon: {fileID: 0}
+  factionSelectionArtwork: {fileID: 0}
+  cityNames:
+  - Pataliputra
+  - Delhi
+  - Varanasi
+  - Ujjain
+  - Taxila
+  - Sanchi
+  - Madurai
+  - Kannauj
+  - Jaipur
+  - Thanjavur
+  - Kolkata
+  - Mumbai
+  herdNames:
+  - Ganges Plain Herd
+  - Deccan Meadow Herd
+  - Narmada Valley Herd
+  - Indus Pasture Herd
+  availableLeaders:
+  - {fileID: 11400000, guid: 947c615a2a324ecc87210c070b886e6e, type: 2}
+  - {fileID: 11400000, guid: c1ec0b5ef26045c0a25e53cfca054b7d, type: 2}
+  cultureGroup: 13
+  cultureBonuses: []
+  description: "The Indian subcontinent nurtured diverse cities, philosophical traditions, religious movements, and agricultural economies. India supports growing communities through abundant food and enduring spiritual institutions."
+  startingTechs: []
+  startingCultures: []
+  startingPolicies: []
+  uniqueUnits: []
+  uniqueBuildings: []
+  startingBandData: {fileID: 11400000, guid: 5fd4aba38d6f41c6a17cadb0cfb90dea, type: 2}
+  startingBandGarrison:
+  - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}
+    count: 2
+  climatePreferences: 040000000600000003000000
+  attackBonus: 0
+  meleeAttackBonus: 0
+  rangedAttackBonus: 0
+  cityAttackBonus: 0
+  defenseBonus: 0
+  movementBonus: 0
+  foodModifier: 0.05
+  productionModifier: 0
+  goldModifier: 0
+  scienceModifier: 0
+  cultureModifier: 0
+  faithModifier: 0.1
+  tileYieldBonuses: []
+  buildingBonuses: []
+  cityBonuses: []
+  nonStateReligionUnhappinessModifiers: []
+  unitBonuses: []
+  workerBonuses: []
+  auraBonuses: []
+  unitProductionModifiers: []
+  unitYieldBonuses: []
+  workerYieldBonuses: []
+  allWorkersWorkPoints: 0
+  equipmentBonuses: []
+  equipmentYieldBonuses: []
+  improvementBonuses: []
+  genericYieldBonuses: []
+  unitLimitModifiers: []
+  buildingLimitModifiers: []
+  citySlotModifiers: []
+  effects:
+    unitBonuses: []
+    workerBonuses: []
+    auraBonuses: []
+    unitProductionModifiers: []
+    unitYieldBonuses: []
+    workerYieldBonuses: []
+    allWorkersWorkPoints: 0
+    equipmentBonuses: []
+    equipmentYieldBonuses: []
+    tileYieldBonuses: []
+    improvementBonuses: []
+    buildingBonuses: []
+    cityBonuses: []
+    genericYieldBonuses: []
+    unitLimitModifiers: []
+    buildingLimitModifiers: []
+    citySlotModifiers: []
+    nonStateReligionUnhappinessModifiers: []
+    diseaseBonuses: []
+    attritionBonuses: []
+    herdStarvationPercentReduction: 0
+    herdYieldBonuses: []
+  diseaseBonuses: []
+  attritionBonuses: []
+  herdStarvationPercentReduction: 0
+  herdYieldBonuses: []
+  isTribe: 0
+  isCityState: 0
+  musicData: {fileID: 11400000, guid: 96eff261ae4948f4a8f783c14bd5acd8, type: 2}
+  cityVisuals:
+  - period: 0
+    villagePrefab: {fileID: 1725796208358772676, guid: 80c40c14ffb9b9a4a921390e91d45884, type: 3}
+    townPrefab: {fileID: 7352622872548837570, guid: 542dee202f97242428ffb5b0ebff77b7, type: 3}
+    cityPrefab: {fileID: 7352622872548837570, guid: 542dee202f97242428ffb5b0ebff77b7, type: 3}
+    metropolisPrefab: {fileID: 7352622872548837570, guid: 542dee202f97242428ffb5b0ebff77b7, type: 3}
+  - period: 1
+    villagePrefab: {fileID: 8669215079671304093, guid: 0a5d851889224a24aae02108929c2714, type: 3}
+    townPrefab: {fileID: 8748200153515496958, guid: b8a44f25b2ca70245806a178a5719b8b, type: 3}
+    cityPrefab: {fileID: 4156326945822721244, guid: f8daa29103558a1479ff82e179d787e3, type: 3}
+    metropolisPrefab: {fileID: 4156326945822721244, guid: f8daa29103558a1479ff82e179d787e3, type: 3}
+  - period: 2
+    villagePrefab: {fileID: 262879584236681983, guid: f24358f3adbce4245941ca8bf24e19e8, type: 3}
+    townPrefab: {fileID: 750411497501129663, guid: 02c217a9aeed2f64587d389fbabfd3be, type: 3}
+    cityPrefab: {fileID: 8649605539537595878, guid: 58234b881b0ad91488d78f2aa5f3b6c7, type: 3}
+    metropolisPrefab: {fileID: 8649605539537595878, guid: 58234b881b0ad91488d78f2aa5f3b6c7, type: 3}
+  - period: 3
+    villagePrefab: {fileID: 5535524275213539787, guid: f57b055e7818088499543065360d477d, type: 3}
+    townPrefab: {fileID: 3520566115746554080, guid: 910e73750eb1a2947b9bc765b825cf33, type: 3}
+    cityPrefab: {fileID: 2051393116986635953, guid: a295f1aa02ed07249929c36289cd54c9, type: 3}
+    metropolisPrefab: {fileID: 2051393116986635953, guid: a295f1aa02ed07249929c36289cd54c9, type: 3}
+  - period: 4
+    villagePrefab: {fileID: 1424357797270599231, guid: 3b1f7a76b33970342bb975376be9b70b, type: 3}
+    townPrefab: {fileID: 7925669502562026794, guid: 05040bb5083870f44af73cff4a2611ef, type: 3}
+    cityPrefab: {fileID: 2876821747131453488, guid: 3e3565a03381abd41a863e0f271d82a2, type: 3}
+    metropolisPrefab: {fileID: 2876821747131453488, guid: 3e3565a03381abd41a863e0f271d82a2, type: 3}
+  - period: 5
+    villagePrefab: {fileID: 1424357797270599231, guid: 3b1f7a76b33970342bb975376be9b70b, type: 3}
+    townPrefab: {fileID: 7925669502562026794, guid: 05040bb5083870f44af73cff4a2611ef, type: 3}
+    cityPrefab: {fileID: 2876821747131453488, guid: 3e3565a03381abd41a863e0f271d82a2, type: 3}
+    metropolisPrefab: {fileID: 2876821747131453488, guid: 3e3565a03381abd41a863e0f271d82a2, type: 3}
+  - period: 6
+    villagePrefab: {fileID: 1424357797270599231, guid: 3b1f7a76b33970342bb975376be9b70b, type: 3}
+    townPrefab: {fileID: 7925669502562026794, guid: 05040bb5083870f44af73cff4a2611ef, type: 3}
+    cityPrefab: {fileID: 2876821747131453488, guid: 3e3565a03381abd41a863e0f271d82a2, type: 3}
+    metropolisPrefab: {fileID: 2876821747131453488, guid: 3e3565a03381abd41a863e0f271d82a2, type: 3}
+  - period: 7
+    villagePrefab: {fileID: 1424357797270599231, guid: 3b1f7a76b33970342bb975376be9b70b, type: 3}
+    townPrefab: {fileID: 7925669502562026794, guid: 05040bb5083870f44af73cff4a2611ef, type: 3}
+    cityPrefab: {fileID: 2876821747131453488, guid: 3e3565a03381abd41a863e0f271d82a2, type: 3}
+    metropolisPrefab: {fileID: 2876821747131453488, guid: 3e3565a03381abd41a863e0f271d82a2, type: 3}
+  cityPrefabsByAge: []
+  armyPrefabsByAge: []
+  bandPrefab: {fileID: 0}
+  herdPrefab: {fileID: 1438332890144544779, guid: dd04f59eb2b9b414494dff97aa793855, type: 3}
+  herdPackedPrefab: {fileID: 4879754943962817284, guid: 54dc96b56dfc788499505e5b091511a2, type: 3}
+  herdSettledPrefab: {fileID: 1438332890144544779, guid: dd04f59eb2b9b414494dff97aa793855, type: 3}
