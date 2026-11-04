@@ -8091,7 +8091,7 @@ MonoBehaviour:
   pantheonUpgradeDropdown: {fileID: 9052445283833942839}
   upgradePantheonButton: {fileID: 2320936017650284434}
   upgradeInfoText: {fileID: 7333829812590712158}
-  religionFoundingPanel: {fileID: 7838521211433777993}
+  religionFoundingPanel: {fileID: 534207323011616751}
   religionDropdown: {fileID: 2322316991623923202}
   foundReligionButton: {fileID: 2124042882192445587}
   holySiteCityDropdown: {fileID: 4399498404081198410}

@@ -92,14 +92,48 @@ public class ReligionUI : MonoBehaviour
     [Header("Apply Controls")]
     public UnityEngine.UI.Button applyBeliefsButton;
     public UnityEngine.UI.Button cancelBeliefsButton;
+
+    [Header("Presentation Hooks (Optional)")]
+    public Button closeButton;
+    public TextMeshProUGUI actionFeedbackText;
+    public TextMeshProUGUI beliefCostText;
+    public TextMeshProUGUI pantheonCountText;
+    public TextMeshProUGUI foundedPantheonsText;
+    public TextMeshProUGUI foundedReligionText;
+    public TextMeshProUGUI stateReligionText;
+    public TextMeshProUGUI cityReligionOverviewText;
+    public Image selectedReligionIcon;
+    public TextMeshProUGUI religionRequirementsText;
+    public TextMeshProUGUI upgradeDetailsText;
+
+    private Civilization _subscribedCiv;
+    private TurnManager _subscribedTurnManager;
+    private bool _editingBeliefs;
+    private bool _refreshPending;
+    private bool _generatedCloseButton;
+    private string _selectedReligionDetails;
+    private string _selectedUpgradeDetails;
+    private readonly List<PantheonData> _upgradeOptions = new List<PantheonData>();
+    private readonly List<ReligionFoundingInfo> _religionOptions = new List<ReligionFoundingInfo>();
+    private IReadOnlyList<CityReligionInfo> _cityReligions = new List<CityReligionInfo>();
+    public IReadOnlyList<ReligionFoundingInfo> ReligionOptions => _religionOptions.AsReadOnly();
+    public IReadOnlyList<CityReligionInfo> CityReligions => _cityReligions;
     
-    void Start()
+    void Awake()
     {
         // Cache manager reference to avoid repeated FindAnyObjectByType calls
         _cachedReligionManager = FindAnyObjectByType<ReligionManager>();
+        if (closeButton == null && closeBeliefPanelButton != null && religionPanel != null)
+        {
+            closeButton = Instantiate(closeBeliefPanelButton, religionPanel.transform, false);
+            closeButton.name = "Close Religion";
+            closeButton.gameObject.SetActive(true);
+            _generatedCloseButton = true;
+        }
         // Set up event listeners
-        foundPantheonButton.onClick.AddListener(OnFoundPantheonClicked);
-        foundReligionButton.onClick.AddListener(OnFoundReligionClicked);
+        if (foundPantheonButton != null) foundPantheonButton.onClick.AddListener(OnFoundPantheonClicked);
+        if (foundReligionButton != null) foundReligionButton.onClick.AddListener(OnFoundReligionClicked);
+        if (closeButton != null) closeButton.onClick.AddListener(Hide);
         // Upgrade listeners
         if (upgradePantheonButton != null)
             upgradePantheonButton.onClick.AddListener(OnUpgradePantheonClicked);
@@ -109,13 +143,13 @@ public class ReligionUI : MonoBehaviour
             closeBeliefPanelButton.onClick.AddListener(CloseBeliefPanel);
         
         // Set up dropdown change listeners
-        pantheonDropdown.onValueChanged.AddListener(OnPantheonSelected);
+        if (pantheonDropdown != null) pantheonDropdown.onValueChanged.AddListener(OnPantheonSelected);
         if (pantheonUpgradeDropdown != null)
             pantheonUpgradeDropdown.onValueChanged.AddListener(OnPantheonUpgradeSelected);
-        religionDropdown.onValueChanged.AddListener(OnReligionSelected);
+        if (religionDropdown != null) religionDropdown.onValueChanged.AddListener(OnReligionSelected);
+        if (holySiteCityDropdown != null) holySiteCityDropdown.onValueChanged.AddListener(OnHolySiteSelected);
         
         // Hide the panel initially
-        religionPanel.SetActive(false);
         if (beliefPanel != null)
             beliefPanel.SetActive(false);
         // Populate belief list if prefabs/containers are set
@@ -127,24 +161,119 @@ public class ReligionUI : MonoBehaviour
         if (cancelBeliefsButton != null)
             cancelBeliefsButton.onClick.AddListener(OnCancelBeliefsClicked);
 
-        // Ensure slot owners are set so clear buttons work
-        if (survivalSlot != null) survivalSlot.owner = this;
-        if (harvestSlot != null) harvestSlot.owner = this;
-        if (ritualSlot != null) ritualSlot.owner = this;
-        if (warfareSlot != null) warfareSlot.owner = this;
-        if (knowledgeSlot != null) knowledgeSlot.owner = this;
+        ConfigureBeliefSlots();
+        ConfigureStatusText(pantheonCostText);
+        ConfigureStatusText(religionCostText);
+        ConfigureStatusText(upgradeInfoText);
+        ConfigureStatusText(religionNameText);
+        if (pantheonDropdown != null) ConfigureStatusText(pantheonDropdown.captionText);
+        if (religionDropdown != null) ConfigureStatusText(religionDropdown.captionText);
+        EnsureDropdownIcons(pantheonDropdown);
+        EnsureDropdownIcons(pantheonUpgradeDropdown);
+        EnsureDropdownIcons(religionDropdown);
+        EnsureScrollableDetails();
     }
 
-    private void Awake()
+    private static void EnsureDropdownIcons(TMP_Dropdown dropdown)
     {
-        if (beliefPanel != null)
-            beliefPanel.SetActive(false);
+        if (dropdown == null) return;
+        if (dropdown.captionImage == null && dropdown.captionText != null)
+            dropdown.captionImage = CreateDropdownIcon(dropdown.captionText);
+        if (dropdown.itemImage == null && dropdown.itemText != null)
+            dropdown.itemImage = CreateDropdownIcon(dropdown.itemText);
+        dropdown.RefreshShownValue();
+    }
+
+    private static Image CreateDropdownIcon(TMP_Text label)
+    {
+        var iconObject = new GameObject("Option Icon", typeof(RectTransform), typeof(Image));
+        var rect = (RectTransform)iconObject.transform;
+        rect.SetParent(label.transform, false);
+        rect.anchorMin = new Vector2(0f, .5f);
+        rect.anchorMax = rect.anchorMin;
+        rect.sizeDelta = new Vector2(20f, 20f);
+        rect.anchoredPosition = new Vector2(10f, 0f);
+        var margin = label.margin;
+        margin.x += 26f;
+        label.margin = margin;
+        var image = iconObject.GetComponent<Image>();
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        return image;
+    }
+
+    private void EnsureScrollableDetails()
+    {
+        if (beliefDescriptionText == null || beliefDescriptionText.GetComponentInParent<ScrollRect>() != null) return;
+        var content = beliefDescriptionText.rectTransform;
+        var scrollObject = new GameObject("Religion Details Scroll", typeof(RectTransform), typeof(ScrollRect));
+        var frame = (RectTransform)scrollObject.transform;
+        frame.SetParent(content.parent, false);
+        frame.SetSiblingIndex(content.GetSiblingIndex());
+        frame.anchorMin = content.anchorMin;
+        frame.anchorMax = content.anchorMax;
+        frame.pivot = content.pivot;
+        frame.sizeDelta = content.sizeDelta;
+        frame.anchoredPosition = content.anchoredPosition;
+        frame.localRotation = content.localRotation;
+        frame.localScale = content.localScale;
+
+        var viewportObject = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D));
+        var viewport = (RectTransform)viewportObject.transform;
+        viewport.SetParent(frame, false);
+        viewport.anchorMin = Vector2.zero;
+        viewport.anchorMax = Vector2.one;
+        viewport.offsetMin = Vector2.zero;
+        viewport.offsetMax = Vector2.zero;
+        viewportObject.GetComponent<Image>().color = Color.clear;
+        content.SetParent(viewport, false);
+        content.anchorMin = new Vector2(0f, 1f);
+        content.anchorMax = Vector2.one;
+        content.pivot = new Vector2(0f, 1f);
+        content.anchoredPosition = Vector2.zero;
+        content.sizeDelta = Vector2.zero;
+        beliefDescriptionText.textWrappingMode = TextWrappingModes.Normal;
+        beliefDescriptionText.overflowMode = TextOverflowModes.Overflow;
+        var fitter = beliefDescriptionText.GetComponent<ContentSizeFitter>() ?? beliefDescriptionText.gameObject.AddComponent<ContentSizeFitter>();
+        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        var scroll = scrollObject.GetComponent<ScrollRect>();
+        scroll.viewport = viewport;
+        scroll.content = content;
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 24f;
+    }
+
+    private static void ConfigureStatusText(TMP_Text text)
+    {
+        if (text == null) return;
+        text.fontSizeMax = Mathf.Max(12f, text.fontSize);
+        text.fontSizeMin = 12f;
+        text.enableAutoSizing = true;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        text.overflowMode = TextOverflowModes.Ellipsis;
+    }
+
+    private void ConfigureBeliefSlots()
+    {
+        if (survivalSlot != null) { survivalSlot.owner = this; survivalSlot.category = BeliefCategory.Survival; }
+        if (harvestSlot != null) { harvestSlot.owner = this; harvestSlot.category = BeliefCategory.Harvest; }
+        if (ritualSlot != null) { ritualSlot.owner = this; ritualSlot.category = BeliefCategory.Ritual; }
+        if (warfareSlot != null) { warfareSlot.owner = this; warfareSlot.category = BeliefCategory.Warfare; }
+        if (knowledgeSlot != null) { knowledgeSlot.owner = this; knowledgeSlot.category = BeliefCategory.Knowledge; }
     }
 
     private void OnEnable()
     {
-        if (beliefPanel != null)
-            beliefPanel.SetActive(false);
+        SubscribeToPlayerCiv();
+        if (!_editingBeliefs)
+        {
+            SyncAssignedBeliefsFromCiv();
+            RefreshBeliefSlots();
+        }
+        _refreshPending = true;
     }
 
     private void OnDestroy()
@@ -154,7 +283,15 @@ public class ReligionUI : MonoBehaviour
 
     private void OnDisable()
     {
+        UnsubscribeFromPlayerCiv();
         CloseBeliefPanel();
+    }
+
+    private void LateUpdate()
+    {
+        if (!_refreshPending || playerCiv == null || religionPanel == null || !religionPanel.activeInHierarchy) return;
+        _refreshPending = false;
+        UpdateUIState();
     }
     
     /// <summary>
@@ -162,19 +299,31 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     public void Show(Civilization playerCiv)
     {
+        if (playerCiv == null)
+        {
+            Hide();
+            this.playerCiv = null;
+            _editingBeliefs = false;
+            SyncAssignedBeliefsFromCiv();
+            return;
+        }
         if (this.playerCiv != playerCiv)
+        {
             UnsubscribeFromPlayerCiv();
+            _editingBeliefs = false;
+            if (actionFeedbackText != null) actionFeedbackText.text = string.Empty;
+        }
 
         this.playerCiv = playerCiv;
+        if (religionPanel != null) religionPanel.SetActive(true);
         SubscribeToPlayerCiv();
-        SyncAssignedBeliefsFromCiv();
+        if (!_editingBeliefs) SyncAssignedBeliefsFromCiv();
         PopulateBeliefList();
         
         // Update UI state based on player civilization's religion status
         UpdateUIState();
         
         // Show the panel
-        religionPanel.SetActive(true);
         CloseBeliefPanel();
 
         // Refresh belief slot visuals from assigned map
@@ -186,16 +335,20 @@ public class ReligionUI : MonoBehaviour
         if (beliefPanel == null)
             return;
 
-        SyncAssignedBeliefsFromCiv();
+        if (!_editingBeliefs) SyncAssignedBeliefsFromCiv();
+        _editingBeliefs = true;
         PopulateBeliefList();
         RefreshBeliefSlots();
+        RefreshBeliefCost();
         beliefPanel.SetActive(true);
+        if (_generatedCloseButton && closeButton != null) closeButton.gameObject.SetActive(false);
     }
 
     public void CloseBeliefPanel()
     {
         if (beliefPanel != null)
             beliefPanel.SetActive(false);
+        if (_generatedCloseButton && closeButton != null) closeButton.gameObject.SetActive(true);
     }
 
     private void RefreshBeliefSlots()
@@ -209,287 +362,12 @@ public class ReligionUI : MonoBehaviour
 
     public static string BuildBeliefEffectSummary(BeliefData belief, bool compact = false)
     {
-        if (belief == null) return compact ? string.Empty : "No belief assigned.";
-
-        var parts = new List<string>();
-
-        if (belief.faithCost > 0)
-            parts.Add($"{belief.faithCost} Faith");
-
-        AppendSharedYieldModifiers(parts, belief.extraFaithInHolySite, belief.extraFoodInHolySite, belief.extraProductionInHolySite,
-            belief.goldPerCity, belief.culturePerCity, belief.happinessBonus, belief.combatStrengthNearHolySite,
-            belief.growthRateModifier, belief.productionRateModifier,
-            belief.foodModifier, belief.productionModifier, belief.goldModifier, belief.scienceModifier, belief.cultureModifier, belief.faithModifier);
-        AppendImprovementBonuses(parts, belief.improvementBonuses, compact);
-        AppendHerdYieldBonuses(parts, belief.herdYieldBonuses, compact);
-        AppendAttritionBonuses(parts, belief.attritionBonuses);
-
-        if (belief.herdStarvationPercentReduction > 0f)
-            parts.Add($"-{belief.herdStarvationPercentReduction:P0} herd starvation");
-
-        if (!compact && !string.IsNullOrWhiteSpace(belief.description))
-            parts.Insert(0, belief.description.Trim());
-
-        if (parts.Count == 0)
-            return string.IsNullOrWhiteSpace(belief.description) ? "No immediate effect listed." : belief.description.Trim();
-
-        string summary = string.Join(compact ? " • " : "\n", parts);
-        if (compact && summary.Length > 180)
-            summary = summary.Substring(0, 177) + "...";
-
-        return summary;
+        return ReligionEffectDescriptions.BuildBeliefEffectSummary(belief, compact);
     }
 
     public static string BuildPantheonEffectSummary(PantheonData pantheon, bool compact = false)
     {
-        if (pantheon == null) return compact ? string.Empty : "No pantheon assigned.";
-
-        var parts = new List<string>();
-        var bonuses = pantheon.bonuses;
-
-        if (!compact && !string.IsNullOrWhiteSpace(pantheon.description))
-            parts.Add(pantheon.description.Trim());
-
-        if (bonuses != null)
-        {
-            AppendPantheonModifiers(parts, bonuses);
-            AppendImprovementBonuses(parts, bonuses.improvementBonuses, compact);
-            AppendHerdYieldBonuses(parts, bonuses.herdYieldBonuses, compact);
-            AppendAttritionBonuses(parts, bonuses.attritionBonuses);
-
-            if (bonuses.herdStarvationPercentReduction > 0f)
-                parts.Add($"-{bonuses.herdStarvationPercentReduction:P0} herd starvation");
-        }
-
-        if (parts.Count == 0)
-            return string.IsNullOrWhiteSpace(pantheon.description) ? "No pantheon bonuses listed." : pantheon.description.Trim();
-
-        string summary = string.Join(compact ? " • " : "\n", parts);
-        if (compact && summary.Length > 180)
-            summary = summary.Substring(0, 177) + "...";
-
-        return summary;
-    }
-
-    private static void AppendPantheonModifiers(List<string> parts, PantheonBonuses bonuses)
-    {
-        if (bonuses == null) return;
-
-        AppendSignedInt(parts, bonuses.attackBonus, "Attack");
-        AppendSignedInt(parts, bonuses.defenseBonus, "Defense");
-        AppendSignedInt(parts, bonuses.movementBonus, "Movement");
-        AppendSignedPercent(parts, bonuses.foodModifier, "Food");
-        AppendSignedPercent(parts, bonuses.productionModifier, "Production");
-        AppendSignedPercent(parts, bonuses.goldModifier, "Gold");
-        AppendSignedPercent(parts, bonuses.scienceModifier, "Science");
-        AppendSignedPercent(parts, bonuses.cultureModifier, "Culture");
-        AppendSignedPercent(parts, bonuses.faithModifier, "Faith");
-    }
-
-    private static void AppendSharedYieldModifiers(
-        List<string> parts,
-        int extraFaithInHolySite,
-        int extraFoodInHolySite,
-        int extraProductionInHolySite,
-        int goldPerCity,
-        int culturePerCity,
-        int happinessBonus,
-        int combatStrengthNearHolySite,
-        float growthRateModifier,
-        float productionRateModifier,
-        float foodModifier,
-        float productionModifier,
-        float goldModifier,
-        float scienceModifier,
-        float cultureModifier,
-        float faithModifier)
-    {
-        AppendSignedInt(parts, extraFaithInHolySite, "Faith in Holy Site");
-        AppendSignedInt(parts, extraFoodInHolySite, "Food in Holy Site");
-        AppendSignedInt(parts, extraProductionInHolySite, "Production in Holy Site");
-        AppendSignedInt(parts, goldPerCity, "Gold per city");
-        AppendSignedInt(parts, culturePerCity, "Culture per city");
-        AppendSignedInt(parts, happinessBonus, "Happiness");
-        AppendSignedInt(parts, combatStrengthNearHolySite, "Combat strength near Holy Site");
-        AppendSignedPercent(parts, growthRateModifier, "Growth");
-        AppendSignedPercent(parts, productionRateModifier, "Production rate");
-        AppendSignedPercent(parts, foodModifier, "Food");
-        AppendSignedPercent(parts, productionModifier, "Production");
-        AppendSignedPercent(parts, goldModifier, "Gold");
-        AppendSignedPercent(parts, scienceModifier, "Science");
-        AppendSignedPercent(parts, cultureModifier, "Culture");
-        AppendSignedPercent(parts, faithModifier, "Faith");
-    }
-
-    private static void AppendImprovementBonuses(List<string> parts, ImprovementYieldBonus[] bonuses, bool compact)
-    {
-        if (bonuses == null || bonuses.Length == 0)
-            return;
-
-        int added = 0;
-        foreach (var bonus in bonuses)
-        {
-            if (bonus == null)
-                continue;
-
-            string summary = FormatImprovementBonus(bonus);
-            if (string.IsNullOrEmpty(summary))
-                continue;
-
-            parts.Add(summary);
-            added++;
-
-            if (compact && added >= 2)
-            {
-                if (bonuses.Length > added)
-                    parts.Add($"+{bonuses.Length - added} more improvement bonus(es)");
-                break;
-            }
-        }
-    }
-
-    private static string FormatImprovementBonus(ImprovementYieldBonus bonus)
-    {
-        if (bonus == null)
-            return string.Empty;
-
-        var yieldParts = new List<string>();
-        AppendYieldValue(yieldParts, bonus.foodAdd, "Food");
-        AppendYieldValue(yieldParts, bonus.productionAdd, "Production");
-        AppendYieldValue(yieldParts, bonus.goldAdd, "Gold");
-        AppendYieldValue(yieldParts, bonus.scienceAdd, "Science");
-        AppendYieldValue(yieldParts, bonus.cultureAdd, "Culture");
-        AppendYieldValue(yieldParts, bonus.faithAdd, "Faith");
-        AppendYieldValue(yieldParts, bonus.policyPointsAdd, "Policy");
-        AppendYieldPercent(yieldParts, bonus.foodPct, "Food");
-        AppendYieldPercent(yieldParts, bonus.productionPct, "Production");
-        AppendYieldPercent(yieldParts, bonus.goldPct, "Gold");
-        AppendYieldPercent(yieldParts, bonus.sciencePct, "Science");
-        AppendYieldPercent(yieldParts, bonus.culturePct, "Culture");
-        AppendYieldPercent(yieldParts, bonus.faithPct, "Faith");
-        AppendYieldPercent(yieldParts, bonus.policyPointsPct, "Policy");
-
-        if (yieldParts.Count == 0)
-            return string.Empty;
-
-        string improvementName = bonus.improvement != null && !string.IsNullOrWhiteSpace(bonus.improvement.improvementName)
-            ? bonus.improvement.improvementName
-            : "Improvements";
-        return $"{improvementName}: {string.Join(", ", yieldParts)}";
-    }
-
-    private static void AppendAttritionBonuses(List<string> parts, AttritionModifierBonus[] bonuses)
-    {
-        if (bonuses == null)
-            return;
-
-        foreach (var bonus in bonuses)
-        {
-            if (bonus == null)
-                continue;
-
-            AppendReduction(parts, bonus.winterDamageReductionPct, "winter attrition");
-            AppendReduction(parts, bonus.famineDamageReductionPct, "famine attrition");
-            AppendReduction(parts, bonus.biomeDamageReductionPct, "biome damage");
-        }
-    }
-
-    private static void AppendHerdYieldBonuses(List<string> parts, HerdYieldBonus[] bonuses, bool compact)
-    {
-        if (bonuses == null || bonuses.Length == 0)
-            return;
-
-        int added = 0;
-        foreach (var bonus in bonuses)
-        {
-            if (bonus == null)
-                continue;
-
-            string summary = FormatHerdYieldBonus(bonus);
-            if (string.IsNullOrEmpty(summary))
-                continue;
-
-            parts.Add(summary);
-            added++;
-
-            if (compact && added >= 2)
-            {
-                if (bonuses.Length > added)
-                    parts.Add($"+{bonuses.Length - added} more herd bonus(es)");
-                break;
-            }
-        }
-    }
-
-    private static string FormatHerdYieldBonus(HerdYieldBonus bonus)
-    {
-        if (bonus == null)
-            return string.Empty;
-
-        var yieldParts = new List<string>();
-        AppendYieldValue(yieldParts, bonus.foodAdd, "Food");
-        AppendYieldValue(yieldParts, bonus.productionAdd, "Production");
-        AppendYieldValue(yieldParts, bonus.goldAdd, "Gold");
-        AppendYieldValue(yieldParts, bonus.scienceAdd, "Science");
-        AppendYieldValue(yieldParts, bonus.cultureAdd, "Culture");
-        AppendYieldValue(yieldParts, bonus.faithAdd, "Faith");
-        AppendYieldValue(yieldParts, bonus.policyPointsAdd, "Policy");
-        AppendYieldPercent(yieldParts, bonus.foodPct, "Food");
-        AppendYieldPercent(yieldParts, bonus.productionPct, "Production");
-        AppendYieldPercent(yieldParts, bonus.goldPct, "Gold");
-        AppendYieldPercent(yieldParts, bonus.sciencePct, "Science");
-        AppendYieldPercent(yieldParts, bonus.culturePct, "Culture");
-        AppendYieldPercent(yieldParts, bonus.faithPct, "Faith");
-        AppendYieldPercent(yieldParts, bonus.policyPointsPct, "Policy");
-
-        if (yieldParts.Count == 0)
-            return string.Empty;
-
-        string speciesLabel = bonus.useSpeciesFilter
-            ? $"Herds ({bonus.species})"
-            : "All Herds";
-        return $"{speciesLabel}: {string.Join(", ", yieldParts)}";
-    }
-
-    private static void AppendSignedInt(List<string> parts, float value, string label)
-    {
-        if (Mathf.Abs(value) <= 0.0001f)
-            return;
-
-        parts.Add($"{(value > 0 ? "+" : string.Empty)}{value:0.##} {label}");
-    }
-
-    private static void AppendSignedPercent(List<string> parts, float value, string label)
-    {
-        if (Mathf.Abs(value) <= 0.0001f)
-            return;
-
-        parts.Add($"{(value > 0 ? "+" : string.Empty)}{value:P0} {label}");
-    }
-
-    private static void AppendReduction(List<string> parts, float value, string label)
-    {
-        if (Mathf.Abs(value) <= 0.0001f)
-            return;
-
-        string prefix = value >= 0f ? "-" : "+";
-        parts.Add($"{prefix}{Mathf.Abs(value):P0} {label}");
-    }
-
-    private static void AppendYieldValue(List<string> parts, int value, string label)
-    {
-        if (value == 0)
-            return;
-
-        parts.Add($"{(value > 0 ? "+" : string.Empty)}{value} {label}");
-    }
-
-    private static void AppendYieldPercent(List<string> parts, float value, string label)
-    {
-        if (Mathf.Abs(value) <= 0.0001f)
-            return;
-
-        parts.Add($"{(value > 0 ? "+" : string.Empty)}{value:P0} {label}");
+        return ReligionEffectDescriptions.BuildPantheonEffectSummary(pantheon, compact);
     }
 
     private void RefreshReligionSummaryText()
@@ -507,6 +385,11 @@ public class ReligionUI : MonoBehaviour
 
         summary.AppendLine($"Founded Religion: {(playerCiv.foundedReligion != null ? playerCiv.foundedReligion.religionName : "None")}");
         summary.AppendLine($"State Religion: {(playerCiv.StateReligion != null ? playerCiv.StateReligion.religionName : "None")}");
+
+        if (religionRequirementsText == null && !string.IsNullOrEmpty(_selectedReligionDetails))
+            summary.AppendLine("\nSelected religion:\n" + _selectedReligionDetails);
+        if (upgradeDetailsText == null && !string.IsNullOrEmpty(_selectedUpgradeDetails))
+            summary.AppendLine("\nSelected upgrade:\n" + _selectedUpgradeDetails);
 
         if (playerCiv.hasFoundedReligion && playerCiv.foundedReligion != null && !string.IsNullOrWhiteSpace(playerCiv.foundedReligion.description))
             summary.AppendLine(playerCiv.foundedReligion.description.Trim());
@@ -620,6 +503,12 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     public void AssignBeliefToCategory(BeliefCategory category, BeliefData belief)
     {
+        if (belief != null && belief.category != category)
+        {
+            ShowActionFeedback($"{belief.beliefName} belongs in {belief.category}, not {category}.");
+            return;
+        }
+        _editingBeliefs = true;
         // Enforce single belief per category at UI-level (replace)
         if (belief == null)
         {
@@ -627,6 +516,7 @@ public class ReligionUI : MonoBehaviour
         }
         else if (playerCiv != null && !playerCiv.CanUseBelief(belief))
         {
+            ShowActionFeedback($"{belief.beliefName} requires a compatible pantheon.");
             return;
         }
         else
@@ -634,6 +524,7 @@ public class ReligionUI : MonoBehaviour
             _assignedBeliefs[category] = belief;
         }
         RefreshBeliefSlots();
+        RefreshBeliefCost();
     }
 
     /// <summary>
@@ -641,79 +532,58 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     public void ClearBeliefCategory(BeliefCategory category)
     {
+        _editingBeliefs = true;
         if (_assignedBeliefs.ContainsKey(category))
             _assignedBeliefs.Remove(category);
         RefreshBeliefSlots();
+        RefreshBeliefCost();
     }
 
     private void OnApplyBeliefsClicked()
     {
         if (playerCiv == null) return;
-
-        int totalFaithCost = 0;
-        foreach (BeliefCategory category in System.Enum.GetValues(typeof(BeliefCategory)))
+        var selection = new Dictionary<BeliefCategory, BeliefData>(_assignedBeliefs);
+        if (!playerCiv.TryApplyCustomBeliefs(selection, out string reason))
         {
-            var currentBelief = playerCiv.GetCustomBeliefInCategory(category);
-            _assignedBeliefs.TryGetValue(category, out var selectedBelief);
-
-            if (currentBelief == selectedBelief || selectedBelief == null)
-                continue;
-
-            totalFaithCost += playerCiv.GetBeliefFaithCost(selectedBelief);
-        }
-
-        if (playerCiv.faith < totalFaithCost)
-        {
-            Debug.LogWarning($"[ReligionUI] Not enough faith to adopt selected beliefs. Need {totalFaithCost}, have {playerCiv.faith}.");
+            ShowActionFeedback(reason);
             return;
         }
-
-        foreach (BeliefCategory category in System.Enum.GetValues(typeof(BeliefCategory)))
-        {
-            if (_assignedBeliefs.ContainsKey(category))
-                continue;
-
-            playerCiv.RemoveCustomBeliefInCategory(category);
-        }
-
-        var failed = new System.Collections.Generic.List<BeliefCategory>();
-        foreach (var kv in _assignedBeliefs)
-        {
-            var cat = kv.Key;
-            var belief = kv.Value;
-            if (belief == null) continue;
-
-            bool ok = playerCiv.SetCustomBelief(cat, belief);
-            if (!ok) failed.Add(cat);
-        }
-
-        if (failed.Count > 0)
-        {
-            Debug.LogWarning($"[ReligionUI] Failed to apply beliefs for categories: {string.Join(",", failed)}.");
-        }
-        else
-        {
-            Debug.Log("[ReligionUI] Beliefs applied to civilization.");
-        }
+        SyncAssignedBeliefsFromCiv();
+        _editingBeliefs = false;
+        RefreshBeliefSlots();
+        UpdateUIState();
+        ShowActionFeedback("Beliefs applied.");
     }
 
     private void OnCancelBeliefsClicked()
     {
-        // Revert assigned beliefs to current civ custom assignments
-        if (playerCiv == null)
-        {
-            _assignedBeliefs.Clear();
-            RefreshBeliefSlots();
-            return;
-        }
-
-        _assignedBeliefs.Clear();
-        foreach (BeliefCategory cat in System.Enum.GetValues(typeof(BeliefCategory)))
-        {
-            var b = playerCiv.GetCustomBeliefInCategory(cat);
-            if (b != null) _assignedBeliefs[cat] = b;
-        }
+        SyncAssignedBeliefsFromCiv();
+        _editingBeliefs = false;
         RefreshBeliefSlots();
+        RefreshBeliefCost();
+        ShowActionFeedback("Pending beliefs canceled.");
+    }
+
+    public void ShowActionFeedback(string message)
+    {
+        if (actionFeedbackText != null) actionFeedbackText.text = message;
+        else UIManager.Instance?.ShowNotification(message);
+    }
+
+    private void RefreshBeliefCost()
+    {
+        long cost = 0;
+        if (playerCiv != null)
+            foreach (var selection in _assignedBeliefs)
+                if (selection.Value != null && playerCiv.GetCustomBeliefInCategory(selection.Key) != selection.Value)
+                    cost += playerCiv.GetBeliefFaithCost(selection.Value);
+        if (beliefCostText != null) beliefCostText.text = $"Pending beliefs: {cost} Faith";
+        else if (applyBeliefsButton != null)
+        {
+            var label = applyBeliefsButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (label != null) label.text = $"Apply ({cost} Faith)";
+        }
+        if (applyBeliefsButton != null) applyBeliefsButton.interactable = playerCiv != null && cost <= playerCiv.faith;
     }
     
     /// <summary>
@@ -723,27 +593,55 @@ public class ReligionUI : MonoBehaviour
     {
         UnsubscribeFromPlayerCiv();
         CloseBeliefPanel();
-        religionPanel.SetActive(false);
+        if (religionPanel != null) religionPanel.SetActive(false);
     }
 
     private void SubscribeToPlayerCiv()
     {
-        if (playerCiv != null)
-            playerCiv.OnBeliefsChanged += HandleBeliefsChanged;
+        if (playerCiv == null || (_subscribedCiv == playerCiv && _subscribedTurnManager == TurnManager.Instance)) return;
+        UnsubscribeFromPlayerCiv();
+        _subscribedCiv = playerCiv;
+        _subscribedCiv.OnBeliefsChanged += HandleBeliefsChanged;
+        _subscribedCiv.OnFaithChanged += HandleFaithChanged;
+        ReligionPoliticsService.OnStateReligionChanged += HandleStateReligionChanged;
+        _subscribedTurnManager = TurnManager.Instance;
+        if (_subscribedTurnManager != null) _subscribedTurnManager.OnTurnChanged += HandleTurnChanged;
     }
 
     private void UnsubscribeFromPlayerCiv()
     {
-        if (playerCiv != null)
-            playerCiv.OnBeliefsChanged -= HandleBeliefsChanged;
+        if (_subscribedCiv != null)
+        {
+            _subscribedCiv.OnBeliefsChanged -= HandleBeliefsChanged;
+            _subscribedCiv.OnFaithChanged -= HandleFaithChanged;
+        }
+        if (_subscribedTurnManager != null) _subscribedTurnManager.OnTurnChanged -= HandleTurnChanged;
+        ReligionPoliticsService.OnStateReligionChanged -= HandleStateReligionChanged;
+        _subscribedCiv = null;
+        _subscribedTurnManager = null;
     }
 
     private void HandleBeliefsChanged()
     {
-        SyncAssignedBeliefsFromCiv();
-        PopulateBeliefList();
-        UpdateUIState();
+        if (!_editingBeliefs)
+        {
+            SyncAssignedBeliefsFromCiv();
+            PopulateBeliefList();
+        }
+        _refreshPending = true;
         RefreshBeliefSlots();
+    }
+
+    private void HandleFaithChanged(int total, int delta) => _refreshPending = true;
+    private void HandleTurnChanged(Civilization civ, int turn) => _refreshPending = true;
+    private void HandleStateReligionChanged(Civilization civ, ReligionData previous, ReligionData current, StateReligionChangeReason reason)
+    {
+        if (civ == playerCiv) _refreshPending = true;
+    }
+
+    private void OnHolySiteSelected(int index)
+    {
+        if (playerCiv != null) RefreshReligionOptions();
     }
 
     private void SyncAssignedBeliefsFromCiv()
@@ -766,248 +664,120 @@ public class ReligionUI : MonoBehaviour
     {
         if (playerCiv == null)
             return;
-
-        if (openBeliefPanelButton != null)
-            openBeliefPanelButton.interactable = true;
-            
-        // Update faith amount and per turn
-        faithAmountText.text = $"Faith: {playerCiv.faith}";
-        
-        // Calculate faith per turn from all cities
+        _refreshPending = false;
+        if (_cachedReligionManager == null) _cachedReligionManager = ReligionManager.Instance;
+        if (openBeliefPanelButton != null) openBeliefPanelButton.interactable = true;
+        if (faithAmountText != null) faithAmountText.text = $"Faith: {playerCiv.faith}";
         int faithPerTurn = 0;
-        foreach (City city in playerCiv.cities)
-        {
-            faithPerTurn += city.GetFaithPerTurn();
-        }
-        faithPerTurnText.text = $"Faith Per Turn: +{faithPerTurn}";
-        
-    // Check pantheon state (support multiple pantheons)
-        if (playerCiv.foundedPantheons == null || playerCiv.foundedPantheons.Count == 0)
-        {
-            // Show pantheon founding panel
-            pantheonFoundingPanel.SetActive(true);
-            religionFoundingPanel.SetActive(false);
-            religionInfoPanel.SetActive(false);
-            
-            // Get available pantheons from ReligionManager, plus any unlocked by adopted cultures
-            availablePantheons = ReligionManager.Instance.GetAvailablePantheons();
-            if (playerCiv.cultureUnlockedPantheons != null)
-            {
-                foreach (var cp in playerCiv.cultureUnlockedPantheons)
-                    if (cp != null && !availablePantheons.Contains(cp)) availablePantheons.Add(cp);
-            }
-            
-            // Update pantheon dropdown
-            pantheonDropdown.ClearOptions();
-            List<string> pantheonNames = new List<string>();
-            foreach (PantheonData pantheon in availablePantheons)
-            {
-                pantheonNames.Add(pantheon.pantheonName);
-            }
-            pantheonDropdown.AddOptions(pantheonNames);
-            
-            // Update cost and button state
-            if (availablePantheons.Count > 0 && pantheonDropdown.value >= 0)
-            {
-                PantheonData selectedPantheon = availablePantheons[pantheonDropdown.value];
-                int cost = playerCiv.GetPantheonCost(selectedPantheon);
-                pantheonCostText.text = $"Cost: {cost} Faith";
-                foundPantheonButton.interactable = playerCiv.faith >= cost;
-            }
-            else
-            {
-                pantheonCostText.text = "No pantheons available";
-                foundPantheonButton.interactable = false;
-            }
-        }
-        else
-        {
-            // Show pantheon info
-            pantheonFoundingPanel.SetActive(false);
-            religionInfoPanel.SetActive(true);
-            // Display the first founded pantheon as the primary one in the UI
-            var primaryPantheon = playerCiv.foundedPantheons != null && playerCiv.foundedPantheons.Count > 0 ? playerCiv.foundedPantheons[0] : null;
-            religionNameText.text = primaryPantheon != null ? primaryPantheon.pantheonName : "-";
-            RefreshReligionSummaryText();
-            
-            if (primaryPantheon != null && primaryPantheon.icon != null)
-                religionIcon.sprite = primaryPantheon.icon;
-            
-            // If player has a pantheon but no religion, show religion founding panel
-            if (!playerCiv.hasFoundedReligion)
-            {
-                // Check if player has researched the required tech or adopted a culture that unlocks religion
-                bool hasUnlockedReligion = false;
-                if (playerCiv.researchedTechs != null)
-                {
-                    foreach (var tech in playerCiv.researchedTechs)
-                    {
-                        if (tech != null && tech.unlocksReligion)
-                        {
-                            hasUnlockedReligion = true;
-                            break;
-                        }
-                    }
-                }
-                if (!hasUnlockedReligion && playerCiv.researchedCultures != null)
-                {
-                    foreach (var cult in playerCiv.researchedCultures)
-                    {
-                        if (cult != null && cult.unlocksReligion)
-                        {
-                            hasUnlockedReligion = true;
-                            break;
-                        }
-                    }
-                }
-                
-                // Only show if they have the tech
-                religionFoundingPanel.SetActive(hasUnlockedReligion);
-                
-                // Get cities with Holy Sites
-                holySiteCities.Clear();
-                foreach (City city in playerCiv.cities)
-                {
-                    if (city.HasHolySite())
-                        holySiteCities.Add(city);
-                }
-                
-                // Update holy site city dropdown
-                holySiteCityDropdown.ClearOptions();
-                
-                if (holySiteCities.Count > 0)
-                {
-                    List<string> cityNames = new List<string>();
-                    foreach (City city in holySiteCities)
-                    {
-                        cityNames.Add(city.cityName);
-                    }
-                    holySiteCityDropdown.AddOptions(cityNames);
-                    
-                    // Enable religion founding if there are holy sites
-                    foundReligionButton.interactable = true;
-                }
-                else
-                {
-                    holySiteCityDropdown.AddOptions(new List<string> { "No Holy Sites" });
-                    foundReligionButton.interactable = false;
-                }
-                
-                // Get available religions from ReligionManager
-                availableReligions.Clear();
-                
-                // Use cached reference to avoid expensive FindAnyObjectByType call
-                if (_cachedReligionManager == null)
-                    _cachedReligionManager = FindAnyObjectByType<ReligionManager>();
-                if (_cachedReligionManager != null)
-                {
-                    availableReligions = _cachedReligionManager.GetAvailableReligions(playerCiv);
-                    availableReligions.RemoveAll(r => r == null);
-                }
-                
-                // Update religion dropdown
-                religionDropdown.ClearOptions();
-                
-                if (availableReligions.Count > 0)
-                {
-                    List<string> religionNames = new List<string>();
-                    foreach (ReligionData religion in availableReligions)
-                    {
-                        religionNames.Add(religion.religionName);
-                    }
-                    
-                    if (religionNames.Count > 0)
-                    {
-                        religionDropdown.AddOptions(religionNames);
-                        OnReligionSelected(0); // Update cost display
-                    }
-                    else
-                    {
-                        religionDropdown.AddOptions(new List<string> { "No Available Religions" });
-                        foundReligionButton.interactable = false;
-                    }
-                }
-                else
-                {
-                    religionDropdown.AddOptions(new List<string> { "No Available Religions" });
-                    foundReligionButton.interactable = false;
-                }
-            }
-            else
-            {
-                // Player already has a religion
-                religionFoundingPanel.SetActive(false);
-                
-                // Update religion info
-                religionNameText.text = playerCiv.foundedReligion.religionName;
-                RefreshReligionSummaryText();
-                
-                if (playerCiv.foundedReligion.icon != null)
-                    religionIcon.sprite = playerCiv.foundedReligion.icon;
-                
-                // Get cities with Holy Sites
-                holySiteCities.Clear();
-                foreach (City city in playerCiv.cities)
-                {
-                    if (city.HasHolySite())
-                        holySiteCities.Add(city);
-                }
-                
-                // Update holy site city dropdown
-                holySiteCityDropdown.ClearOptions();
-                
-                if (holySiteCities.Count > 0)
-                {
-                    List<string> cityNames = new List<string>();
-                    foreach (City city in holySiteCities)
-                    {
-                        cityNames.Add(city.cityName);
-                    }
-                    holySiteCityDropdown.AddOptions(cityNames);
-                    
-                    // Enable religion founding if there are holy sites
-                    foundReligionButton.interactable = true;
-                }
-                else
-                {
-                    holySiteCityDropdown.AddOptions(new List<string> { "No Holy Sites" });
-                    foundReligionButton.interactable = false;
-                }
-            }
-        }
-            // Populate pantheon upgrade UI: list founded pantheons that are spirits and can upgrade
-            if (pantheonUpgradePanel != null && pantheonUpgradeDropdown != null && upgradePantheonButton != null && upgradeInfoText != null)
-            {
-                var upgradable = new List<PantheonData>();
-                if (playerCiv.foundedPantheons != null)
-                {
-                    foreach (var p in playerCiv.foundedPantheons)
-                    {
-                        if (p == null) continue;
-                        if (p.IsSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
-                            upgradable.Add(p);
-                    }
-                }
+        if (playerCiv.cities != null)
+            foreach (var city in playerCiv.cities)
+                if (city != null) faithPerTurn += city.GetFaithPerTurn();
+        if (faithPerTurnText != null) faithPerTurnText.text = $"Faith Per Turn: {faithPerTurn:+0;-0;0}";
 
-                if (upgradable.Count > 0)
+        RefreshPantheonOptions();
+        RefreshReligionOptions();
+        RefreshReligionIdentity();
+        RefreshBeliefCost();
+        _cityReligions = ReligionPresentation.BuildCityOverview(playerCiv, _cachedReligionManager).AsReadOnly();
+        if (cityReligionOverviewText != null) cityReligionOverviewText.text = ReligionPresentation.CityOverviewText(_cityReligions);
+    }
+
+    private static T Selected<T>(TMP_Dropdown dropdown, IList<T> options) where T : class
+    {
+        return dropdown != null && dropdown.value >= 0 && dropdown.value < options.Count ? options[dropdown.value] : null;
+    }
+
+    private static void SetOptions(TMP_Dropdown dropdown, List<TMP_Dropdown.OptionData> options, int index, string emptyText)
+    {
+        if (dropdown == null) return;
+        dropdown.ClearOptions();
+        dropdown.AddOptions(options.Count > 0 ? options : new List<TMP_Dropdown.OptionData> { new TMP_Dropdown.OptionData(emptyText) });
+        dropdown.SetValueWithoutNotify(Mathf.Max(0, index));
+        dropdown.interactable = options.Count > 0;
+        dropdown.RefreshShownValue();
+    }
+
+    private void RefreshPantheonOptions()
+    {
+        var previous = Selected(pantheonDropdown, availablePantheons);
+        availablePantheons = _cachedReligionManager != null ? _cachedReligionManager.GetAvailablePantheons() : new List<PantheonData>();
+        if (playerCiv.cultureUnlockedPantheons != null)
+            foreach (var pantheon in playerCiv.cultureUnlockedPantheons)
+                if (pantheon != null && pantheon.IsSpirit && !availablePantheons.Contains(pantheon) &&
+                    (_cachedReligionManager == null || !_cachedReligionManager.IsPantheonClaimed(pantheon))) availablePantheons.Add(pantheon);
+        availablePantheons.RemoveAll(pantheon => pantheon == null || (playerCiv.foundedPantheons != null && playerCiv.foundedPantheons.Contains(pantheon)));
+        var options = new List<TMP_Dropdown.OptionData>();
+        foreach (var pantheon in availablePantheons) options.Add(new TMP_Dropdown.OptionData(pantheon.pantheonName, pantheon.icon, Color.white));
+        SetOptions(pantheonDropdown, options, availablePantheons.IndexOf(previous), "No unclaimed pantheons");
+        if (pantheonFoundingPanel != null) pantheonFoundingPanel.SetActive(true);
+        OnPantheonSelected(pantheonDropdown != null ? pantheonDropdown.value : -1);
+
+        var previousUpgrade = Selected(pantheonUpgradeDropdown, _upgradeOptions);
+        _upgradeOptions.Clear();
+        options = new List<TMP_Dropdown.OptionData>();
+        if (playerCiv.foundedPantheons != null)
+            foreach (var pantheon in playerCiv.foundedPantheons)
+                if (pantheon != null && pantheon.IsSpirit && pantheon.canUpgradeToGod && pantheon.upgradedPantheon != null)
                 {
-                    pantheonUpgradePanel.SetActive(true);
-                    pantheonUpgradeDropdown.ClearOptions();
-                    List<string> names = new List<string>();
-                    foreach (var p in upgradable) names.Add(p.pantheonName);
-                    pantheonUpgradeDropdown.AddOptions(names);
-                    pantheonUpgradeDropdown.value = 0;
-                    pantheonUpgradeDropdown.RefreshShownValue();
-                    upgradePantheonButton.interactable = true;
-                    // Show info for first
-                    var sel = upgradable[0];
-                    upgradeInfoText.text = sel.upgradedPantheon != null ? $"Upgrades to: {sel.upgradedPantheon.pantheonName}" : "No upgrade configured.";
+                    _upgradeOptions.Add(pantheon);
+                    options.Add(new TMP_Dropdown.OptionData(pantheon.pantheonName, pantheon.icon, Color.white));
                 }
-                else
+        SetOptions(pantheonUpgradeDropdown, options, _upgradeOptions.IndexOf(previousUpgrade), "No upgrades available");
+        if (pantheonUpgradePanel != null) pantheonUpgradePanel.SetActive(_upgradeOptions.Count > 0);
+        OnPantheonUpgradeSelected(pantheonUpgradeDropdown != null ? pantheonUpgradeDropdown.value : -1);
+    }
+
+    private void RefreshReligionOptions()
+    {
+        var previousCity = Selected(holySiteCityDropdown, holySiteCities);
+        holySiteCities.Clear();
+        var options = new List<TMP_Dropdown.OptionData>();
+        if (playerCiv.cities != null)
+            foreach (var city in playerCiv.cities)
+                if (city != null && city.owner == playerCiv && city.HasHolySite())
                 {
-                    pantheonUpgradePanel.SetActive(false);
+                    holySiteCities.Add(city);
+                    options.Add(new TMP_Dropdown.OptionData(city.cityName));
                 }
+        SetOptions(holySiteCityDropdown, options, holySiteCities.IndexOf(previousCity), "No Holy Sites");
+        var previousReligion = Selected(religionDropdown, availableReligions);
+        availableReligions.Clear();
+        _religionOptions.Clear();
+        options = new List<TMP_Dropdown.OptionData>();
+        var religions = ResourceCache.GetAllReligionData();
+        if (religions != null)
+            foreach (var religion in religions)
+            {
+                if (religion == null || availableReligions.Contains(religion)) continue;
+                var info = new ReligionFoundingInfo(playerCiv, religion, Selected(holySiteCityDropdown, holySiteCities), _cachedReligionManager);
+                availableReligions.Add(religion);
+                _religionOptions.Add(info);
+                options.Add(new TMP_Dropdown.OptionData($"{info.Name} ({info.FaithCost} Faith) - {(info.IsFounded ? "Founded" : info.Availability.CanFound ? "Available" : "Locked")}", info.Icon, Color.white));
             }
+        SetOptions(religionDropdown, options, availableReligions.IndexOf(previousReligion), "No religions configured");
+        if (religionFoundingPanel != null) religionFoundingPanel.SetActive(true);
+        OnReligionSelected(religionDropdown != null ? religionDropdown.value : -1);
+    }
+
+    private void RefreshReligionIdentity()
+    {
+        if (religionInfoPanel != null) religionInfoPanel.SetActive(true);
+        string founded = $"Founded religion: {ReligionPresentation.ReligionName(playerCiv.foundedReligion)}";
+        string state = $"State religion: {ReligionPresentation.ReligionName(playerCiv.StateReligion)}";
+        if (foundedReligionText != null) foundedReligionText.text = founded;
+        if (stateReligionText != null) stateReligionText.text = state;
+        if (religionNameText != null) religionNameText.text = founded + "\n" + state;
+        if (religionIcon != null)
+        {
+            religionIcon.sprite = playerCiv.foundedReligion != null ? playerCiv.foundedReligion.icon : null;
+            religionIcon.enabled = religionIcon.sprite != null;
+        }
+        var owned = new List<string>();
+        if (playerCiv.foundedPantheons != null)
+            foreach (var pantheon in playerCiv.foundedPantheons)
+                if (pantheon != null) owned.Add($"{pantheon.pantheonName} ({pantheon.tier})");
+        if (foundedPantheonsText != null) foundedPantheonsText.text = owned.Count > 0 ? string.Join("\n", owned) : "No pantheons founded.";
+        RefreshReligionSummaryText();
     }
 
     /// <summary>
@@ -1015,27 +785,24 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     private void OnPantheonUpgradeSelected(int index)
     {
-        if (playerCiv == null || pantheonUpgradeDropdown == null || pantheonUpgradePanel == null) return;
-        // Rebuild the same eligible list to find selected asset
-        var upgradable = new List<PantheonData>();
-        if (playerCiv.foundedPantheons != null)
+        if (playerCiv == null) return;
+        if (index < 0 || index >= _upgradeOptions.Count)
         {
-            foreach (var p in playerCiv.foundedPantheons)
-            {
-                if (p == null) continue;
-                if (p.IsSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
-                    upgradable.Add(p);
-            }
-        }
-        if (index < 0 || index >= upgradable.Count)
-        {
-            upgradeInfoText.text = "";
-            upgradePantheonButton.interactable = false;
+            _selectedUpgradeDetails = string.Empty;
+            if (upgradeDetailsText != null) upgradeDetailsText.text = string.Empty;
+            if (upgradeInfoText != null) upgradeInfoText.text = "No upgrades available.";
+            if (upgradePantheonButton != null) upgradePantheonButton.interactable = false;
             return;
         }
-        var selected = upgradable[index];
-        upgradeInfoText.text = selected.upgradedPantheon != null ? $"Upgrades to: {selected.upgradedPantheon.pantheonName}" : "No upgrade configured.";
-        upgradePantheonButton.interactable = true;
+        var spirit = _upgradeOptions[index];
+        var god = spirit.upgradedPantheon;
+        bool canUpgrade = playerCiv.CanUpgradePantheon(spirit, out string reason);
+        if (upgradePantheonButton != null) upgradePantheonButton.interactable = canUpgrade;
+        _selectedUpgradeDetails = $"{spirit.pantheonName} -> {god.pantheonName}\nCost: {god.faithCost} Faith\nRequires: owned Spirit with a configured God upgrade.\n{(canUpgrade ? "Available" : reason)}\n{BuildPantheonEffectSummary(god)}";
+        if (upgradeDetailsText != null) upgradeDetailsText.text = _selectedUpgradeDetails;
+        if (upgradeInfoText != null)
+            upgradeInfoText.text = $"{spirit.pantheonName} -> {god.pantheonName}\n{god.faithCost} Faith | {(canUpgrade ? "Available" : "Locked")}";
+        RefreshReligionSummaryText();
     }
 
     /// <summary>
@@ -1043,27 +810,15 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     private void OnUpgradePantheonClicked()
     {
-        if (playerCiv == null || pantheonUpgradeDropdown == null) return;
-        // Find selected pantheon in the eligible list
-        var upgradable = new List<PantheonData>();
-        if (playerCiv.foundedPantheons != null)
+        if (playerCiv == null) return;
+        var spirit = Selected(pantheonUpgradeDropdown, _upgradeOptions);
+        if (!playerCiv.CanUpgradePantheon(spirit, out string reason))
         {
-            foreach (var p in playerCiv.foundedPantheons)
-            {
-                if (p == null) continue;
-                if (p.IsSpirit && p.canUpgradeToGod && p.upgradedPantheon != null)
-                    upgradable.Add(p);
-            }
+            ShowActionFeedback(reason);
+            return;
         }
-        int idx = pantheonUpgradeDropdown.value;
-        if (idx < 0 || idx >= upgradable.Count) return;
-        var toUpgrade = upgradable[idx];
-        bool ok = playerCiv.UpgradePantheon(toUpgrade);
-        if (ok)
-        {
-            // Refresh UI state
-            UpdateUIState();
-        }
+        ShowActionFeedback(playerCiv.UpgradePantheon(spirit) ? "Pantheon upgraded." : "Pantheon upgrade failed.");
+        UpdateUIState();
     }
     
     /// <summary>
@@ -1071,16 +826,20 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     private void OnPantheonSelected(int index)
     {
-        if (index < 0 || index >= availablePantheons.Count)
-            return;
-            
-        PantheonData selectedPantheon = availablePantheons[index];
-
-        // Update cost text
-        pantheonCostText.text = $"Cost: {selectedPantheon.faithCost} Faith";
-
-        // Enable found button if player has enough faith
-        foundPantheonButton.interactable = playerCiv.faith >= selectedPantheon.faithCost;
+        if (playerCiv == null) return;
+        string count = $"Pantheons: {playerCiv.foundedPantheons?.Count ?? 0} / {playerCiv.CurrentPantheonCap}";
+        if (pantheonCountText != null) pantheonCountText.text = count;
+        string reason = playerCiv.CanFoundMorePantheons() ? "No unclaimed pantheons available." : "Pantheon capacity reached.";
+        bool canFound = false;
+        string details = string.Empty;
+        if (index >= 0 && index < availablePantheons.Count)
+        {
+            var pantheon = availablePantheons[index];
+            canFound = playerCiv.CanFoundPantheon(pantheon, out reason);
+            details = $"\nCost: {playerCiv.GetPantheonCost(pantheon)} Faith";
+        }
+        if (pantheonCostText != null) pantheonCostText.text = count + details + "\n" + (canFound ? "Available" : reason);
+        if (foundPantheonButton != null) foundPantheonButton.interactable = canFound;
     }
     
     /// <summary>
@@ -1088,17 +847,29 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     private void OnReligionSelected(int index)
     {
+        if (playerCiv == null) return;
         if (index < 0 || index >= availableReligions.Count)
+        {
+            _selectedReligionDetails = string.Empty;
+            if (religionRequirementsText != null) religionRequirementsText.text = string.Empty;
+            if (religionCostText != null) religionCostText.text = "No religions configured.";
+            if (foundReligionButton != null) foundReligionButton.interactable = false;
+            if (selectedReligionIcon != null) selectedReligionIcon.enabled = false;
             return;
-            
-        ReligionData selectedReligion = availableReligions[index];
-        
-        // Update cost text
-        religionCostText.text = $"Cost: {selectedReligion.faithCost} Faith";
-        
-        // Enable found button if player has enough faith
-        foundReligionButton.interactable = playerCiv.faith >= selectedReligion.faithCost &&
-                                          holySiteCities.Count > 0;
+        }
+        var info = new ReligionFoundingInfo(playerCiv, availableReligions[index], Selected(holySiteCityDropdown, holySiteCities), _cachedReligionManager);
+        if (index < _religionOptions.Count) _religionOptions[index] = info;
+        _selectedReligionDetails = $"{info.Name}\nCost: {info.FaithCost} Faith\n{info.Requirements}\nAlready founded: {(info.IsFounded ? "Yes" : "No")}\n{(info.Availability.CanFound ? "Available" : info.Availability.FailureReason)}";
+        if (religionRequirementsText != null) religionRequirementsText.text = _selectedReligionDetails;
+        if (religionCostText != null)
+            religionCostText.text = $"Cost: {info.FaithCost} Faith | {(info.Availability.CanFound ? "Available" : info.Availability.FailureReason)}";
+        if (selectedReligionIcon != null)
+        {
+            selectedReligionIcon.sprite = info.Icon;
+            selectedReligionIcon.enabled = info.Icon != null;
+        }
+        if (foundReligionButton != null) foundReligionButton.interactable = info.Availability.CanFound;
+        RefreshReligionSummaryText();
     }
     
     /// <summary>
@@ -1106,17 +877,15 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     private void OnFoundPantheonClicked()
     {
-        if (pantheonDropdown.value < 0 || pantheonDropdown.value >= availablePantheons.Count)
-            return;
-
-        PantheonData selectedPantheon = availablePantheons[pantheonDropdown.value];
-
-        // Attempt to found the pantheon
-        if (playerCiv.FoundPantheon(selectedPantheon))
+        if (playerCiv == null) return;
+        var pantheon = Selected(pantheonDropdown, availablePantheons);
+        if (!playerCiv.CanFoundPantheon(pantheon, out string reason))
         {
-            // Update UI if successful
-            UpdateUIState();
+            ShowActionFeedback(reason);
+            return;
         }
+        ShowActionFeedback(playerCiv.FoundPantheon(pantheon) ? "Pantheon founded." : "Pantheon founding failed.");
+        UpdateUIState();
     }
     
     /// <summary>
@@ -1124,27 +893,17 @@ public class ReligionUI : MonoBehaviour
     /// </summary>
     private void OnFoundReligionClicked()
     {
-        if (religionDropdown.value < 0 || religionDropdown.value >= availableReligions.Count ||
-            holySiteCityDropdown.value < 0 || holySiteCityDropdown.value >= holySiteCities.Count)
-            return;
-            
-        ReligionData selectedReligion = availableReligions[religionDropdown.value];
-        City selectedCity = holySiteCities[holySiteCityDropdown.value];
-        
-        // Attempt to found the religion
-        if (playerCiv.FoundReligion(selectedReligion, selectedCity))
+        if (playerCiv == null) return;
+        var religion = Selected(religionDropdown, availableReligions);
+        var city = Selected(holySiteCityDropdown, holySiteCities);
+        var availability = _cachedReligionManager != null ? _cachedReligionManager.CanFoundReligion(playerCiv, religion, city, true)
+            : ReligionAvailabilityResult.Fail("Religion manager is unavailable.");
+        if (!availability.CanFound)
         {
-            // Register the new religion with the ReligionManager
-            // Use cached reference to avoid expensive FindAnyObjectByType call
-            if (_cachedReligionManager == null)
-                _cachedReligionManager = FindAnyObjectByType<ReligionManager>();
-            if (_cachedReligionManager != null)
-            {
-                _cachedReligionManager.RegisterFoundedReligion(selectedReligion, playerCiv);
-            }
-            
-            // Update UI if successful
-            UpdateUIState();
+            ShowActionFeedback(availability.FailureReason);
+            return;
         }
+        ShowActionFeedback(playerCiv.FoundReligion(religion, city) ? "Religion founded." : "Religion founding failed.");
+        UpdateUIState();
     }
 }

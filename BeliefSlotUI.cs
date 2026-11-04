@@ -28,6 +28,11 @@ public class BeliefSlotUI : MonoBehaviour, IDropHandler
         if (eventData.pointerDrag == null) return;
         var btn = eventData.pointerDrag.GetComponent<BeliefButtonUI>();
         if (btn == null || btn.belief == null) return;
+        if (btn.belief.category != category)
+        {
+            owner?.ShowActionFeedback($"{btn.belief.beliefName} belongs in {btn.belief.category}, not {category}.");
+            return;
+        }
 
         // Notify owner to assign
         owner?.AssignBeliefToCategory(category, btn.belief);

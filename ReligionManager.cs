@@ -291,6 +291,17 @@ public class ReligionManager : MonoBehaviour
         
         return result;
     }
+
+    public bool IsPantheonClaimed(PantheonData pantheon)
+    {
+        if (pantheon == null) return false;
+        if (cachedCivManager == null) cachedCivManager = CivilizationManager.Instance;
+        if (cachedCivManager == null) cachedCivManager = FindAnyObjectByType<CivilizationManager>();
+        if (cachedCivManager == null) return false;
+        foreach (var civ in cachedCivManager.civilizations)
+            if (civ != null && civ.foundedPantheons != null && civ.foundedPantheons.Contains(pantheon)) return true;
+        return false;
+    }
     
     /// <summary>
     /// Get all religions that have not yet been founded and are currently available to the given civilization.
@@ -350,6 +361,8 @@ public class ReligionManager : MonoBehaviour
         if (requireHolySite)
         {
             if (holySiteCity == null) return ReligionAvailabilityResult.Fail("A Holy Site city is required.");
+            if (holySiteCity.owner != civ || civ.cities == null || !civ.cities.Contains(holySiteCity))
+                return ReligionAvailabilityResult.Fail("The Holy Site city must belong to this civilization.");
             var ts = TileSystem.GetForPlanet(holySiteCity.planetIndex) ?? TileSystem.Instance;
             if (ts?.GetTileData(holySiteCity.centerTileIndex)?.HasHolySite != true)
                 return ReligionAvailabilityResult.Fail("The selected city has no Holy Site.");

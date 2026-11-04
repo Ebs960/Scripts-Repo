@@ -2855,31 +2855,59 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public bool SetCustomBelief(BeliefCategory category, BeliefData belief)
     {
-        if (belief == null) return RemoveCustomBeliefInCategory(category);
+        var proposed = new Dictionary<BeliefCategory, BeliefData>();
+        foreach (BeliefCategory existingCategory in Enum.GetValues(typeof(BeliefCategory)))
+            proposed[existingCategory] = GetCustomBeliefInCategory(existingCategory);
+        proposed[category] = belief;
+        return TryApplyCustomBeliefs(proposed, out _);
+    }
 
-        if (!CanUseBelief(belief))
+    public bool TryApplyCustomBeliefs(IDictionary<BeliefCategory, BeliefData> proposed, out string failureReason)
+    {
+        failureReason = null;
+        if (proposed == null)
+        {
+            failureReason = "No belief selection was supplied.";
             return false;
+        }
 
-        var currentBelief = GetCustomBeliefInCategory(category);
-        if (currentBelief == belief)
-            return true;
-
-        int faithCost = GetBeliefFaithCost(belief);
-        if (faith < faithCost)
+        var snapshot = new Dictionary<BeliefCategory, BeliefData>(proposed);
+        var selected = new List<BeliefData>();
+        long totalCost = 0;
+        foreach (var selection in snapshot)
+        {
+            var belief = selection.Value;
+            if (!Enum.IsDefined(typeof(BeliefCategory), selection.Key) ||
+                (belief != null && (belief.category != selection.Key || !CanUseBelief(belief) || selected.Contains(belief))))
+            {
+                failureReason = $"Invalid or unavailable belief for {selection.Key}.";
+                return false;
+            }
+            if (belief == null) continue;
+            selected.Add(belief);
+            if (GetCustomBeliefInCategory(selection.Key) != belief)
+                totalCost += GetBeliefFaithCost(belief);
+        }
+        if (totalCost > faith)
+        {
+            failureReason = $"Not enough Faith. Need {totalCost}, have {faith}.";
             return false;
+        }
 
-        // Remove any existing custom belief in this category
-        RemoveCustomBeliefInCategoryInternal(category, false);
+        bool changed = customAssignedBeliefs == null ? selected.Count > 0 : customAssignedBeliefs.Count != selected.Count;
+        if (!changed)
+            foreach (var belief in selected)
+                if (!customAssignedBeliefs.Contains(belief)) { changed = true; break; }
+        if (!changed) return true;
 
-        if (customAssignedBeliefs == null) customAssignedBeliefs = new List<BeliefData>();
-        customAssignedBeliefs.Add(belief);
-
-        if (faithCost > 0)
-            AddFaith(-faithCost);
-
-        UpdateFaithYieldModifier();
+        customAssignedBeliefs = selected;
+        faith -= (int)totalCost;
+        UpdateFaithYieldModifier(false);
         PolicyManager.Instance?.RevalidateActivePolicies(this);
         RefreshVisionFromChangedSightBonuses();
+        NotifyBeliefsChanged();
+        if (totalCost > 0)
+            OnFaithChanged?.Invoke(faith, -(int)totalCost);
         return true;
     }
 
@@ -2888,28 +2916,7 @@ public class Civilization : MonoBehaviour
     /// </summary>
     public bool RemoveCustomBeliefInCategory(BeliefCategory category)
     {
-        return RemoveCustomBeliefInCategoryInternal(category, true);
-    }
-
-    private bool RemoveCustomBeliefInCategoryInternal(BeliefCategory category, bool updateModifiers)
-    {
-        if (customAssignedBeliefs == null) return true;
-        for (int i = customAssignedBeliefs.Count - 1; i >= 0; i--)
-        {
-            var b = customAssignedBeliefs[i];
-            if (b != null && b.category == category)
-            {
-                customAssignedBeliefs.RemoveAt(i);
-                if (updateModifiers)
-                {
-                    UpdateFaithYieldModifier();
-                    PolicyManager.Instance?.RevalidateActivePolicies(this);
-                    RefreshVisionFromChangedSightBonuses();
-                }
-                return true;
-            }
-        }
-        return true;
+        return SetCustomBelief(category, null);
     }
 
     public bool IsCapitalCity(City city)
@@ -4551,9 +4558,20 @@ public class Civilization : MonoBehaviour
     /// <summary>
     /// Attempt to found a Pantheon (requires enough faith and prerequisite tech).
     /// </summary>
-    public bool FoundPantheon(PantheonData pantheon)
+    public bool CanFoundPantheon(PantheonData pantheon, out string failureReason)
     {
-        if (pantheon == null || !pantheon.IsSpirit) return false;
+        failureReason = null;
+        if (pantheon == null || !pantheon.IsSpirit)
+        {
+            failureReason = "Only a Spirit pantheon can be founded.";
+            return false;
+        }
+        if ((foundedPantheons != null && foundedPantheons.Contains(pantheon)) ||
+            (ReligionManager.Instance != null && ReligionManager.Instance.IsPantheonClaimed(pantheon)))
+        {
+            failureReason = "This pantheon is already claimed.";
+            return false;
+        }
         // Check if the civilization meets a pantheon founding prereq:
         // either a tech that unlocks religion or an adopted culture that unlocks pantheons.
         bool hasPantheonPrereq = false;
@@ -4583,23 +4601,33 @@ public class Civilization : MonoBehaviour
 
         if (!hasPantheonPrereq)
         {
-return false;
+            failureReason = "Requires a technology that unlocks religion or a culture that unlocks pantheons.";
+            return false;
         }
         
         // Check pantheon cap
         if (!CanFoundMorePantheons())
         {
-return false;
+            failureReason = "Pantheon capacity reached.";
+            return false;
         }
         
         // Check if has enough faith
-        if (faith < pantheon.faithCost)
+        if (faith < GetPantheonCost(pantheon))
         {
-return false;
+            failureReason = "Insufficient Faith.";
+            return false;
         }
+        return true;
+    }
+
+    public bool FoundPantheon(PantheonData pantheon)
+    {
+        if (!CanFoundPantheon(pantheon, out _)) return false;
         
         // Found the pantheon: pay faith cost and add to list
-        faith -= pantheon.faithCost;
+        int cost = GetPantheonCost(pantheon);
+        faith -= cost;
         if (foundedPantheons == null) foundedPantheons = new List<PantheonData>();
         foundedPantheons.Add(pantheon);
 
@@ -4608,6 +4636,7 @@ return false;
         PolicyManager.Instance?.RevalidateActivePolicies(this);
         OnPantheonFounded?.Invoke(this, pantheon);
         RefreshVisionFromChangedSightBonuses();
+        if (cost != 0) OnFaithChanged?.Invoke(faith, -cost);
         return true;
     }
     
@@ -4653,6 +4682,7 @@ return false;
             city.UpdateAvailableBuildings();
         }
         RefreshVisionFromChangedSightBonuses();
+        if (religion.faithCost != 0) OnFaithChanged?.Invoke(faith, -religion.faithCost);
 return true;
     }
 
@@ -4668,14 +4698,22 @@ return true;
     /// <summary>
     /// Upgrade an existing founded pantheon (spirit) into its upgraded pantheon (God), if available.
     /// </summary>
+    public bool CanUpgradePantheon(PantheonData spiritPantheon, out string failureReason)
+    {
+        failureReason = null;
+        if (spiritPantheon == null || foundedPantheons == null || !foundedPantheons.Contains(spiritPantheon))
+            failureReason = "Requires an owned Spirit pantheon.";
+        else if (!spiritPantheon.IsSpirit || !spiritPantheon.canUpgradeToGod || spiritPantheon.upgradedPantheon == null || !spiritPantheon.upgradedPantheon.IsGod)
+            failureReason = "No God upgrade is available for this pantheon.";
+        else if (faith < spiritPantheon.upgradedPantheon.faithCost)
+            failureReason = "Insufficient Faith.";
+        return failureReason == null;
+    }
+
     public bool UpgradePantheon(PantheonData spiritPantheon)
     {
-        if (spiritPantheon == null) return false;
-        if (foundedPantheons == null || !foundedPantheons.Contains(spiritPantheon)) return false;
-        if (!spiritPantheon.IsSpirit || !spiritPantheon.canUpgradeToGod || spiritPantheon.upgradedPantheon == null) return false;
-
+        if (!CanUpgradePantheon(spiritPantheon, out _)) return false;
         var god = spiritPantheon.upgradedPantheon;
-        if (!god.IsGod || faith < god.faithCost) return false;
 
         // Replace in the list, preserving order (replace first occurrence)
         int idx = foundedPantheons.IndexOf(spiritPantheon);
@@ -4691,18 +4729,19 @@ return true;
         PolicyManager.Instance?.RevalidateActivePolicies(this);
         RefreshVisionFromChangedSightBonuses();
         OnPantheonFounded?.Invoke(this, god);
+        if (god.faithCost != 0) OnFaithChanged?.Invoke(faith, -god.faithCost);
         return true;
     }
     
     /// <summary>
     /// Update faith yield modifier based on pantheon and religion beliefs
     /// </summary>
-    private void UpdateFaithYieldModifier() // Renaming and repurposing for Beliefs
+    private void UpdateFaithYieldModifier(bool notifyListeners = true)
     {
         RecalculateCivilizationModifiers();
         RefreshUnlockedContentLists();
         InvalidateAvailabilityCache();
-        NotifyBeliefsChanged();
+        if (notifyListeners) NotifyBeliefsChanged();
     }
     
     /// <summary>
