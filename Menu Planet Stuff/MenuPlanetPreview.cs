@@ -385,6 +385,7 @@ public class MenuPlanetPreview : MonoBehaviour
     private static readonly int ID_Temperature   = Shader.PropertyToID("_Temperature");
     private static readonly int ID_Moisture      = Shader.PropertyToID("_Moisture");
     private static readonly int ID_WaterwayAmount = Shader.PropertyToID("_WaterwayAmount");
+    private static readonly int ID_GeneratedWaterwayVisibility = Shader.PropertyToID("_GeneratedWaterwayVisibility");
     private static readonly int ID_Elevation     = Shader.PropertyToID("_Elevation");
     private static readonly int ID_MapStyle     = Shader.PropertyToID("_MapStyle");
     private static readonly int ID_OceanColor   = Shader.PropertyToID("_OceanColor");
@@ -1345,6 +1346,9 @@ public void SetWorldSeed(int worldSeed, bool randomSeed, bool forceReroll = fals
         float visualClimateScale = Mathf.Lerp(0.78f, 1.0f, climateFlowCapacity);
         float waterwayAmount = Mathf.Clamp01(baseWaterwayAmount * visualClimateScale);
         materialInstance.SetFloat(ID_WaterwayAmount, waterwayAmount);
+        // Generated (GPU) hydrology already applies the waterways preset in its thresholds; the shader only
+        // trims low-significance features (wetlands, smallest tributaries) in cold/arid climates.
+        materialInstance.SetFloat(ID_GeneratedWaterwayVisibility, Mathf.Lerp(0.6f, 1f, climateFlowCapacity));
         PushInfernalTextureParameters();
         
         // Mirror detail props to shader so inspector updates apply immediately

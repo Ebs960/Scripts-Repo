@@ -86,10 +86,28 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     [Header("GPU Hydrology")]
     [SerializeField] private bool useGpuHydrologyPreview = true;
     [SerializeField] private ComputeShader menuPlanetPreviewHydrologyCompute;
-    [SerializeField, Range(2, 384)] private int gpuDrainageFillIterations = 192;
-    [SerializeField, Range(2, 384)] private int gpuFlowAccumulationIterations = 192;
-    [SerializeField, Range(0f, 5f)] private float gpuHydroRoutingJitter = 0.015f;
-    [SerializeField, Range(0f, 6f)] private float gpuLakeShorelineWarpPixels = 1.5f;
+    [Tooltip("Hydrology analysis grid = map resolution / divisor. 4 => 512x256 for a 2048x1024 map (baseline).")]
+    [SerializeField, Range(1, 8)] private int gpuHydrologyAnalysisDivisor = 4;
+    [Tooltip("Upper bound on drainage-fill passes. Relaxation stops early on the GPU once no cell changes.")]
+    [SerializeField, Range(8, 4096)] private int gpuDrainageFillIterations = 768;
+    [Tooltip("Upper bound on flow-accumulation passes. Relaxation stops early on the GPU once no cell changes.")]
+    [SerializeField, Range(8, 4096)] private int gpuFlowAccumulationIterations = 768;
+    [Tooltip("Raises the iteration caps to at least analysisWidth + analysisHeight so large continents can fully converge.")]
+    [SerializeField] private bool gpuHydrologyAutoIterationBudget = true;
+    [Tooltip("0..1 weight of a coherent preference field that bends rivers between strictly-downhill neighbours.")]
+    [SerializeField, Range(0f, 1f)] private float gpuHydroRoutingJitter = 0.35f;
+    [Tooltip("Amplitude (pixels) of the coherent multi-scale shoreline warp applied to lakes.")]
+    [SerializeField, Range(0f, 6f)] private float gpuLakeShorelineWarpPixels = 3.5f;
+    [Tooltip("Amplitude (pixels) of coherent bank wander applied to river ribbons at full resolution.")]
+    [SerializeField, Range(0f, 4f)] private float gpuRiverMeanderPixels = 1.2f;
+    [Tooltip("Minimum connected lake area (analysis cells) for a depression to render as a lake instead of wetland.")]
+    [SerializeField, Range(1, 64)] private int gpuLakeMinAreaCells = 6;
+    [Tooltip("Per-cell inflow loss across filled basins in fully arid climates (scaled by aridity^2). Lets enclosed basins become terminal lakes.")]
+    [SerializeField, Range(0f, 0.3f)] private float gpuLakeEvaporationLoss = 0.12f;
+    [Tooltip("Lowers lake surfaces below their spill level in arid climates (height units at full aridity).")]
+    [SerializeField, Range(0f, 0.05f)] private float gpuTerminalLakeAridDrop = 0.012f;
+    [Tooltip("Debug only: forces a GPU sync after each hydrology phase to log timings and convergence pass counts.")]
+    [SerializeField] private bool logHydrologyPhaseDiagnostics = false;
     [Header("Terrain Roughness Type Elevation Multipliers")]
     [SerializeField, Range(0.2f, 2.0f)] private float flatElevationMultiplier = 0.8f;
     [SerializeField, Range(0.2f, 2.0f)] private float smoothElevationMultiplier = 0.9f;
@@ -238,6 +256,11 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private RenderTexture gpuDisplacementTexture;
     private RenderTexture gpuHydrologyTexture;
     private RenderTexture gpuHydrologyDepthTexture, gpuDrainageFillA, gpuDrainageFillB, gpuFlowDirectionTexture, gpuFlowAccumA, gpuFlowAccumB, gpuCoarseHydrologyMaskTexture, gpuCoarseHydrologyDepthTexture;
+    private RenderTexture gpuHydroTerrainTexture;
+    private ComputeBuffer lakeLabelBufferA, lakeLabelBufferB, lakeAreaBuffer, hydroConvergenceBuffer, hydroIndirectArgsBuffer, hydroDebugStatsBuffer;
+    private int hydroAnalysisWidth, hydroAnalysisHeight;
+    private static readonly uint[] ConvergenceReset = { 0u, 0u, 1u, 0u };
+    private const int HydroDebugStatCount = 16;
     private int heightDebugDispatchSerial;
 
     
@@ -248,6 +271,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
     private int lastValidatedGpuFlowAccumulationIterations;
     private float lastValidatedGpuHydroRoutingJitter;
     private float lastValidatedGpuLakeShorelineWarpPixels;
+    private int lastValidatedGpuHydrologyAnalysisDivisor;
+    private bool lastValidatedGpuHydrologyAutoIterationBudget;
+    private float lastValidatedGpuRiverMeanderPixels;
+    private int lastValidatedGpuLakeMinAreaCells;
+    private float lastValidatedGpuLakeEvaporationLoss;
+    private float lastValidatedGpuTerminalLakeAridDrop;
     private bool lastValidatedUseExperimentalSignedTerrain;
     private int lastValidatedExperimentalTerrainProfileHash;
 
@@ -365,6 +394,76 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                 Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU stats | SignedHeight min/max/mean: {minHeight:F4}/{maxHeight:F4}/{meanHeight:F4} | Positive={positiveCoverage:F2}% | Negative={negativeCoverage:F2}% | NearZero={balanceCoverage:F2}% | Hill={hillCoverage:F2}% | Mountain={mountainCoverage:F2}% | BasinPotential={basinPotentialCoverage:F2}% | Lake: {lakeCoverage:F2}% | River: {riverCoverage:F2}% | Wetland: {wetlandCoverage:F2}%");
                 Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU channel ranges | Hill(y) min/max: {minHill:F4}/{maxHill:F4} | Mountain(z) min/max: {minMountain:F4}/{maxMountain:F4} | BasinPotential(w) min/max: {minBasinPotential:F4}/{maxBasinPotential:F4}");
                 Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] GPU interpretation hints | AlpineSignedHeightMaxCheck={(maxHeight < 0.04f ? "WARN: <0.04 (too weak)" : "OK")} | PositiveThreshold=0.02 | NegativeThreshold=-0.02 | HillThreshold=0.05 | MountainThreshold=0.05 | BasinPotentialThreshold=0.05");
+
+                LogHydrologyNetworkStats(rawH, hydroCount);
+            });
+        });
+    }
+
+    // Debug only: land-relative water coverage from the full-res hydrology texture plus coarse network
+    // statistics produced by the AnalyzeHydrologyDebug kernel (outlet validity, lake regions, widths).
+    private void LogHydrologyNetworkStats(Unity.Collections.NativeArray<ushort> hydroRaw, int hydroCount)
+    {
+        if (gpuLandMaskTexture == null || !gpuLandMaskTexture.IsCreated() || gpuLandMaskTexture.width * gpuLandMaskTexture.height != hydroCount)
+        {
+            Debug.LogWarning("[MenuPlanetPreviewWorldGeneratorV2] Land mask not available; skipping land-relative hydrology stats.");
+            return;
+        }
+
+        // Copy the hydrology samples we need before the readback buffer is recycled.
+        int riverLand = 0, lakeLand = 0, wetLand = 0, surfaceWaterLand = 0;
+        var riverPx = new bool[hydroCount]; var lakePx = new bool[hydroCount]; var wetPx = new bool[hydroCount];
+        for (int i = 0; i < hydroCount; i++)
+        {
+            int bi = i * 4;
+            riverPx[i] = Mathf.HalfToFloat(hydroRaw[bi + 0]) > 0.5f;
+            lakePx[i] = Mathf.HalfToFloat(hydroRaw[bi + 1]) > 0.5f;
+            wetPx[i] = Mathf.HalfToFloat(hydroRaw[bi + 2]) > 0.25f;
+        }
+
+        AsyncGPUReadback.Request(gpuLandMaskTexture, 0, TextureFormat.RFloat, landReq =>
+        {
+            if (landReq.hasError) { Debug.LogWarning("[MenuPlanetPreviewWorldGeneratorV2] Land mask readback failed."); return; }
+            var land = landReq.GetData<float>();
+            if (land.Length < hydroCount) return;
+            int landPixels = 0;
+            for (int i = 0; i < hydroCount; i++)
+            {
+                if (land[i] <= 0.5f) continue;
+                landPixels++;
+                if (riverPx[i]) riverLand++;
+                if (lakePx[i]) lakeLand++;
+                if (wetPx[i]) wetLand++;
+                if (riverPx[i] || lakePx[i]) surfaceWaterLand++;
+            }
+            float inv = landPixels > 0 ? 100f / landPixels : 0f;
+            Debug.Log($"[MenuPlanetPreviewWorldGeneratorV2] Hydrology land coverage | Land={landPixels * 100f / hydroCount:F2}% of map | River={riverLand * inv:F2}% of land | Lake={lakeLand * inv:F2}% of land | SurfaceWater={surfaceWaterLand * inv:F2}% of land | Wet/riparian={wetLand * inv:F2}% of land");
+
+            if (menuPlanetPreviewHydrologyCompute == null || hydroDebugStatsBuffer == null || !hydroDebugStatsBuffer.IsValid() || hydroAnalysisWidth <= 0 || !HasHydrologyInputTextures())
+                return;
+
+            var cs = menuPlanetPreviewHydrologyCompute;
+            int kAnalyze = cs.FindKernel("AnalyzeHydrologyDebug");
+            hydroDebugStatsBuffer.SetData(new uint[HydroDebugStatCount]);
+            BindHydrologyResources(cs, new[] { kAnalyze });
+            cs.Dispatch(kAnalyze, Mathf.CeilToInt(hydroAnalysisWidth / 8f), Mathf.CeilToInt(hydroAnalysisHeight / 8f), 1);
+            AsyncGPUReadback.Request(hydroDebugStatsBuffer, statsReq =>
+            {
+                if (statsReq.hasError) { Debug.LogWarning("[MenuPlanetPreviewWorldGeneratorV2] Hydrology debug stats readback failed."); return; }
+                var s = statsReq.GetData<uint>();
+                uint riverCells = s[0], riverNoOutlet = s[1], cycleRisk = s[2], lakeRegions = s[3], lakeCandidates = s[4], lakeCells = s[5];
+                uint widthSum = s[6], widthMax = s[7], landCells = s[8], mouths = s[9], brokenDownstream = s[10], unresolved = s[11], landNoOutlet = s[12];
+                float avgWidth = riverCells > 0 ? widthSum / 100f / riverCells : 0f;
+                float landInv = landCells > 0 ? 100f / landCells : 0f;
+                Debug.Log(
+                    $"[MenuPlanetPreviewWorldGeneratorV2] Hydrology network ({hydroAnalysisWidth}x{hydroAnalysisHeight}) | LandCells={landCells} " +
+                    $"| RiverCells={riverCells} ({riverCells * landInv:F2}% of land) | RiverMouths={mouths} " +
+                    $"| RiverCellsWithoutOutlet={riverNoOutlet} | RiverCellsWithBrokenDownstream={brokenDownstream} " +
+                    $"| AvgWidthPx={avgWidth:F2} MaxWidthPx={widthMax / 100f:F2} " +
+                    $"| SignificantLakes={lakeRegions} LakeCells={lakeCells} (candidates {lakeCandidates}, {lakeCells * landInv:F2}% of land) " +
+                    $"| UnresolvedFillCells={unresolved} LandCellsWithoutOutlet={landNoOutlet} DownhillViolations={cycleRisk}" +
+                    (unresolved > 0 ? " | WARN: drainage fill hit its iteration budget; raise gpuDrainageFillIterations or enable auto budget" : "") +
+                    (cycleRisk > 0 ? " | WARN: flow graph contains non-descending edges" : ""));
             });
         });
     }
@@ -478,6 +577,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
                gpuFlowAccumulationIterations != lastValidatedGpuFlowAccumulationIterations ||
                !Mathf.Approximately(gpuHydroRoutingJitter, lastValidatedGpuHydroRoutingJitter) ||
                !Mathf.Approximately(gpuLakeShorelineWarpPixels, lastValidatedGpuLakeShorelineWarpPixels) ||
+               gpuHydrologyAnalysisDivisor != lastValidatedGpuHydrologyAnalysisDivisor ||
+               gpuHydrologyAutoIterationBudget != lastValidatedGpuHydrologyAutoIterationBudget ||
+               !Mathf.Approximately(gpuRiverMeanderPixels, lastValidatedGpuRiverMeanderPixels) ||
+               gpuLakeMinAreaCells != lastValidatedGpuLakeMinAreaCells ||
+               !Mathf.Approximately(gpuLakeEvaporationLoss, lastValidatedGpuLakeEvaporationLoss) ||
+               !Mathf.Approximately(gpuTerminalLakeAridDrop, lastValidatedGpuTerminalLakeAridDrop) ||
                ComputeExperimentalTerrainProfileHash() != lastValidatedExperimentalTerrainProfileHash;
     }
 
@@ -487,6 +592,12 @@ public class MenuPlanetPreviewWorldGeneratorV2 : MonoBehaviour
         lastValidatedGpuFlowAccumulationIterations = gpuFlowAccumulationIterations;
         lastValidatedGpuHydroRoutingJitter = gpuHydroRoutingJitter;
         lastValidatedGpuLakeShorelineWarpPixels = gpuLakeShorelineWarpPixels;
+        lastValidatedGpuHydrologyAnalysisDivisor = gpuHydrologyAnalysisDivisor;
+        lastValidatedGpuHydrologyAutoIterationBudget = gpuHydrologyAutoIterationBudget;
+        lastValidatedGpuRiverMeanderPixels = gpuRiverMeanderPixels;
+        lastValidatedGpuLakeMinAreaCells = gpuLakeMinAreaCells;
+        lastValidatedGpuLakeEvaporationLoss = gpuLakeEvaporationLoss;
+        lastValidatedGpuTerminalLakeAridDrop = gpuTerminalLakeAridDrop;
         lastValidatedUseExperimentalSignedTerrain = useExperimentalSignedTerrain;
         lastValidatedExperimentalTerrainProfileHash = ComputeExperimentalTerrainProfileHash();
         validateCacheInitialized = true;
@@ -1169,35 +1280,77 @@ private int ComputeExperimentalTerrainProfileHash()
 #endif
     }
 
-    private void EnsureGpuHydrologyResources()
+    private int HydrologyAnalysisWidth => Mathf.Max(32, mapWidth / Mathf.Max(1, gpuHydrologyAnalysisDivisor));
+    private int HydrologyAnalysisHeight => Mathf.Max(16, mapHeight / Mathf.Max(1, gpuHydrologyAnalysisDivisor));
+
+    private static RenderTextureFormat AnalysisPrecisionFormat()
     {
-        if (gpuHydrologyTexture == null || gpuHydrologyTexture.width != mapWidth || gpuHydrologyTexture.height != mapHeight || !gpuHydrologyTexture.IsCreated())
-        {
-            ReleaseGpuHydrologyResources();
-            gpuHydrologyTexture = new RenderTexture(mapWidth, mapHeight, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear)
-            {
-                name = "MenuGpuHydrologyV2",
-                enableRandomWrite = true,
-                wrapMode = TextureWrapMode.Repeat,
-                filterMode = FilterMode.Bilinear,
-                useMipMap = false,
-                autoGenerateMips = false
-            };
-            gpuHydrologyTexture.Create();
-        }
-        int aw = Mathf.Max(32, mapWidth / 4);
-        int ah = Mathf.Max(16, mapHeight / 4);
-        if (gpuHydrologyDepthTexture == null) { gpuHydrologyDepthTexture = new RenderTexture(mapWidth, mapHeight, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuHydrologyDepthTexture.Create(); }
-        if (gpuDrainageFillA == null) { gpuDrainageFillA = new RenderTexture(aw, ah, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuDrainageFillA.Create(); }
-        if (gpuDrainageFillB == null) { gpuDrainageFillB = new RenderTexture(aw, ah, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuDrainageFillB.Create(); }
-        if (gpuFlowDirectionTexture == null) { gpuFlowDirectionTexture = new RenderTexture(aw, ah, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuFlowDirectionTexture.Create(); }
-        if (gpuFlowAccumA == null) { gpuFlowAccumA = new RenderTexture(aw, ah, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuFlowAccumA.Create(); }
-        if (gpuFlowAccumB == null) { gpuFlowAccumB = new RenderTexture(aw, ah, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuFlowAccumB.Create(); }
-        if (gpuCoarseHydrologyMaskTexture == null) { gpuCoarseHydrologyMaskTexture = new RenderTexture(aw, ah, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuCoarseHydrologyMaskTexture.Create(); }
-        if (gpuCoarseHydrologyDepthTexture == null) { gpuCoarseHydrologyDepthTexture = new RenderTexture(aw, ah, 0, RenderTextureFormat.ARGBHalf) { enableRandomWrite = true }; gpuCoarseHydrologyDepthTexture.Create(); }
+        // Fill/accumulation need full float precision: the epsilon-fill gradient is below half-float resolution.
+        return SystemInfo.SupportsRandomWriteOnRenderTextureFormat(RenderTextureFormat.ARGBFloat)
+            ? RenderTextureFormat.ARGBFloat
+            : RenderTextureFormat.ARGBHalf;
     }
 
-    private void ReleaseRenderTexture(ref RenderTexture rt)
+    private static void EnsureHydrologyTexture(ref RenderTexture rt, int width, int height, RenderTextureFormat format, FilterMode filter, string name)
+    {
+        if (rt != null && rt.width == width && rt.height == height && rt.format == format && rt.IsCreated()) return;
+        ReleaseRenderTexture(ref rt);
+        rt = new RenderTexture(width, height, 0, format, RenderTextureReadWrite.Linear)
+        {
+            name = name,
+            enableRandomWrite = true,
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = filter,
+            useMipMap = false,
+            autoGenerateMips = false
+        };
+        rt.Create();
+    }
+
+    private static void EnsureComputeBuffer(ref ComputeBuffer buffer, int count, int stride, ComputeBufferType type = ComputeBufferType.Default)
+    {
+        if (buffer != null && buffer.IsValid() && buffer.count == count && buffer.stride == stride) return;
+        buffer?.Release();
+        buffer = new ComputeBuffer(count, stride, type);
+    }
+
+    private static void ReleaseComputeBuffer(ref ComputeBuffer buffer)
+    {
+        if (buffer == null) return;
+        buffer.Release();
+        buffer = null;
+    }
+
+    private void EnsureGpuHydrologyResources()
+    {
+        int aw = HydrologyAnalysisWidth;
+        int ah = HydrologyAnalysisHeight;
+        var precise = AnalysisPrecisionFormat();
+
+        EnsureHydrologyTexture(ref gpuHydrologyTexture, mapWidth, mapHeight, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, "MenuGpuHydrologyV2");
+        EnsureHydrologyTexture(ref gpuHydrologyDepthTexture, mapWidth, mapHeight, RenderTextureFormat.ARGBHalf, FilterMode.Bilinear, "MenuGpuHydrologyDepthV2");
+        EnsureHydrologyTexture(ref gpuHydroTerrainTexture, aw, ah, precise, FilterMode.Point, "MenuGpuHydroTerrainV2");
+        EnsureHydrologyTexture(ref gpuDrainageFillA, aw, ah, precise, FilterMode.Point, "MenuGpuDrainageFillA");
+        EnsureHydrologyTexture(ref gpuDrainageFillB, aw, ah, precise, FilterMode.Point, "MenuGpuDrainageFillB");
+        EnsureHydrologyTexture(ref gpuFlowDirectionTexture, aw, ah, precise, FilterMode.Point, "MenuGpuHydroFlow");
+        EnsureHydrologyTexture(ref gpuFlowAccumA, aw, ah, precise, FilterMode.Point, "MenuGpuFlowAccumA");
+        EnsureHydrologyTexture(ref gpuFlowAccumB, aw, ah, precise, FilterMode.Point, "MenuGpuFlowAccumB");
+        EnsureHydrologyTexture(ref gpuCoarseHydrologyMaskTexture, aw, ah, RenderTextureFormat.ARGBHalf, FilterMode.Point, "MenuGpuCoarseHydroMask");
+        EnsureHydrologyTexture(ref gpuCoarseHydrologyDepthTexture, aw, ah, RenderTextureFormat.ARGBHalf, FilterMode.Point, "MenuGpuCoarseHydroDepth");
+
+        int cellCount = aw * ah;
+        EnsureComputeBuffer(ref lakeLabelBufferA, cellCount, sizeof(int));
+        EnsureComputeBuffer(ref lakeLabelBufferB, cellCount, sizeof(int));
+        EnsureComputeBuffer(ref lakeAreaBuffer, cellCount, sizeof(uint));
+        EnsureComputeBuffer(ref hydroConvergenceBuffer, 4, sizeof(uint));
+        EnsureComputeBuffer(ref hydroIndirectArgsBuffer, 3, sizeof(uint), ComputeBufferType.IndirectArguments);
+        EnsureComputeBuffer(ref hydroDebugStatsBuffer, HydroDebugStatCount, sizeof(uint));
+
+        hydroAnalysisWidth = aw;
+        hydroAnalysisHeight = ah;
+    }
+
+    private static void ReleaseRenderTexture(ref RenderTexture rt)
     {
         if (rt == null) return;
         rt.Release();
@@ -1209,6 +1362,7 @@ private int ComputeExperimentalTerrainProfileHash()
     {
         ReleaseRenderTexture(ref gpuHydrologyTexture);
         ReleaseRenderTexture(ref gpuHydrologyDepthTexture);
+        ReleaseRenderTexture(ref gpuHydroTerrainTexture);
         ReleaseRenderTexture(ref gpuDrainageFillA);
         ReleaseRenderTexture(ref gpuDrainageFillB);
         ReleaseRenderTexture(ref gpuFlowDirectionTexture);
@@ -1216,7 +1370,19 @@ private int ComputeExperimentalTerrainProfileHash()
         ReleaseRenderTexture(ref gpuFlowAccumB);
         ReleaseRenderTexture(ref gpuCoarseHydrologyMaskTexture);
         ReleaseRenderTexture(ref gpuCoarseHydrologyDepthTexture);
-        
+        ReleaseComputeBuffer(ref lakeLabelBufferA);
+        ReleaseComputeBuffer(ref lakeLabelBufferB);
+        ReleaseComputeBuffer(ref lakeAreaBuffer);
+        ReleaseComputeBuffer(ref hydroConvergenceBuffer);
+        ReleaseComputeBuffer(ref hydroIndirectArgsBuffer);
+        ReleaseComputeBuffer(ref hydroDebugStatsBuffer);
+        hydroAnalysisWidth = 0;
+        hydroAnalysisHeight = 0;
+    }
+
+    private void OnDestroy()
+    {
+        Release();
     }
 
     private void ClearHydrologyTextures()
@@ -1256,19 +1422,25 @@ if (!useGpuHydrologyPreview) return;
     }
     
 
-    int analysisWidth = Mathf.Max(32, mapWidth / 4);
-    int analysisHeight = Mathf.Max(16, mapHeight / 4);
+    int analysisWidth = hydroAnalysisWidth;
+    int analysisHeight = hydroAnalysisHeight;
     var cs = menuPlanetPreviewHydrologyCompute;
     cs.SetInt("_MapWidth", mapWidth);
     cs.SetInt("_MapHeight", mapHeight);
     cs.SetInt("_HydrologyAnalysisWidth", analysisWidth);
     cs.SetInt("_HydrologyAnalysisHeight", analysisHeight);
+    cs.SetInt("_HydrologyFootprintX", Mathf.Max(1, Mathf.CeilToInt(mapWidth / (float)analysisWidth)));
+    cs.SetInt("_HydrologyFootprintY", Mathf.Max(1, Mathf.CeilToInt(mapHeight / (float)analysisHeight)));
     cs.SetFloat("_Seed", inputs.seed);
     cs.SetFloat("_Elevation", Mathf.Clamp01(inputs.elevation));
     cs.SetFloat("_Moisture", Mathf.Clamp01(inputs.moisture));
     cs.SetInt("_WaterwaysPreset", inputs.waterwaysPreset);
     cs.SetFloat("_HydroRoutingJitter", gpuHydroRoutingJitter);
     cs.SetFloat("_LakeShorelineWarpPixels", gpuLakeShorelineWarpPixels);
+    cs.SetFloat("_RiverMeanderPixels", gpuRiverMeanderPixels);
+    cs.SetInt("_LakeMinAreaCells", gpuLakeMinAreaCells);
+    cs.SetFloat("_LakeEvaporationLoss", gpuLakeEvaporationLoss);
+    cs.SetFloat("_TerminalLakeAridDrop", gpuTerminalLakeAridDrop);
 
     // ================================================================
     // NEW: Apply preset-specific hydrology overrides
@@ -1297,69 +1469,144 @@ cs.SetFloat("_DrainageRiverMaxWidthPixels", terrainProfile.riverMaxWidthPixels);
 
     int kInitFill = cs.FindKernel("InitDrainageFill");
     int kRelaxFill = cs.FindKernel("RelaxDrainageFill");
+    int kPrepare = cs.FindKernel("PrepareIndirectArgs");
     int kFlowDir = cs.FindKernel("BuildFlowDirections");
     int kInitAcc = cs.FindKernel("InitFlowAccumulation");
     int kRelaxAcc = cs.FindKernel("RelaxFlowAccumulation");
+    int kInitLabels = cs.FindKernel("InitLakeLabels");
+    int kRelaxLabels = cs.FindKernel("RelaxLakeLabels");
+    int kClearAreas = cs.FindKernel("ClearLakeAreas");
+    int kAccumAreas = cs.FindKernel("AccumulateLakeAreas");
     int kBuild = cs.FindKernel("BuildTerrainDrivenHydrologyMasks");
     int kUpsample = cs.FindKernel("UpsampleAndBeautifyHydrology");
+    int kAnalyze = cs.FindKernel("AnalyzeHydrologyDebug");
+    int[] allKernels = { kInitFill, kRelaxFill, kPrepare, kFlowDir, kInitAcc, kRelaxAcc, kInitLabels, kRelaxLabels, kClearAreas, kAccumAreas, kBuild, kUpsample, kAnalyze };
 
-    foreach (int k in new[] { kInitFill, kRelaxFill, kFlowDir, kInitAcc, kRelaxAcc, kBuild, kUpsample })
-    {
-        cs.SetTexture(k, "_GpuHydrologyTex", gpuHydrologyTexture);
-        cs.SetTexture(k, "_GpuHydrologyDepthTex", gpuHydrologyDepthTexture);
-        cs.SetTexture(k, "_DrainageFillTexA", gpuDrainageFillA);
-        cs.SetTexture(k, "_DrainageFillTexB", gpuDrainageFillB);
-        cs.SetTexture(k, "_HydroFlowTex", gpuFlowDirectionTexture);
-        cs.SetTexture(k, "_FlowAccumTexA", gpuFlowAccumA);
-        cs.SetTexture(k, "_FlowAccumTexB", gpuFlowAccumB);
-        cs.SetTexture(k, "_CoarseHydrologyMaskTex", gpuCoarseHydrologyMaskTexture);
-        cs.SetTexture(k, "_CoarseHydrologyDepthTex", gpuCoarseHydrologyDepthTexture);
-        cs.SetTexture(k, "_TectonicSurfaceTex", TectonicSurfaceTexture);
-        cs.SetTexture(k, "_GpuHeightTex", gpuHeightTexture);
-        cs.SetTexture(k, "_GpuSignedHeightTex", gpuDisplacementTexture);
-    }
+    int gx = Mathf.CeilToInt(analysisWidth / 8f);
+    int gy = Mathf.CeilToInt(analysisHeight / 8f);
+    int autoBudget = gpuHydrologyAutoIterationBudget ? analysisWidth + analysisHeight : 0;
+    int fillBudget = Mathf.Max(gpuDrainageFillIterations, autoBudget);
+    int accumBudget = Mathf.Max(gpuFlowAccumulationIterations, autoBudget);
+    int labelBudget = Mathf.Max(64, (analysisWidth + analysisHeight) / 4);
 
-    cs.Dispatch(kInitFill, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
-    for (int i = 0; i < gpuDrainageFillIterations; i++)
+    var phaseTimer = logHydrologyPhaseDiagnostics ? System.Diagnostics.Stopwatch.StartNew() : null;
+    var phaseReport = logHydrologyPhaseDiagnostics ? new System.Text.StringBuilder() : null;
+
+    BindHydrologyResources(cs, allKernels);
+
+    // 1. Drainage fill (epsilon priority-flood) — converges on GPU, ping-pong A/B.
+    cs.Dispatch(kInitFill, gx, gy, 1);
+    RunConvergentRelaxation(cs, kRelaxFill, kPrepare, gx, gy, fillBudget, () =>
     {
-        cs.Dispatch(kRelaxFill, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
-        var t = gpuDrainageFillA;
-        gpuDrainageFillA = gpuDrainageFillB;
-        gpuDrainageFillB = t;
+        (gpuDrainageFillA, gpuDrainageFillB) = (gpuDrainageFillB, gpuDrainageFillA);
         cs.SetTexture(kRelaxFill, "_DrainageFillTexA", gpuDrainageFillA);
         cs.SetTexture(kRelaxFill, "_DrainageFillTexB", gpuDrainageFillB);
-    }
-    cs.Dispatch(kFlowDir, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
-    cs.Dispatch(kInitAcc, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
-    for (int i = 0; i < gpuFlowAccumulationIterations; i++)
+    });
+    BindHydrologyResources(cs, allKernels);
+    ReportHydrologyPhase(phaseReport, phaseTimer, "DrainageFill", fillBudget);
+
+    // 2. D8 flow directions on the filled surface.
+    cs.Dispatch(kFlowDir, gx, gy, 1);
+
+    // 3. Flow accumulation over the (acyclic) D8 graph.
+    cs.Dispatch(kInitAcc, gx, gy, 1);
+    RunConvergentRelaxation(cs, kRelaxAcc, kPrepare, gx, gy, accumBudget, () =>
     {
-        cs.Dispatch(kRelaxAcc, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
-        var t = gpuFlowAccumA;
-        gpuFlowAccumA = gpuFlowAccumB;
-        gpuFlowAccumB = t;
+        (gpuFlowAccumA, gpuFlowAccumB) = (gpuFlowAccumB, gpuFlowAccumA);
         cs.SetTexture(kRelaxAcc, "_FlowAccumTexA", gpuFlowAccumA);
         cs.SetTexture(kRelaxAcc, "_FlowAccumTexB", gpuFlowAccumB);
+    });
+    BindHydrologyResources(cs, allKernels);
+    ReportHydrologyPhase(phaseReport, phaseTimer, "FlowAccumulation", accumBudget);
+
+    // 4. Lake connected components + areas.
+    cs.Dispatch(kInitLabels, gx, gy, 1);
+    RunConvergentRelaxation(cs, kRelaxLabels, kPrepare, gx, gy, labelBudget, () =>
+    {
+        (lakeLabelBufferA, lakeLabelBufferB) = (lakeLabelBufferB, lakeLabelBufferA);
+        cs.SetBuffer(kRelaxLabels, "_LakeLabelBufA", lakeLabelBufferA);
+        cs.SetBuffer(kRelaxLabels, "_LakeLabelBufB", lakeLabelBufferB);
+    });
+    BindHydrologyResources(cs, allKernels);
+    cs.Dispatch(kClearAreas, gx, gy, 1);
+    cs.Dispatch(kAccumAreas, gx, gy, 1);
+    ReportHydrologyPhase(phaseReport, phaseTimer, "LakeLabelling", labelBudget);
+
+    // 5. Coarse masks, then full-resolution ribbons/shorelines.
+    cs.Dispatch(kBuild, gx, gy, 1);
+    cs.Dispatch(kUpsample, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
+    ReportHydrologyPhase(phaseReport, phaseTimer, "Masks+Upsample", 0);
+
+    if (phaseReport != null)
+        Debug.Log($"[WorldGenV2 GPU Hydrology Timing] {phaseReport} (GPU-synchronised; debug only)");
+
+    if (logWorldGenerationDiagnostics)
+    {
+        string activeThresholdType = inputs.waterwaysPreset <= 0 ? "Sparse" : (inputs.waterwaysPreset == 1 ? "Standard" : "Abundant");
+        Debug.Log(
+            $"[WorldGenV2 GPU Hydrology] TerrainDriven=True " +
+            $"WaterwaysPreset={inputs.waterwaysPreset} ({activeThresholdType}) Moisture={inputs.moisture:0.00} " +
+            $"Analysis={analysisWidth}x{analysisHeight} (divisor {gpuHydrologyAnalysisDivisor}) " +
+            $"FillBudget={fillBudget} AccumBudget={accumBudget} LabelBudget={labelBudget} " +
+            $"RiverThreshold={riverThreshold:0.00} (S={terrainProfile.riverAccumulationThresholdSparse:0.00} St={terrainProfile.riverAccumulationThresholdStandard:0.00} A={terrainProfile.riverAccumulationThresholdAbundant:0.00}) " +
+            $"LakeDepth={terrainProfile.lakeBasinMinDepth:0.000}-{terrainProfile.lakeBasinFullDepth:0.000} MinLakeCells={gpuLakeMinAreaCells} " +
+            $"RiverWidthPx={terrainProfile.riverMinWidthPixels:0.0}-{terrainProfile.riverMaxWidthPixels:0.0}");
+    }
+}
+
+    private void BindHydrologyResources(ComputeShader cs, int[] kernels)
+    {
+        foreach (int k in kernels)
+        {
+            cs.SetTexture(k, "_GpuHydrologyTex", gpuHydrologyTexture);
+            cs.SetTexture(k, "_GpuHydrologyDepthTex", gpuHydrologyDepthTexture);
+            cs.SetTexture(k, "_HydroTerrainTex", gpuHydroTerrainTexture);
+            cs.SetTexture(k, "_DrainageFillTexA", gpuDrainageFillA);
+            cs.SetTexture(k, "_DrainageFillTexB", gpuDrainageFillB);
+            cs.SetTexture(k, "_HydroFlowTex", gpuFlowDirectionTexture);
+            cs.SetTexture(k, "_FlowAccumTexA", gpuFlowAccumA);
+            cs.SetTexture(k, "_FlowAccumTexB", gpuFlowAccumB);
+            cs.SetTexture(k, "_CoarseHydrologyMaskTex", gpuCoarseHydrologyMaskTexture);
+            cs.SetTexture(k, "_CoarseHydrologyDepthTex", gpuCoarseHydrologyDepthTexture);
+            cs.SetTexture(k, "_TectonicSurfaceTex", TectonicSurfaceTexture);
+            cs.SetTexture(k, "_GpuHeightTex", gpuHeightTexture);
+            cs.SetTexture(k, "_GpuSignedHeightTex", gpuDisplacementTexture);
+            cs.SetBuffer(k, "_LakeLabelBufA", lakeLabelBufferA);
+            cs.SetBuffer(k, "_LakeLabelBufB", lakeLabelBufferB);
+            cs.SetBuffer(k, "_LakeAreaBuf", lakeAreaBuffer);
+            cs.SetBuffer(k, "_ConvergenceState", hydroConvergenceBuffer);
+            cs.SetBuffer(k, "_IndirectArgs", hydroIndirectArgsBuffer);
+            cs.SetBuffer(k, "_DebugStats", hydroDebugStatsBuffer);
+        }
     }
 
-    // Rebind final buffers
-    cs.SetTexture(kBuild, "_DrainageFillTexA", gpuDrainageFillA);
-    cs.SetTexture(kBuild, "_FlowAccumTexA", gpuFlowAccumA);
-    cs.SetTexture(kUpsample, "_FlowAccumTexA", gpuFlowAccumA);
+    // Jacobi relaxation with a GPU-side convergence flag. The first pass is a full dispatch; afterwards the
+    // prepare kernel shrinks the indirect dispatch to a single group (and deactivates the relax kernel) once
+    // a pass changes nothing. No CPU readback is involved, so the loop costs only command submission.
+    private void RunConvergentRelaxation(ComputeShader cs, int relaxKernel, int prepareKernel, int groupsX, int groupsY, int maxIterations, Action swapBuffers)
+    {
+        hydroConvergenceBuffer.SetData(ConvergenceReset);
+        for (int i = 0; i < maxIterations; i++)
+        {
+            if (i == 0) cs.Dispatch(relaxKernel, groupsX, groupsY, 1);
+            else cs.DispatchIndirect(relaxKernel, hydroIndirectArgsBuffer, 0);
+            cs.Dispatch(prepareKernel, 1, 1, 1);
+            swapBuffers();
+        }
+    }
 
-    cs.Dispatch(kBuild, Mathf.CeilToInt(analysisWidth / 8f), Mathf.CeilToInt(analysisHeight / 8f), 1);
-    cs.Dispatch(kUpsample, Mathf.CeilToInt(mapWidth / 8f), Mathf.CeilToInt(mapHeight / 8f), 1);
-
-    // Log using the active river threshold
-    string activeThresholdType = inputs.waterwaysPreset <= 0 ? "Sparse" : (inputs.waterwaysPreset == 1 ? "Standard" : "Abundant");
-    Debug.Log(
-        $"[WorldGenV2 GPU Hydrology] TerrainDriven=True " +
-        $"WaterwaysPreset={inputs.waterwaysPreset} ({activeThresholdType}) Moisture={inputs.moisture:0.00} " +
-        $"Analysis={analysisWidth}x{analysisHeight} " +
-        $"FillIter={gpuDrainageFillIterations} AccumIter={gpuFlowAccumulationIterations} " +
-        $"RiverThreshold={riverThreshold:0.00} (S={terrainProfile.riverAccumulationThresholdSparse:0.00} St={terrainProfile.riverAccumulationThresholdStandard:0.00} A={terrainProfile.riverAccumulationThresholdAbundant:0.00}) " +
-        $"LakeDepth={terrainProfile.lakeBasinMinDepth:0.000}-{terrainProfile.lakeBasinFullDepth:0.000} " +
-        $"HeightRTReady={gpuHeightTexture != null}");
-}
+    private void ReportHydrologyPhase(System.Text.StringBuilder report, System.Diagnostics.Stopwatch timer, string phase, int budget)
+    {
+        if (report == null || timer == null) return;
+        // Debug only: a synchronous readback of the tiny convergence buffer forces the GPU to finish the phase.
+        var request = AsyncGPUReadback.Request(hydroConvergenceBuffer);
+        request.WaitForCompletion();
+        uint passes = request.hasError ? 0u : request.GetData<uint>()[1];
+        report.Append(phase).Append('=').Append(timer.ElapsedMilliseconds).Append("ms");
+        if (budget > 0) report.Append(" (").Append(passes).Append('/').Append(budget).Append(passes >= (uint)budget ? " passes, BUDGET HIT)" : " passes)");
+        report.Append("; ");
+        timer.Restart();
+    }
 
     // concise but complete implementation
     private void GenerateTopologyFields(out float[] topoLandDist,out float[] topoOceanDist,out float[] topoSignedCoastDistance,out GenDiagnostics diag){

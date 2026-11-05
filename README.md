@@ -31,7 +31,7 @@ retains the selected civilization and refreshes its artwork. Leader artwork and
 gameplay data are unchanged.
 
 Run **Tools > Main Menu > Validate Faction Selection** in Unity to exercise 21
-playable factions, excluded/duplicate entries, several artwork/fallback choices,
+synthetic playable factions, excluded/duplicate entries, several artwork/fallback choices,
 original emblems/bonuses, repeated entry, Back/Next, and masked aspect-ratio
 layout at 1920x1080, 2560x1440, 3440x1440, 1024x768, and 800x1280. The validator
 uses temporary objects in a preview scene and restores the civilization cache;
@@ -39,8 +39,9 @@ it does not save scenes, data assets, or artwork.
 
 ## Expanded civilization roster
 
-The configured catalogs now include 21 playable civilizations (29 entries
-including tribes/city-states). The five additions use existing modifier systems,
+The configured catalogs now include 20 playable civilizations, six tribes, and
+three city-states (29 entries total). Goths are a non-playable tribe; their
+existing leaders and other data are preserved. The five additions use existing modifier systems,
 with 15% total base bonuses and 20% total leader bonuses as an initial balance
 budget. These are starting values, not a claim of playtested balance.
 
@@ -72,8 +73,8 @@ assets are authored.
 
 Civilization emblems, faction illustrations, and leader artwork intentionally
 remain unassigned. The faction screen uses its normal missing-art fallback.
-No existing civilization or leader assets are modified.
+No existing leader assets are modified.
 
 Run **Tools > Main Menu > Validate Civilization Catalog** to check the actual
-21-faction catalog, all five new identities, both leaders per addition, bonus
+20-faction playable catalog, Goths' tribe classification, all five new identities, both leaders per addition, bonus
 budgets/application, AI settings, UI selection, and progression to Game Setup.

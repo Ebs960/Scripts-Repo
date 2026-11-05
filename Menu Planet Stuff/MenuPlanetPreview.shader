@@ -7,6 +7,7 @@ Shader "Custom/MenuPlanetPreview"
         _Temperature("Temperature", Range(0, 1)) = 0.5
         _Moisture("Moisture", Range(0, 1)) = 0.5
         _WaterwayAmount("Waterway Amount", Range(0,1)) = 0.55
+        _GeneratedWaterwayVisibility("Generated Waterway Visibility", Range(0,1)) = 1.0
         _Elevation("Elevation", Range(0, 1)) = 0.3
             _SnowFactor("Snow Factor", Range(0,1)) = 0.0
         [Header(Ocean Color)]
@@ -191,7 +192,7 @@ Shader "Custom/MenuPlanetPreview"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
-                float _LandScale; float _LandThreshold; float _Temperature; float _Moisture; float _WaterwayAmount; float _Elevation;
+                float _LandScale; float _LandThreshold; float _Temperature; float _Moisture; float _WaterwayAmount; float _GeneratedWaterwayVisibility; float _Elevation;
                 float _SnowFactor; float4 _OceanColor; float4 _OceanShallowColor;
                 float _IceCapSize;
                 float _Seed; float _MapStyle; float _DetailScale; float _DetailStrength; float4 _AtmosphereColor; float _AtmospherePower; float _AtmosphereRadius;
@@ -1103,13 +1104,20 @@ Shader "Custom/MenuPlanetPreview"
                 float riverCarveDepth = depthData.r;
                 float lakeBasinDepth = depthData.g;
                 float waterDepthMask = max(riverCarveDepth, lakeBasinDepth);
-                float revealThreshold = 1.0 - _WaterwayAmount;
+                // The waterways preset (Sparse/Standard/Abundant) is already applied by the GPU hydrology
+                // thresholds. The shader only trims the least significant features for harsh climates, using the
+                // per-feature significance stored in the mask alpha (constant across a channel's width).
+                float revealThreshold = 1.0 - _GeneratedWaterwayVisibility;
                 float waterwayReveal = smoothstep(revealThreshold - 0.05, revealThreshold + 0.05, featurePriority);
                 float riverMaskFinal = (_UseTectonicPreview > 0.5) ? (generatedRiverMask * waterwayReveal) : normalRiverMask;
                 float lakeMaskFinal = (_UseTectonicPreview > 0.5) ? (generatedLakeMask * waterwayReveal) : lakeMask;
                 wetlandMask *= (_UseTectonicPreview > 0.5) ? waterwayReveal : 1.0;
                 float rawRiverLake = saturate(max(riverMaskFinal, lakeMaskFinal));
-                float actualSurfaceWaterMask = smoothstep(0.58, 0.82, rawRiverLake);
+                // Generated masks are geometry-based with ~1px anti-aliased edges, so cut at the 50% contour to
+                // keep riverMinWidthPixels/riverMaxWidthPixels meaningful. Legacy noise rivers keep their old band.
+                float actualSurfaceWaterMask = (_UseTectonicPreview > 0.5)
+                    ? smoothstep(0.35, 0.65, rawRiverLake)
+                    : smoothstep(0.58, 0.82, rawRiverLake);
                 float hydrologyWetnessMask = saturate(max(wetlandMask, smoothstep(0.10, 0.45, rawRiverLake)));
                 float totalSurfaceWaterMask = saturate(max(oceanSurfaceWaterMask, actualSurfaceWaterMask));
                 float dryLandSurfaceMask = saturate(1.0 - totalSurfaceWaterMask);

@@ -171,7 +171,10 @@ public static class FactionSelectionValidation
         var database = AssetDatabase.LoadAssetAtPath<BaseGameContentDatabase>(root + "Content Database/BaseGameContentDatabase.asset");
         Check(database != null, "Base-game catalog exists");
         var playable = database.civilizations.Where(civ => civ != null && !civ.isTribe && !civ.isCityState).ToList();
-        Check(playable.Count == 21 && playable.Distinct().Count() == 21, "Catalog contains 21 distinct playable civilizations");
+        Check(playable.Count == 20 && playable.Distinct().Count() == 20, "Catalog contains 20 distinct playable civilizations");
+        var goths = database.civilizations.SingleOrDefault(civ => civ != null && civ.civName == "Goths");
+        Check(goths != null && goths.isTribe && !goths.isCityState, "Goths remain registered as a tribe");
+        Check(!playable.Contains(goths), "Goths are excluded from playable civilizations");
         var names = new[] { "America", "Incan Empire", "India", "Greece", "Spain" };
         var leaderNames = new[] {
             new[] { "George Washington", "Theodore Roosevelt" },
@@ -274,7 +277,7 @@ public static class FactionSelectionValidation
             }
             var nameLibrary = AssetDatabase.LoadAssetAtPath<GovernorCandidateNameLibrary>(root + "Governor Candidate Names.asset");
             Check(nameLibrary != null && nameLibrary.GetRandomName(CultureGroup.Andean) != "Unnamed Candidate", "Andean governors have a name pool");
-            Debug.Log($"[Civilization Catalog] PASS: {assertions} assertions; 21 playable civilizations; all ten new leaders selectable.");
+            Debug.Log($"[Civilization Catalog] PASS: {assertions} assertions; {playable.Count} playable civilizations; all ten new leaders selectable.");
         }
         finally
         {

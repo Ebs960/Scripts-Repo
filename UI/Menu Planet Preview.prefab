@@ -626,10 +626,17 @@ MonoBehaviour:
   menuPlanetPreviewHeightCompute: {fileID: 7200000, guid: c02f76a0820ece643bcb29cdf1334f95, type: 3}
   useGpuHydrologyPreview: 1
   menuPlanetPreviewHydrologyCompute: {fileID: 7200000, guid: d80f2bfb9080eb04c86dc97ad14619d1, type: 3}
-  gpuDrainageFillIterations: 100
-  gpuFlowAccumulationIterations: 100
-  gpuHydroRoutingJitter: 0.0313
-  gpuLakeShorelineWarpPixels: 1.5
+  gpuHydrologyAnalysisDivisor: 4
+  gpuDrainageFillIterations: 768
+  gpuFlowAccumulationIterations: 768
+  gpuHydrologyAutoIterationBudget: 1
+  gpuHydroRoutingJitter: 0.35
+  gpuLakeShorelineWarpPixels: 3.5
+  gpuRiverMeanderPixels: 1.2
+  gpuLakeMinAreaCells: 6
+  gpuLakeEvaporationLoss: 0.12
+  gpuTerminalLakeAridDrop: 0.012
+  logHydrologyPhaseDiagnostics: 0
   flatElevationMultiplier: 0.8
   smoothElevationMultiplier: 0.9
   standardElevationMultiplier: 1
@@ -773,8 +780,8 @@ MonoBehaviour:
     basinCandidateBias: 1
     lakeBasinMinDepth: 0.19
     lakeBasinFullDepth: 0.21
-    riverAccumulationThresholdSparse: 0.99
-    riverAccumulationThresholdStandard: 0.9
+    riverAccumulationThresholdSparse: 0.72
+    riverAccumulationThresholdStandard: 0.6
     riverAccumulationThresholdAbundant: 0.5
     inlandBasinStrength: 0.025
     flowMinDownhillDelta: 0.02

@@ -96,7 +96,7 @@ MonoBehaviour:
   attritionBonuses: []
   herdStarvationPercentReduction: 0
   herdYieldBonuses: []
-  isTribe: 0
+  isTribe: 1
   isCityState: 0
   musicData: {fileID: 11400000, guid: 96eff261ae4948f4a8f783c14bd5acd8, type: 2}
   cityVisuals:
