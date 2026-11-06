@@ -828,7 +828,10 @@ HideSaveLoadUI();
         }
         
         if (optionsPanel != null)
+        {
             optionsPanel.SetActive(true);
+            FirstDraftOptionsMenu.Open(optionsPanel, HideOptions);
+        }
     }
 
     public void HideOptions()
@@ -1164,8 +1167,11 @@ for (int i = 0; i < maxSaveSlots; i++)
 
     private void InitializeAutosaveSystem()
     {
-        if (!enableAutosave) return;
-        
+        // Always subscribe, even when disabled at launch, so enabling autosave mid-game works.
+        // Use the same preferences written by the main and pause Options menus.
+        enableAutosave = PlayerPrefs.GetInt("AutosaveEnabled", 1) != 0;
+        autosaveInterval = Mathf.Clamp(PlayerPrefs.GetInt("AutosaveInterval", 3), 1, 10);
+
         // Subscribe to turn events if TurnManager exists
         if (TurnManager.Instance != null)
         {
