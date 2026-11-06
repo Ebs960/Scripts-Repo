@@ -34,8 +34,8 @@ public class MusicManager : MonoBehaviour
 
             musicSource.loop = false; // Don't loop in-game music tracks
             musicSource.playOnAwake = false; // We control playback manually
-            musicSource.volume = 0.75f; // Force a reasonable volume for testing
-            PlayerPrefs.SetFloat("GameMusicVolume", 0.75f); // Also reset the preference
+            // Respect gameplay volume saved in either Options menu.
+            musicSource.volume = Mathf.Clamp01(PlayerPrefs.GetFloat("GameMusicVolume", 0.75f));
         }
         else
         {
