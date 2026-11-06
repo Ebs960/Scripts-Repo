@@ -86,8 +86,26 @@ public class PlanetaryCameraManager : MonoBehaviour
     private float _savedSurfaceMinHeight;
     private float _savedSurfaceMaxHeight;
 
+    private float _optionsBasePanSpeed;
+    private float _optionsBaseZoomSpeed;
+    private bool _optionsSpeedsInitialized;
+
+    /// <summary>Apply global camera sensitivity without compounding multipliers on repeat changes.</summary>
+    public void ApplyOptionsSpeedMultipliers(float panMultiplier, float zoomMultiplier)
+    {
+        if (!_optionsSpeedsInitialized)
+        {
+            _optionsBasePanSpeed = panSpeed;
+            _optionsBaseZoomSpeed = zoomSpeed;
+            _optionsSpeedsInitialized = true;
+        }
+        panSpeed = _optionsBasePanSpeed * Mathf.Clamp(panMultiplier, 0.5f, 2f);
+        zoomSpeed = _optionsBaseZoomSpeed * Mathf.Clamp(zoomMultiplier, 0.5f, 2f);
+    }
+
     void Awake()
     {
+        ApplyOptionsSpeedMultipliers(GameOptionsSettings.CameraPanMultiplier, GameOptionsSettings.CameraZoomMultiplier);
         if (transform.position.y > 0.001f)
             _cameraHeight = transform.position.y;
         _cameraHeight = Mathf.Clamp(_cameraHeight, minHeight, maxHeight);
