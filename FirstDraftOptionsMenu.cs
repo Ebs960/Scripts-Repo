@@ -336,6 +336,10 @@ public sealed class FirstDraftOptionsMenu : MonoBehaviour
     private void PreviewDisplay()
     {
         if (confirmationActive || resolutions.Count == 0) return;
+#if UNITY_EDITOR
+        footerStatus.text = "Test display changes in a standalone build (Editor resolution unchanged).";
+        return;
+#endif
         previousMode = GameOptionsSettings.CurrentDisplayMode;
         previousResolution = GameOptionsSettings.CurrentResolution;
         confirmationActive = true;
