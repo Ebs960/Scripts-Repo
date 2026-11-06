@@ -1,19 +1,23 @@
-using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Main Menu consumer of the shared historical background selection. Picks one background per menu
+/// instance from <see cref="HistoricalBackgroundSelector"/> and keeps it covering its viewport.
+/// </summary>
 [DisallowMultipleComponent]
 public class MainMenuBackgroundRotator : MonoBehaviour
 {
+    [Tooltip("Shared artwork catalog. Assign the same asset to the loading screen so both share one selection history.")]
+    [SerializeField] private HistoricalBackgroundCatalog catalog;
+    [Tooltip("Legacy per-component sprites. Still honoured (appended after the catalog); prefer moving them into the catalog asset.")]
     [SerializeField] private List<Sprite> backgroundSprites = new List<Sprite>();
     [SerializeField] private Image backgroundImage;
+    [Tooltip("Legacy fallback. The catalog's fallback takes precedence when assigned.")]
     [SerializeField] private Sprite fallbackSprite;
-    [SerializeField] private string persistenceKey = "MainMenu.HistoricalBackgrounds.v1";
+    [SerializeField] private string persistenceKey = HistoricalBackgroundSelector.DefaultPersistenceKey;
 
-    private static readonly System.Random SelectionRandom = new System.Random();
     private bool initialized;
     private bool fitting;
 
@@ -30,59 +34,27 @@ public class MainMenuBackgroundRotator : MonoBehaviour
         if (initialized || backgroundImage == null) return;
         initialized = true;
 
-        var catalog = new List<Sprite>();
-        if (backgroundSprites != null)
-            foreach (var sprite in backgroundSprites)
-                if (sprite != null && !catalog.Contains(sprite)) catalog.Add(sprite);
+        var sprites = HistoricalBackgroundSelector.BuildCatalog(catalog, backgroundSprites);
+        WarnIfLegacySpritesDiverge(sprites);
+        Sprite fallback = HistoricalBackgroundSelector.ResolveFallback(catalog, fallbackSprite);
+        Sprite selected = HistoricalBackgroundSelector.Draw(sprites, fallback, persistenceKey);
 
-        Sprite selected = fallbackSprite;
-        if (catalog.Count > 0)
-        {
-            string signature = CatalogSignature(catalog);
-            var bag = LoadBag();
-            if (bag == null || !bag.IsValid(catalog.Count, signature))
-                bag = new MainMenuBackgroundShuffleBag { catalogSignature = signature };
-            selected = catalog[bag.Draw(catalog.Count, SelectionRandom)];
-            PlayerPrefs.SetString(PreferenceKey, JsonUtility.ToJson(bag));
-            PlayerPrefs.Save();
-        }
-
-        backgroundImage.sprite = selected;
-        backgroundImage.overrideSprite = null;
-        backgroundImage.type = Image.Type.Simple;
-        backgroundImage.preserveAspect = true;
-        backgroundImage.color = Color.white;
-        backgroundImage.raycastTarget = false;
-        backgroundImage.enabled = selected != null;
+        HistoricalBackgroundSelector.ApplyBackground(backgroundImage, selected);
         UpdateCover();
     }
 
-    private string PreferenceKey => string.IsNullOrWhiteSpace(persistenceKey) ? "MainMenu.HistoricalBackgrounds.v1" : persistenceKey;
-
-    private MainMenuBackgroundShuffleBag LoadBag()
+    // Shared history only stays continuous when both screens see the identical catalog.
+    private void WarnIfLegacySpritesDiverge(List<Sprite> effective)
     {
-        string saved = PlayerPrefs.GetString(PreferenceKey, string.Empty);
-        if (string.IsNullOrEmpty(saved)) return null;
-        try { return JsonUtility.FromJson<MainMenuBackgroundShuffleBag>(saved); }
-        catch (ArgumentException) { return null; }
-    }
-
-    private static string CatalogSignature(List<Sprite> sprites)
-    {
-        var signature = new StringBuilder();
-        foreach (var sprite in sprites)
+        if (catalog == null)
         {
-            string name = sprite.name;
-            string texture = sprite.texture != null ? sprite.texture.name : string.Empty;
-            signature.Append(name.Length).Append(':').Append(name);
-            signature.Append(texture.Length).Append(':').Append(texture);
-            Rect rect = sprite.rect;
-            signature.Append('|').Append(rect.x.ToString("R", CultureInfo.InvariantCulture));
-            signature.Append('|').Append(rect.y.ToString("R", CultureInfo.InvariantCulture));
-            signature.Append('|').Append(rect.width.ToString("R", CultureInfo.InvariantCulture));
-            signature.Append('|').Append(rect.height.ToString("R", CultureInfo.InvariantCulture)).Append(';');
+            if (effective.Count > 0)
+                Debug.LogWarning("[MainMenuBackgroundRotator] No HistoricalBackgroundCatalog assigned. The loading screen cannot share this background history until the same catalog asset is assigned to both.", this);
+            return;
         }
-        return signature.ToString();
+        int catalogCount = HistoricalBackgroundSelector.BuildCatalog(catalog, null).Count;
+        if (effective.Count != catalogCount)
+            Debug.LogWarning("[MainMenuBackgroundRotator] Legacy backgroundSprites contain artwork missing from the shared catalog; move them into the catalog asset so the Main Menu and loading screen share one shuffle history.", this);
     }
 
     private void OnEnable()
@@ -98,69 +70,13 @@ public class MainMenuBackgroundRotator : MonoBehaviour
     private void UpdateCover()
     {
         if (fitting || backgroundImage == null || backgroundImage.sprite == null) return;
-        var rect = backgroundImage.rectTransform;
-        var viewport = rect.parent as RectTransform;
-        if (viewport == null) return;
         fitting = true;
-        rect.anchorMin = new Vector2(.5f, .5f);
-        rect.anchorMax = rect.anchorMin;
-        rect.pivot = rect.anchorMin;
-        rect.anchoredPosition = Vector2.zero;
-        rect.localScale = Vector3.one;
-        rect.localRotation = Quaternion.identity;
-        rect.sizeDelta = CalculateCoverSize(viewport.rect.size, backgroundImage.sprite.rect.size);
+        HistoricalBackgroundSelector.FitCover(backgroundImage, backgroundImage.rectTransform.parent as RectTransform);
         fitting = false;
     }
 
     public static Vector2 CalculateCoverSize(Vector2 viewport, Vector2 artwork)
     {
-        if (viewport.x <= 0f || viewport.y <= 0f || artwork.x <= 0f || artwork.y <= 0f) return Vector2.zero;
-        float scale = Mathf.Max(viewport.x / artwork.x, viewport.y / artwork.y);
-        return artwork * scale;
-    }
-}
-
-[Serializable]
-public sealed class MainMenuBackgroundShuffleBag
-{
-    public int version = 1;
-    public string catalogSignature;
-    public List<int> remainingOrder = new List<int>();
-    public int lastIndex = -1;
-
-    public bool IsValid(int count, string signature)
-    {
-        if (version != 1 || catalogSignature != signature || remainingOrder == null || remainingOrder.Count >= count ||
-            lastIndex < 0 || lastIndex >= count) return false;
-        var seen = new HashSet<int>();
-        foreach (int index in remainingOrder)
-            if (index < 0 || index >= count || index == lastIndex || !seen.Add(index)) return false;
-        return true;
-    }
-
-    public int Draw(int count, System.Random random)
-    {
-        if (count <= 0) throw new ArgumentOutOfRangeException(nameof(count));
-        if (remainingOrder.Count == 0)
-        {
-            for (int index = 0; index < count; index++) remainingOrder.Add(index);
-            for (int index = count - 1; index > 0; index--)
-            {
-                int swapIndex = random.Next(index + 1);
-                int value = remainingOrder[index];
-                remainingOrder[index] = remainingOrder[swapIndex];
-                remainingOrder[swapIndex] = value;
-            }
-            if (count > 1 && remainingOrder[count - 1] == lastIndex)
-            {
-                int value = remainingOrder[0];
-                remainingOrder[0] = remainingOrder[count - 1];
-                remainingOrder[count - 1] = value;
-            }
-        }
-        int selected = remainingOrder[remainingOrder.Count - 1];
-        remainingOrder.RemoveAt(remainingOrder.Count - 1);
-        lastIndex = selected;
-        return selected;
+        return HistoricalBackgroundSelector.CalculateCoverSize(viewport, artwork);
     }
 }

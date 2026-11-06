@@ -25470,6 +25470,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 194dd985b1ed47e0a37a2785416089db, type: 3}
   m_Name:
   m_EditorClassIdentifier:
+  catalog: {fileID: 11400000, guid: eb3cca87b1cf46c4bae0e75672d81658, type: 2}
   backgroundSprites: []
   backgroundImage: {fileID: 0}
   fallbackSprite: {fileID: 0}

@@ -7,7 +7,14 @@ public class LoadingPanelController : MonoBehaviour
 {
     [SerializeField] private Slider progressSlider;
     [SerializeField] private TextMeshProUGUI statusText;
+    [Tooltip("Optional numeric percentage label driven by SetProgress.")]
+    [SerializeField] private TextMeshProUGUI percentText;
+    [Tooltip("The visual 'Loading Panel' child. Must not be this controller's own GameObject or the Canvas root.")]
     [SerializeField] private GameObject loadingPanel;
+    [Tooltip("Optional companion that selects one shared historical background per regular loading session.")]
+    [SerializeField] private LoadingHistoricalBackground historicalBackground;
+
+    private const string LoadingPanelChildName = "Loading Panel";
 
     [Header("UI Blocking System")]
     [Tooltip("Hide all game UI while loading panel is active")]
@@ -29,6 +36,8 @@ public class LoadingPanelController : MonoBehaviour
     private readonly Dictionary<GameObject, bool> originalUIStates = new Dictionary<GameObject, bool>();
     private Coroutine waitForMinimapCoroutine;
     private bool waitingForMinimapUiRestore;
+    private bool regularLoadingSessionActive;
+    private int lastDisplayedPercent = -1;
     
     public static LoadingPanelController Instance => instance;
     public bool IsLoadingVisible => loadingPanel != null && loadingPanel.activeInHierarchy;
@@ -46,9 +55,9 @@ public class LoadingPanelController : MonoBehaviour
         }
         instance = this;
         
-        // Auto-find loading panel if not assigned
-        if (loadingPanel == null)
-            loadingPanel = gameObject;
+        ResolveLoadingPanel();
+        if (historicalBackground == null)
+            historicalBackground = GetComponentInChildren<LoadingHistoricalBackground>(true);
             
         // Initialize space loading panel if prefab is assigned
         InitializeSpaceLoadingPanel();
@@ -57,6 +66,47 @@ public class LoadingPanelController : MonoBehaviour
         if (hideAllUIWhileLoading)
         {
             HideAllGameUI();
+        }
+
+        // The prefab ships with the panel visible and GameManager drives the initial world-generation
+        // session purely through SetProgress/SetStatus, so a visible panel at startup is a session start.
+        if (loadingPanel != null && loadingPanel != gameObject && loadingPanel.activeSelf)
+            BeginRegularLoadingSession();
+    }
+
+    /// <summary>
+    /// Locates the visual loading panel. Never resolves to this controller's own GameObject (or the Canvas
+    /// root) so showing/hiding the visuals cannot deactivate the controller itself.
+    /// </summary>
+    private void ResolveLoadingPanel()
+    {
+        if (loadingPanel == gameObject)
+        {
+            Debug.LogWarning("[LoadingPanel] loadingPanel referenced the controller root; looking for the '" + LoadingPanelChildName + "' child instead.", this);
+            loadingPanel = null;
+        }
+        if (loadingPanel != null) return;
+
+        Transform child = transform.Find(LoadingPanelChildName);
+        if (child == null)
+        {
+            // Fall back to the first direct child that owns the progress slider or status text.
+            foreach (Transform candidate in transform)
+            {
+                bool ownsSlider = progressSlider != null && progressSlider.transform.IsChildOf(candidate);
+                bool ownsStatus = statusText != null && statusText.transform.IsChildOf(candidate);
+                if (ownsSlider || ownsStatus) { child = candidate; break; }
+            }
+        }
+
+        if (child != null)
+        {
+            loadingPanel = child.gameObject;
+            Debug.LogWarning("[LoadingPanel] loadingPanel was unassigned; using child '" + child.name + "'. Assign it explicitly in the prefab.", this);
+        }
+        else
+        {
+            Debug.LogWarning("[LoadingPanel] No '" + LoadingPanelChildName + "' child found. Loading visuals cannot be shown or hidden independently of the controller.", this);
         }
     }
 
@@ -106,6 +156,17 @@ public class LoadingPanelController : MonoBehaviour
     {
         if (progressSlider != null)
             progressSlider.value = value;
+
+        if (percentText != null)
+        {
+            // Only touch the label when the integer percent changes; SetProgress runs inside tight generation loops.
+            int percent = Mathf.RoundToInt(Mathf.Clamp01(value) * 100f);
+            if (percent != lastDisplayedPercent)
+            {
+                lastDisplayedPercent = percent;
+                percentText.SetText("{0}%", percent);
+            }
+        }
     }
 
     public void SetStatus(string text)
@@ -119,15 +180,42 @@ public class LoadingPanelController : MonoBehaviour
     /// </summary>
     public void ShowLoading(string status)
     {
-        if (loadingPanel != null)
-            loadingPanel.SetActive(true);
-        
-        SetStatus(status);
-        SetProgress(0f);
-        
         // Hide all game UI while loading
         if (hideAllUIWhileLoading)
             HideAllGameUI();
+
+        ShowRegularLoading(status);
+    }
+
+    /// <summary>
+    /// Single internal entry point for the regular (historical artwork) loading interface. A loading session
+    /// starts here and ends in HideLoading; repeated show calls during one session reuse the same artwork.
+    /// </summary>
+    private void ShowRegularLoading(string status)
+    {
+        if (loadingPanel != null)
+            loadingPanel.SetActive(true);
+
+        BeginRegularLoadingSession();
+        SetStatus(status);
+        SetProgress(0f);
+    }
+
+    private void BeginRegularLoadingSession()
+    {
+        if (regularLoadingSessionActive) return;
+        regularLoadingSessionActive = true;
+        lastDisplayedPercent = -1;
+        if (historicalBackground != null)
+            historicalBackground.BeginSession();
+    }
+
+    private void EndRegularLoadingSession()
+    {
+        if (!regularLoadingSessionActive) return;
+        regularLoadingSessionActive = false;
+        if (historicalBackground != null)
+            historicalBackground.EndSession();
     }
 
     /// <summary>
@@ -137,6 +225,8 @@ public class LoadingPanelController : MonoBehaviour
     {
         if (loadingPanel != null)
             loadingPanel.SetActive(false);
+
+        EndRegularLoadingSession();
             
         // Check if we should wait for minimap generation before restoring UI
         if (hideAllUIWhileLoading)
@@ -187,11 +277,7 @@ public class LoadingPanelController : MonoBehaviour
         }
 
         // Use regular loading panel
-        if (loadingPanel != null)
-            loadingPanel.SetActive(true);
-        
-        SetStatus(status);
-        SetProgress(0f);
+        ShowRegularLoading(status);
     }
 
     /// <summary>
