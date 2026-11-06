@@ -253,6 +253,7 @@ public sealed class FirstDraftOptionsMenu : MonoBehaviour
         var row = NewRow(name);
         MakeButton(row, value ? "ON" : "OFF", () =>
         {
+            if (confirmationActive) return; // lock controls during display confirmation
             onChange(!value);
             DrawPage();
         }, 155, value ? Gold : Track);
@@ -264,10 +265,10 @@ public sealed class FirstDraftOptionsMenu : MonoBehaviour
         var controls = Rect("Choice", row);
         Width(controls.gameObject, 350);
         Horizontal(controls.gameObject, 8, 0);
-        MakeButton(controls, "<", left, 46, Track);
+        MakeButton(controls, "<", () => { if (!confirmationActive) left(); }, 46, Track);
         var selection = Label(controls, value, 21, TextColor, TextAlignmentOptions.Center);
         Flex(selection.gameObject, 1, 0);
-        MakeButton(controls, ">", right, 46, Track);
+        MakeButton(controls, ">", () => { if (!confirmationActive) right(); }, 46, Track);
     }
 
     private void SliderRow(string name, float initial, float min, float max,
