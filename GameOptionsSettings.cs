@@ -70,6 +70,8 @@ public static class GameOptionsSettings
         AddResolution(list, seen, current.x, current.y);
         foreach (Resolution r in Screen.resolutions)
             AddResolution(list, seen, r.width, r.height);
+        if (list.Count == 0)
+            list.Add(new Vector2Int(1280, 720));
         list.Sort((a, b) =>
         {
             int width = a.x.CompareTo(b.x);
