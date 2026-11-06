@@ -1773,6 +1773,7 @@ public class MainMenuManager : MonoBehaviour
         if (optionsPanel != null)
         {
             optionsPanel.SetActive(true);
+            FirstDraftOptionsMenu.Open(optionsPanel, OnOptionsBackClicked);
             MenuLog("[MainMenuManager] Options panel ENABLED");
         }
         else
@@ -1901,6 +1902,7 @@ public class MainMenuManager : MonoBehaviour
         {
             mainMenuPanel.SetActive(false);
             optionsPanel.SetActive(true);
+            FirstDraftOptionsMenu.Open(optionsPanel, OnOptionsBackClicked);
 }
     }
 
