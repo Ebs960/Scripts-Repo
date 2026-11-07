@@ -5,7 +5,6 @@ using UnityEngine.EventSystems;
 /// <summary>Pointer hover hook. Pointer events reach this component even when its Button is not interactable.</summary>
 public sealed class BattleHoverTip : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
 {
-    private const float DefaultHoverDelay = 0.4f;
     [SerializeField] private BattleTooltipView tooltip;
     [SerializeField] private bool below;
     private string text;
@@ -44,7 +43,9 @@ public sealed class BattleHoverTip : MonoBehaviour, IPointerEnterHandler, IPoint
 
     private IEnumerator ShowAfterDelay()
     {
-        yield return new WaitForSecondsRealtime(DefaultHoverDelay);
+        // Player preference (Options > Interface) controls the hover delay.
+        float delay = GameOptionsSettings.TooltipDelaySeconds;
+        if (delay > 0f) yield return new WaitForSecondsRealtime(delay);
         pendingShow = null;
         if (!hovered || tooltip == null || string.IsNullOrEmpty(text)) yield break;
         tooltip.Show(text, (RectTransform)transform, below);

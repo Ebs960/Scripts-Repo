@@ -16,7 +16,6 @@ public class PolicyTooltipUI : MonoBehaviour
     [SerializeField] private TMP_Text statusText;
     [SerializeField] private TMP_Text descriptionText;
     [SerializeField] private TMP_Text costText;
-    [SerializeField] private float hoverDelay = 0.3f;
 
     private Coroutine pending;
     private GameObject Root => root != null ? root : gameObject;
@@ -41,7 +40,9 @@ public class PolicyTooltipUI : MonoBehaviour
 
     private IEnumerator ShowDelayed(Civilization civ, PolicyData policy, PolicyAdoptionEvaluation evaluation, Vector2 position)
     {
-        yield return new WaitForSecondsRealtime(hoverDelay);
+        // Player preference (Options > Interface) controls the hover delay.
+        float delay = GameOptionsSettings.TooltipDelaySeconds;
+        if (delay > 0f) yield return new WaitForSecondsRealtime(delay);
         pending = null;
         if (policy == null) yield break;
         GovernmentUiUtil.SetText(policyNameText, GovernmentPresentation.NameOf(policy));

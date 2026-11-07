@@ -86,6 +86,28 @@ public class PlanetaryCameraManager : MonoBehaviour
     private float _savedSurfaceMinHeight;
     private float _savedSurfaceMaxHeight;
 
+    // Player-adjustable multipliers from the Options menu. Applied where player input is read so the
+    // serialized panSpeed/zoomSpeed stay untouched and scripted transitions are unaffected.
+    private float _optionsPanMultiplier = 1f;
+    private float _optionsZoomMultiplier = 1f;
+
+    private void RefreshOptionsMultipliers()
+    {
+        _optionsPanMultiplier = GameOptionsSettings.CameraPanMultiplier;
+        _optionsZoomMultiplier = GameOptionsSettings.CameraZoomMultiplier;
+    }
+
+    void OnEnable()
+    {
+        GameOptionsSettings.CameraSettingsChanged += RefreshOptionsMultipliers;
+        RefreshOptionsMultipliers();
+    }
+
+    void OnDisable()
+    {
+        GameOptionsSettings.CameraSettingsChanged -= RefreshOptionsMultipliers;
+    }
+
     void Awake()
     {
         if (transform.position.y > 0.001f)
@@ -320,7 +342,7 @@ public class PlanetaryCameraManager : MonoBehaviour
             right = right.sqrMagnitude > 1e-6f ? right.normalized : Vector3.right;
 
             Vector3 worldMove = right * panDirection.x + fwd * panDirection.z;
-            _focusPoint += new Vector3(worldMove.x, 0f, worldMove.z) * (panSpeed * dt);
+            _focusPoint += new Vector3(worldMove.x, 0f, worldMove.z) * (panSpeed * _optionsPanMultiplier * dt);
         }
 
         if (allowMouseDrag)
@@ -355,7 +377,7 @@ public class PlanetaryCameraManager : MonoBehaviour
                 else if (buttonHeld && _lastMousePos.HasValue)
                 {
                     Vector3 delta = (Vector3)Mouse.current.position.ReadValue() - _lastMousePos.Value;
-                    Vector3 camRelative = new Vector3(-delta.x, 0f, -delta.y) * mouseSensitivity;
+                    Vector3 camRelative = new Vector3(-delta.x, 0f, -delta.y) * (mouseSensitivity * _optionsPanMultiplier);
                     Vector3 fwd = transform.forward;
                     fwd.y = 0f;
                     fwd = fwd.sqrMagnitude > 1e-6f ? fwd.normalized : Vector3.forward;
@@ -375,7 +397,7 @@ public class PlanetaryCameraManager : MonoBehaviour
         bool pointerOverUi = InputManager.Instance != null && InputManager.Instance.IsPointerOverUI();
         float scroll = Mouse.current != null ? Mouse.current.scroll.ReadValue().y / 120f : 0f;
         if (!pointerOverUi && Mathf.Abs(scroll) > 0.001f)
-            _cameraHeight = Mathf.Clamp(_cameraHeight - scroll * zoomSpeed, minHeight, maxHeight);
+            _cameraHeight = Mathf.Clamp(_cameraHeight - scroll * zoomSpeed * _optionsZoomMultiplier, minHeight, maxHeight);
     }
 
     void UpdateCameraPosition()

@@ -25,6 +25,7 @@ public class ResearchHoverPopup : MonoBehaviour
     public Color borderColor = new Color(0.48f, 0.43f, 0.30f);
     public Color headingColor = new Color(0.94f, 0.94f, 0.91f);
     public Color secondaryColor = new Color(0.68f, 0.71f, 0.73f);
+    [Tooltip("Unused at runtime: the Options > Interface tooltip delay preference is applied instead.")]
     [Min(0)] public float showDelay = 0.15f;
     [Min(0)] public float hideDelay = 0.15f;
     [Min(120)] public float preferredWidth = 360f;
@@ -115,7 +116,7 @@ public class ResearchHoverPopup : MonoBehaviour
         infoProvider = provider;
         pinned = pin;
         hideAt = -1;
-        showAt = Time.unscaledTime + Mathf.Max(0, showDelay);
+        showAt = Time.unscaledTime + GameOptionsSettings.TooltipDelaySeconds;
         if (pin) Show();
     }
 

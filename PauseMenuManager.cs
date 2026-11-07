@@ -501,20 +501,17 @@ TogglePause();
 
     private void InitializeAudioSettings()
     {
-        // Initialize music volume slider
+        // Initialise the legacy controls silently: listeners are already attached, and notifying here
+        // used to push a saved "music off" state through SetVolume(0), erasing the saved volume.
         if (musicVolumeSlider != null)
         {
-            float savedVolume = PlayerPrefs.GetFloat("GameMusicVolume", 0.75f);
-            musicVolumeSlider.value = savedVolume;
+            float savedVolume = GameOptionsSettings.GameMusicVolume;
+            musicVolumeSlider.SetValueWithoutNotify(savedVolume);
             UpdateMusicVolumeText(savedVolume);
         }
 
-        // Initialize music enabled toggle
         if (musicEnabledToggle != null)
-        {
-            bool musicEnabled = PlayerPrefs.GetInt("MusicEnabled", 1) == 1;
-            musicEnabledToggle.isOn = musicEnabled;
-        }
+            musicEnabledToggle.SetIsOnWithoutNotify(GameOptionsSettings.GameMusicEnabled);
     }
 
     private void EnablePauseToggle()
@@ -828,7 +825,10 @@ HideSaveLoadUI();
         }
         
         if (optionsPanel != null)
+        {
             optionsPanel.SetActive(true);
+            FirstDraftOptionsMenu.Open(optionsPanel, HideOptions, "PAUSED");
+        }
     }
 
     public void HideOptions()
@@ -876,15 +876,7 @@ HideSaveLoadUI();
     private void OnMusicVolumeChanged(float volume)
     {
         UpdateMusicVolumeText(volume);
-        
-        // Update music volume
-        if (MusicManager.Instance != null)
-        {
-            MusicManager.Instance.SetVolume(volume);
-        }
-        
-        // Save preference
-        PlayerPrefs.SetFloat("GameMusicVolume", volume);
+        GameOptionsSettings.SetGameMusicVolume(volume);
     }
 
     private void UpdateMusicVolumeText(float volume)
@@ -897,23 +889,8 @@ HideSaveLoadUI();
 
     private void OnMusicEnabledChanged(bool enabled)
     {
-        PlayerPrefs.SetInt("MusicEnabled", enabled ? 1 : 0);
-        
-        if (MusicManager.Instance != null)
-        {
-            if (enabled)
-            {
-                // Restore volume and play music
-                float savedVolume = PlayerPrefs.GetFloat("GameMusicVolume", 0.75f);
-                MusicManager.Instance.SetVolume(savedVolume);
-                MusicManager.Instance.PlayMusic();
-            }
-            else
-            {
-                // Mute music
-                MusicManager.Instance.SetVolume(0f);
-            }
-        }
+        // Shared implementation: stops/restores playback without touching the saved volume.
+        GameOptionsSettings.SetGameMusicEnabled(enabled);
     }
 
     #endregion
@@ -1162,42 +1139,67 @@ for (int i = 0; i < maxSaveSlots; i++)
 
     #region Autosave System
 
+    private bool turnEventsSubscribed;
+    private bool gameStartSubscribed;
+
     private void InitializeAutosaveSystem()
     {
-        if (!enableAutosave) return;
-        
-        // Subscribe to turn events if TurnManager exists
-        if (TurnManager.Instance != null)
-        {
-            TurnManager.Instance.OnTurnChanged += OnTurnChanged;
-        }
-        
-        // Subscribe to game state changes
-        if (GameManager.Instance != null)
+        // Preferences written by either Options menu override the serialized defaults so the gameplay
+        // autosave matches what the player configured in the Main Menu.
+        ApplyAutosavePreferences();
+        GameOptionsSettings.AutosaveSettingsChanged -= ApplyAutosavePreferences;
+        GameOptionsSettings.AutosaveSettingsChanged += ApplyAutosavePreferences;
+
+        // Always subscribe, even when autosave starts disabled, so enabling it mid-game works.
+        TrySubscribeTurnEvents();
+
+        if (GameManager.Instance != null && !gameStartSubscribed)
         {
             GameManager.Instance.OnGameStarted += OnGameStarted;
+            gameStartSubscribed = true;
         }
-}
+    }
+
+    private void ApplyAutosavePreferences()
+    {
+        enableAutosave = GameOptionsSettings.AutosaveEnabled;
+        autosaveInterval = GameOptionsSettings.AutosaveInterval;
+        if (enableAutosave) TrySubscribeTurnEvents();
+    }
+
+    // Guarded so repeated calls (Start, game start, re-enabling autosave) never double-subscribe.
+    private void TrySubscribeTurnEvents()
+    {
+        if (turnEventsSubscribed || TurnManager.Instance == null) return;
+        TurnManager.Instance.OnTurnChanged += OnTurnChanged;
+        turnEventsSubscribed = true;
+    }
     
     private void OnDestroy()
     {
+        GameOptionsSettings.AutosaveSettingsChanged -= ApplyAutosavePreferences;
+
         // Unsubscribe from events to prevent memory leaks
-        if (TurnManager.Instance != null)
+        if (turnEventsSubscribed && TurnManager.Instance != null)
         {
             TurnManager.Instance.OnTurnChanged -= OnTurnChanged;
         }
+        turnEventsSubscribed = false;
         
-        if (GameManager.Instance != null)
+        if (gameStartSubscribed && GameManager.Instance != null)
         {
             GameManager.Instance.OnGameStarted -= OnGameStarted;
         }
+        gameStartSubscribed = false;
     }
     
     private void OnGameStarted()
     {
         // Reset autosave tracking when a new game starts
         lastAutosaveTurn = -1;
-}
+        // TurnManager may not have existed when this menu started.
+        TrySubscribeTurnEvents();
+    }
     
     private void OnTurnChanged(Civilization civ, int newTurn)
     {
@@ -1394,26 +1396,17 @@ for (int i = 0; i < maxSaveSlots; i++)
         PerformAutosave();
     }
     
-    // Enable/disable autosave at runtime
+    // Enable/disable autosave at runtime (shared preference; the settings event applies it here)
     public void SetAutosaveEnabled(bool enabled)
     {
-        enableAutosave = enabled;
-        PlayerPrefs.SetInt("AutosaveEnabled", enabled ? 1 : 0);
-        
-        if (enabled)
-        {
-}
-        else
-        {
-}
+        GameOptionsSettings.SetAutosaveEnabled(enabled);
     }
     
-    // Change autosave interval at runtime
+    // Change autosave interval at runtime (shared preference; the settings event applies it here)
     public void SetAutosaveInterval(int interval)
     {
-        autosaveInterval = Mathf.Max(1, interval);
-        PlayerPrefs.SetInt("AutosaveInterval", autosaveInterval);
-}
+        GameOptionsSettings.SetAutosaveInterval(interval);
+    }
 
     #endregion
 

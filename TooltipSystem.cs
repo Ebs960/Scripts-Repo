@@ -29,6 +29,7 @@ public class TooltipSystem : MonoBehaviour
     private Canvas tooltipCanvas;
     private bool isPointerOverTooltip;
     private Coroutine pendingHideCoroutine;
+    private Coroutine pendingShowCoroutine;
 
     void Awake()
     {
@@ -201,6 +202,30 @@ public class TooltipSystem : MonoBehaviour
 
     void ShowTooltip()
     {
+        if (tooltipPanel == null) return;
+
+        // Content has already been written by the caller. Respect the Options > Interface tooltip delay:
+        // an already-visible tooltip updates in place, and a pending show keeps its original deadline.
+        if (tooltipPanel.activeSelf || pendingShowCoroutine != null)
+        {
+            if (tooltipPanel.activeSelf) UpdateTooltipPosition();
+            return;
+        }
+
+        float delay = GameOptionsSettings.TooltipDelaySeconds;
+        if (delay <= 0f) ShowTooltipNow();
+        else pendingShowCoroutine = StartCoroutine(ShowTooltipAfterDelay(delay));
+    }
+
+    private IEnumerator ShowTooltipAfterDelay(float delay)
+    {
+        yield return new WaitForSecondsRealtime(delay);
+        pendingShowCoroutine = null;
+        ShowTooltipNow();
+    }
+
+    private void ShowTooltipNow()
+    {
         if (tooltipPanel != null)
         {
             tooltipPanel.SetActive(true);
@@ -211,6 +236,11 @@ public class TooltipSystem : MonoBehaviour
 
     public void HideTooltip()
     {
+        if (pendingShowCoroutine != null)
+        {
+            StopCoroutine(pendingShowCoroutine);
+            pendingShowCoroutine = null;
+        }
         if (tooltipPanel != null)
         {
             tooltipPanel.SetActive(false);

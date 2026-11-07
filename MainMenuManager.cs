@@ -1721,13 +1721,13 @@ public class MainMenuManager : MonoBehaviour
         else
             Debug.LogError("[MainMenuManager] InitializeAudioSettings: optionsPanel is NULL!");
 
-        // Initialize menu music volume slider
+        // Initialize menu music volume slider (silently: notifying would re-apply/overwrite preferences)
         if (menuMusicVolumeSlider != null)
         {
             try
             {
-                float savedVolume = PlayerPrefs.GetFloat("MenuMusicVolume", 0.75f);
-                menuMusicVolumeSlider.value = savedVolume;
+                float savedVolume = GameOptionsSettings.MenuMusicVolume;
+                menuMusicVolumeSlider.SetValueWithoutNotify(savedVolume);
                 UpdateMenuMusicVolumeText(savedVolume);
                 MenuLog($"[MainMenuManager] Menu music volume set to {savedVolume}");
             }
@@ -1744,8 +1744,8 @@ public class MainMenuManager : MonoBehaviour
         {
             try
             {
-                bool musicEnabled = PlayerPrefs.GetInt("MenuMusicEnabled", 1) == 1;
-                menuMusicEnabledToggle.isOn = musicEnabled;
+                bool musicEnabled = GameOptionsSettings.MenuMusicEnabled;
+                menuMusicEnabledToggle.SetIsOnWithoutNotify(musicEnabled);
                 MenuLog($"[MainMenuManager] Menu music enabled set to {musicEnabled}");
             }
             catch (System.Exception ex)
@@ -1773,6 +1773,7 @@ public class MainMenuManager : MonoBehaviour
         if (optionsPanel != null)
         {
             optionsPanel.SetActive(true);
+            FirstDraftOptionsMenu.Open(optionsPanel, OnOptionsBackClicked, "MAIN MENU");
             MenuLog("[MainMenuManager] Options panel ENABLED");
         }
         else
@@ -1802,15 +1803,7 @@ public class MainMenuManager : MonoBehaviour
     void OnMenuMusicVolumeChanged(float volume)
     {
         UpdateMenuMusicVolumeText(volume);
-        
-        // Update menu music volume
-        if (MenuMusicManager.Instance != null)
-        {
-            MenuMusicManager.Instance.SetVolume(volume);
-        }
-        
-        // Save preference
-        PlayerPrefs.SetFloat("MenuMusicVolume", volume);
+        GameOptionsSettings.SetMenuMusicVolume(volume);
     }
 
     private void UpdateMenuMusicVolumeText(float volume)
@@ -1823,23 +1816,8 @@ public class MainMenuManager : MonoBehaviour
 
     void OnMenuMusicEnabledChanged(bool enabled)
     {
-        PlayerPrefs.SetInt("MenuMusicEnabled", enabled ? 1 : 0);
-        
-        if (MenuMusicManager.Instance != null)
-        {
-            if (enabled)
-            {
-                // Restore volume and play music
-                float savedVolume = PlayerPrefs.GetFloat("MenuMusicVolume", 0.75f);
-                MenuMusicManager.Instance.SetVolume(savedVolume);
-                MenuMusicManager.Instance.PlayMenuMusic();
-            }
-            else
-            {
-                // Mute music
-                MenuMusicManager.Instance.SetVolume(0f);
-            }
-        }
+        // Shared implementation: fades/restores playback without overwriting the saved volume.
+        GameOptionsSettings.SetMenuMusicEnabled(enabled);
     }
 
     #endregion
@@ -1848,37 +1826,33 @@ public class MainMenuManager : MonoBehaviour
 
     private void InitializeAutosaveSettings()
     {
-        // Initialize autosave enabled toggle
+        // Initialise silently: listeners are already attached at this point.
         if (autosaveEnabledToggle != null)
-        {
-            bool autosaveEnabled = PlayerPrefs.GetInt("AutosaveEnabled", 1) == 1;
-            autosaveEnabledToggle.isOn = autosaveEnabled;
-        }
+            autosaveEnabledToggle.SetIsOnWithoutNotify(GameOptionsSettings.AutosaveEnabled);
 
-        // Initialize autosave interval slider
         if (autosaveIntervalSlider != null)
         {
             autosaveIntervalSlider.minValue = 1f;
             autosaveIntervalSlider.maxValue = 10f;
             autosaveIntervalSlider.wholeNumbers = true;
             
-            int savedInterval = PlayerPrefs.GetInt("AutosaveInterval", 3);
-            autosaveIntervalSlider.value = savedInterval;
+            int savedInterval = GameOptionsSettings.AutosaveInterval;
+            autosaveIntervalSlider.SetValueWithoutNotify(savedInterval);
             UpdateAutosaveIntervalText(savedInterval);
         }
     }
 
     void OnAutosaveEnabledChanged(bool enabled)
     {
-        PlayerPrefs.SetInt("AutosaveEnabled", enabled ? 1 : 0);
-}
+        GameOptionsSettings.SetAutosaveEnabled(enabled);
+    }
 
     void OnAutosaveIntervalChanged(float interval)
     {
         int intervalInt = Mathf.RoundToInt(interval);
         UpdateAutosaveIntervalText(intervalInt);
-        PlayerPrefs.SetInt("AutosaveInterval", intervalInt);
-}
+        GameOptionsSettings.SetAutosaveInterval(intervalInt);
+    }
 
     private void UpdateAutosaveIntervalText(int interval)
     {
@@ -1901,6 +1875,7 @@ public class MainMenuManager : MonoBehaviour
         {
             mainMenuPanel.SetActive(false);
             optionsPanel.SetActive(true);
+            FirstDraftOptionsMenu.Open(optionsPanel, OnOptionsBackClicked, "MAIN MENU");
 }
     }
 
