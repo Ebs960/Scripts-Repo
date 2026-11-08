@@ -4282,6 +4282,31 @@ public class Civilization : MonoBehaviour
     }
 
     /// <summary>
+    /// True when this civilization may use the given unit/building. Unique replacements are only
+    /// available to civilizations whose leader or CivData grants them.
+    /// </summary>
+    public bool CanAccessUniqueContent(ScriptableObject content)
+    {
+        if (content == null || !UniqueContentRegistry.IsUnique(content)) return true;
+
+        if (content is CombatUnitData unit)
+        {
+            if (uniqueUnitReplacements.ContainsValue(unit)) return true;
+            if (civData?.uniqueUnits != null && System.Array.IndexOf(civData.uniqueUnits, unit) >= 0) return true;
+            return false;
+        }
+
+        if (content is BuildingData building)
+        {
+            if (uniqueBuildingReplacements.ContainsValue(building)) return true;
+            if (civData?.uniqueBuildings != null && System.Array.IndexOf(civData.uniqueBuildings, building) >= 0) return true;
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Gets the appropriate building data, using unique building if available
     /// </summary>
     public BuildingData GetBuildingData(BuildingData standardBuilding)

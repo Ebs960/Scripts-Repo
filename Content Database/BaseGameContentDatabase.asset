@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: BaseGameContentDatabase
   m_EditorClassIdentifier:
   combatUnits:
+  - {fileID: 11400000, guid: c0b6561c079c4614ae164019c023b27d, type: 2}
+  - {fileID: 11400000, guid: 6bbe6277947f4af7840926b137eb068f, type: 2}
   - {fileID: 11400000, guid: 3e359971cffe5ff428b67f7b28bcc51f, type: 2}
   - {fileID: 11400000, guid: d9d2f2af255a9d34e9ccc54329cb7b22, type: 2}
   - {fileID: 11400000, guid: b55b6436c1222ba42893f8881c2164c3, type: 2}
@@ -293,6 +295,8 @@ MonoBehaviour:
   workerUnits:
   - {fileID: 11400000, guid: a83eacc820cf181418632e535929d399, type: 2}
   buildings:
+  - {fileID: 11400000, guid: ba026047a0e24d3db0b4e828020a4ad4, type: 2}
+  - {fileID: 11400000, guid: dfe62f1c1f1a405088b9352d13944034, type: 2}
   - {fileID: 11400000, guid: e545bb4b0c1c96f4b9601991f58fd79b, type: 2}
   - {fileID: 11400000, guid: 7a4a03ba081c22547b1f8b4a7f807c26, type: 2}
   - {fileID: 11400000, guid: ff77658d9c1aa0a44b87e2a92fddf114, type: 2}
@@ -737,6 +741,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9e490822520c4f33aa1a82aaa7aea2e9, type: 2}
   - {fileID: 11400000, guid: 472432aa07af41cd9f6de997805f68f9, type: 2}
   leaders:
+  - {fileID: 11400000, guid: 40626504bfed4e20aedf91f1147e5350, type: 2}
   - {fileID: 11400000, guid: 9d3b530d343b4663be89128032ac5df7, type: 2}
   - {fileID: 11400000, guid: 52618c8776fa48de98104b27a0758f57, type: 2}
   - {fileID: 11400000, guid: e8b9f0a706f047699f2a9cb598e4e86b, type: 2}

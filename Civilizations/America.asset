@@ -35,6 +35,7 @@ MonoBehaviour:
   - Columbia Basin Herd
   availableLeaders:
   - {fileID: 11400000, guid: 9d3b530d343b4663be89128032ac5df7, type: 2}
+  - {fileID: 11400000, guid: 40626504bfed4e20aedf91f1147e5350, type: 2}
   - {fileID: 11400000, guid: 52618c8776fa48de98104b27a0758f57, type: 2}
   cultureGroup: 0
   cultureBonuses: []
@@ -42,8 +43,12 @@ MonoBehaviour:
   startingTechs: []
   startingCultures: []
   startingPolicies: []
-  uniqueUnits: []
-  uniqueBuildings: []
+  uniqueUnits:
+  - {fileID: 11400000, guid: c0b6561c079c4614ae164019c023b27d, type: 2}
+  - {fileID: 11400000, guid: 6bbe6277947f4af7840926b137eb068f, type: 2}
+  uniqueBuildings:
+  - {fileID: 11400000, guid: ba026047a0e24d3db0b4e828020a4ad4, type: 2}
+  - {fileID: 11400000, guid: dfe62f1c1f1a405088b9352d13944034, type: 2}
   startingBandData: {fileID: 11400000, guid: 5fd4aba38d6f41c6a17cadb0cfb90dea, type: 2}
   startingBandGarrison:
   - unit: {fileID: 11400000, guid: 792bc24fe24e7854ba78a98f1079695c, type: 2}

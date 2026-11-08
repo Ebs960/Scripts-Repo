@@ -150,6 +150,7 @@ public static class ResourceCache
     {
         // Unload prefab references from ScriptableObjects before clearing
         UnloadPrefabReferences();
+        UniqueContentRegistry.Invalidate();
         
         _initialized = false;
         _allCombatUnits = null;

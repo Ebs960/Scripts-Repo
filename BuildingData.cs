@@ -368,6 +368,7 @@ public static class BuildingDataExtensions
     public static bool AreRequirementsMet(this BuildingData building, Civilization civ)
     {
         if (building == null || civ == null) return false;
+        if (!civ.CanAccessUniqueContent(building)) return false;
 
         // Tech requirements
         if (building.requiredTechs != null && building.requiredTechs.Length > 0)

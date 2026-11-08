@@ -942,6 +942,7 @@ public class CombatUnitData : ScriptableObject
     public bool AreRequirementsMet(Civilization civ)
     {
         if (civ == null) return false;
+        if (!civ.CanAccessUniqueContent(this)) return false;
         
         // Check tech requirements
         if (requiredTechs != null && requiredTechs.Length > 0)

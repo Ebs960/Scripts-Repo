@@ -31,8 +31,20 @@ MonoBehaviour:
   scientificFocus: 1
   culturalFocus: 1
   religiousFocus: 0.7
-  uniqueUnits: []
-  uniqueBuildings: []
+  uniqueUnits:
+  - uniqueUnit: {fileID: 11400000, guid: c0b6561c079c4614ae164019c023b27d, type: 2}
+    replacesUnit: {fileID: 11400000, guid: b0eb88b44be9b7f4fa4167f21fe6681c, type: 2}
+    specialFeature: Cheaper, lower upkeep, +1 sight, and +25% attack and defense on owned tiles.
+  - uniqueUnit: {fileID: 11400000, guid: 6bbe6277947f4af7840926b137eb068f, type: 2}
+    replacesUnit: {fileID: 11400000, guid: 289d2e157c6d48a45a972d8517134557, type: 2}
+    specialFeature: Tougher than Cavalry, +1 sight, +25% attack from hills, and +1 Culture per turn.
+  uniqueBuildings:
+  - uniqueBuilding: {fileID: 11400000, guid: ba026047a0e24d3db0b4e828020a4ad4, type: 2}
+    replacesBuilding: {fileID: 11400000, guid: 57c8b611c10c4c48b38a6c49f63c5ce8, type: 2}
+    specialFeature: Cheaper than a Debating Society with +2 extra Policy Points and +1 Happiness.
+  - uniqueBuilding: {fileID: 11400000, guid: dfe62f1c1f1a405088b9352d13944034, type: 2}
+    replacesBuilding: {fileID: 11400000, guid: 5ebb00966e740f53f74b88428b99996c, type: 2}
+    specialFeature: Public School that also provides +3 Culture and +5% city Science.
   abilityName: Continental Resolve
   abilityDescription: "+10% Production and +10% military attack strength."
   goldModifier: 0
