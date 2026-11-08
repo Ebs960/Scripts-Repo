@@ -28,6 +28,7 @@ public class PauseMenuManager : MonoBehaviour
     [Header("Options Menu")]
     public GameObject optionsPanel;
     public Button optionsBackButton;
+    [SerializeField] private MenuUiSkin menuUiSkin;
 
     [Header("Audio Settings")]
     public Slider musicVolumeSlider;
@@ -59,11 +60,17 @@ public class PauseMenuManager : MonoBehaviour
     private List<SaveSlotButton> saveSlotButtons = new List<SaveSlotButton>();
     private int selectedSaveSlot = -1;
     private int lastAutosaveTurn = -1;
+    private PauseMenuPresentation pausePresentation;
+    private bool exitRequestPending;
     // Removed autosaveNotificationCoroutine - no longer needed with UIManager notifications
 
     [Serializable]
     public class GameSaveData
     {
+        public int saveFormatVersion;
+        public int worldGenerationSeed;
+        public GameSetupDataSnapshot generationSettings;
+        public List<PlanetSeedSaveData> planetSeeds;
         public string saveName;
         public string dateTime;
         public int currentTurn;
@@ -103,6 +110,13 @@ public class PauseMenuManager : MonoBehaviour
             dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             isAutosave = false;
         }
+    }
+
+    [Serializable]
+    public class PlanetSeedSaveData
+    {
+        public int planetIndex;
+        public int seed;
     }
 
     [Serializable]
@@ -455,11 +469,24 @@ public class PauseMenuManager : MonoBehaviour
 
     void Update()
     {
-        // Check for escape key - ONLY handle if we're the singleton instance
-        if (Keyboard.current != null && Keyboard.current[Key.Escape].wasPressedThisFrame && canTogglePause && Instance == this)
+        if (Keyboard.current == null || !Keyboard.current[Key.Escape].wasPressedThisFrame
+            || !canTogglePause || Instance != this)
+            return;
+
+        if (ConfirmationDialogService.IsVisible)
+            return;
+        if (SaveLoadMenuUI.IsVisible)
         {
-TogglePause();
+            SaveLoadMenuUI.CloseCurrent();
+            return;
         }
+        if (optionsPanel != null && optionsPanel.activeInHierarchy)
+        {
+            HideOptions();
+            return;
+        }
+
+        TogglePause();
     }
 
     private void SetupButtonEvents()
@@ -555,6 +582,10 @@ pauseMenuPanel.SetActive(true);
             Debug.LogError("[PauseMenuManager] Cannot show pause menu - no UIManager and no pauseMenuPanel!");
         }
 
+        if (pausePresentation == null)
+            pausePresentation = PauseMenuPresentation.Create(transform, this, menuUiSkin);
+        pausePresentation.Show(CanSaveCurrentCampaign());
+
         // Update GameManager pause state
         if (GameManager.Instance != null)
         {
@@ -572,6 +603,10 @@ pauseMenuPanel.SetActive(true);
     {
         if (!isPaused) return;
 isPaused = false;
+        SaveLoadMenuUI.CloseForTransition();
+        ConfirmationDialogService.DismissActive();
+        pausePresentation?.Hide();
+        HideSaveLoadUI();
         Time.timeScale = 1f;
 
         // Use UIManager to hide pause menu
@@ -671,42 +706,50 @@ pauseMenuPanel.SetActive(false);
     /// </summary>
     public void ReturnToPauseMenu()
     {
-HideSaveLoadUI();
+        HideSaveLoadUI();
+        if (isPaused)
+        {
+            if (pausePresentation == null)
+                pausePresentation = PauseMenuPresentation.Create(transform, this, menuUiSkin);
+            pausePresentation.Show(CanSaveCurrentCampaign());
+        }
         // The main pause menu should already be active, so we don't need to show it again
     }
 
     public void SaveGame()
     {
-        if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
-        {
-            UpdateSaveStatus("Saving is disabled while a tactical battle is active.");
-            return;
-        }
-
         if (selectedSaveSlot < 0 || selectedSaveSlot >= maxSaveSlots)
         {
             UpdateSaveStatus("Please select a save slot first.");
             return;
         }
 
+        if (!CanSaveCurrentCampaign())
+        {
+            UpdateSaveStatus("Saving is disabled while a tactical battle is active.");
+            return;
+        }
+
+        SaveGameRepository.SaveEntry selected = SaveGameRepository.ReadManualSlot(selectedSaveSlot);
+        if (!selected.IsEmpty)
+        {
+            ConfirmationDialogService.ShowConfirmation("OVERWRITE SAVE?",
+                "This will replace the selected save. Continue?", () => WriteSelectedManualSlot(),
+                confirmLabel: "OVERWRITE", cancelLabel: "CANCEL", owner: this, skin: menuUiSkin);
+            return;
+        }
+
+        WriteSelectedManualSlot();
+    }
+
+    private void WriteSelectedManualSlot()
+    {
+        if (selectedSaveSlot < 0 || selectedSaveSlot >= maxSaveSlots || !CanSaveCurrentCampaign())
+            return;
         try
         {
             GameSaveData saveData = CreateSaveData();
-            SaveSlotData slotData = new SaveSlotData(selectedSaveSlot)
-            {
-                hasData = true,
-                saveData = saveData
-            };
-
-            string saveDirectory = GetSaveDirectory();
-            if (!Directory.Exists(saveDirectory))
-            {
-                Directory.CreateDirectory(saveDirectory);
-            }
-
-            string filePath = Path.Combine(saveDirectory, $"save_slot_{selectedSaveSlot}.json");
-            string jsonData = JsonUtility.ToJson(slotData, true);
-            File.WriteAllText(filePath, jsonData);
+            SaveGameRepository.WriteManualSlot(selectedSaveSlot, saveData);
 
             UpdateSaveStatus($"Game saved to slot {selectedSaveSlot + 1}!");
             RefreshSaveSlots();
@@ -728,22 +771,16 @@ HideSaveLoadUI();
 
         try
         {
-            string filePath = Path.Combine(GetSaveDirectory(), $"save_slot_{selectedSaveSlot}.json");
-            
-            if (!File.Exists(filePath))
+            SaveGameRepository.SaveEntry entry = SaveGameRepository.ReadManualSlot(selectedSaveSlot);
+            if (entry.IsEmpty || !entry.IsValid)
             {
                 UpdateSaveStatus("No save data found in this slot.");
                 return;
             }
-
-            string jsonData = File.ReadAllText(filePath);
-            SaveSlotData slotData = JsonUtility.FromJson<SaveSlotData>(jsonData);
-
-            if (slotData?.hasData == true && slotData.saveData != null)
+            SaveGameRepository.Load(entry);
+            if (entry.CanLoad)
             {
-                ApplySaveData(slotData.saveData);
-                UpdateSaveStatus($"Game loaded from slot {selectedSaveSlot + 1}!");
-                ResumeGame();
+                LoadSelectedSave(entry);
 }
             else
             {
@@ -814,6 +851,8 @@ HideSaveLoadUI();
 
     public void ShowOptions()
     {
+        pausePresentation?.Hide();
+        SaveLoadMenuUI.CloseForTransition();
         // Hide pause menu and show options
         if (UIManager.Instance != null)
         {
@@ -845,30 +884,53 @@ HideSaveLoadUI();
         {
             pauseMenuPanel.SetActive(true);
         }
+        if (pausePresentation == null)
+            pausePresentation = PauseMenuPresentation.Create(transform, this, menuUiSkin);
+        pausePresentation.Show(CanSaveCurrentCampaign());
     }
 
     public void ExitToMainMenu()
-    {
-// Resume time before changing scenes
-        Time.timeScale = 1f;
-        
-        // Stop game music
-        if (MusicManager.Instance != null)
         {
-            MusicManager.Instance.StopMusicImmediate();
+            if (exitRequestPending) return;
+            exitRequestPending = true;
+            bool opened = ConfirmationDialogService.ShowConfirmation("EXIT TO MAIN MENU?",
+                "Any progress since your last save may be lost.", () =>
+                {
+                    ClosePauseOverlays();
+                    Time.timeScale = 1f;
+                    if (GameManager.Instance != null)
+                        GameManager.Instance.EndGame();
+                    else
+                    {
+                        MusicManager.Instance?.StopMusicImmediate();
+                        SceneManager.LoadScene("MainMenu");
+                    }
+                },
+                onCancel: () => exitRequestPending = false,
+                confirmLabel: "EXIT", cancelLabel: "CANCEL", owner: this, skin: menuUiSkin);
+            if (!opened)
+                exitRequestPending = false;
         }
-        
-        // Load main menu scene
-        SceneManager.LoadScene("MainMenu");
-    }
 
     public void ExitGame()
     {
+        if (exitRequestPending) return;
+        exitRequestPending = true;
+        bool opened = ConfirmationDialogService.ShowConfirmation("EXIT GAME?",
+            "Any progress since your last save may be lost.", () =>
+            {
+                ClosePauseOverlays();
+                Time.timeScale = 1f;
 #if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-        #else
-            Application.Quit();
-        #endif
+                UnityEditor.EditorApplication.isPlaying = false;
+#else
+                Application.Quit();
+#endif
+            },
+            onCancel: () => exitRequestPending = false,
+            confirmLabel: "EXIT", cancelLabel: "CANCEL", owner: this, skin: menuUiSkin);
+        if (!opened)
+            exitRequestPending = false;
     }
 
     #region Audio Settings
@@ -905,18 +967,64 @@ HideSaveLoadUI();
 
     public void ShowSaveMenu()
     {
-ShowSaveLoadUI();
-        RefreshSaveSlots();
-        UpdateSaveStatus("Select a slot to save your game.");
-        // You can add specific save menu UI here if needed
+        if (!CanSaveCurrentCampaign())
+        {
+            UIManager.Instance?.ShowNotification("Saving is unavailable during tactical encounters.");
+            return;
+        }
+
+        pausePresentation?.Hide();
+        ShowSaveLoadUI();
+        SaveLoadMenuUI.Show(SaveLoadMenuUI.BrowserMode.Save, maxSaveSlots, menuUiSkin, this,
+            CreateSaveData, null, ReturnToPauseMenu);
     }
 
     public void ShowLoadMenu()
     {
-ShowSaveLoadUI();
-        RefreshSaveSlots();
-        UpdateSaveStatus("Select a slot to load your game.");
-        // You can add specific load menu UI here if needed
+        pausePresentation?.Hide();
+        ShowSaveLoadUI();
+        SaveLoadMenuUI.Show(SaveLoadMenuUI.BrowserMode.Load, maxSaveSlots, menuUiSkin, this,
+            null, LoadSelectedSave, ReturnToPauseMenu);
+    }
+
+    private bool CanSaveCurrentCampaign()
+    {
+        return GameInteractionStateService.GetOrCreate().Mode == GameInteractionMode.Campaign;
+    }
+
+    private void LoadSelectedSave(SaveGameRepository.SaveEntry entry)
+    {
+        if (entry == null || !entry.CanLoad)
+            return;
+        if (GameManager.Instance == null)
+        {
+            UIManager.Instance?.ShowNotification("The game manager is unavailable.");
+            return;
+        }
+        if (!SaveGameRepository.IsRestorable(entry.Data, out string reason))
+        {
+            UIManager.Instance?.ShowNotification(reason);
+            return;
+        }
+
+        ConfirmationDialogService.ShowConfirmation("LOAD GAME?",
+            "Loading another campaign will replace your current session.", () =>
+            {
+                SaveLoadMenuUI.CloseForTransition();
+                GameManager.Instance.BeginLoadSave(entry.Data);
+            },
+            confirmLabel: "LOAD", cancelLabel: "CANCEL", owner: this, skin: menuUiSkin);
+    }
+
+    private void ClosePauseOverlays()
+    {
+        SaveLoadMenuUI.CloseForTransition();
+        ConfirmationDialogService.DismissActive();
+        pausePresentation?.Hide();
+        if (optionsPanel != null)
+            optionsPanel.SetActive(false);
+        if (UIManager.Instance != null)
+            UIManager.Instance.HidePauseMenu();
     }
 
     private void RefreshSaveSlots()
@@ -967,13 +1075,9 @@ for (int i = 0; i < maxSaveSlots; i++)
     {
         try
         {
-            string filePath = Path.Combine(GetSaveDirectory(), $"save_slot_{slotIndex}.json");
-            
-            if (File.Exists(filePath))
-            {
-                string jsonData = File.ReadAllText(filePath);
-                return JsonUtility.FromJson<SaveSlotData>(jsonData);
-            }
+            var entry = SaveGameRepository.ReadManualSlot(slotIndex);
+            if (!entry.IsEmpty && entry.IsValid)
+                return new SaveSlotData(slotIndex) { hasData = true, saveData = SaveGameRepository.Load(entry) };
         }
         catch (System.Exception e)
         {
@@ -1016,27 +1120,29 @@ for (int i = 0; i < maxSaveSlots; i++)
             return;
         }
 
-        try
+        SaveGameRepository.SaveEntry entry = SaveGameRepository.ReadManualSlot(selectedSaveSlot);
+        if (entry.IsEmpty)
         {
-            string filePath = Path.Combine(GetSaveDirectory(), $"save_slot_{selectedSaveSlot}.json");
-            
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
-                UpdateSaveStatus($"Save slot {selectedSaveSlot + 1} deleted.");
-                RefreshSaveSlots();
-                selectedSaveSlot = -1;
-            }
-            else
-            {
-                UpdateSaveStatus("No save data found in this slot.");
-            }
+            UpdateSaveStatus("No save data found in this slot.");
+            return;
         }
-        catch (System.Exception e)
-        {
-            UpdateSaveStatus("Failed to delete save!");
-            Debug.LogError($"Delete failed: {e.Message}");
-        }
+        ConfirmationDialogService.ShowConfirmation("DELETE SAVE?",
+            "This save will be permanently deleted.", () =>
+            {
+                try
+                {
+                    SaveGameRepository.Delete(entry);
+                    UpdateSaveStatus($"Save slot {selectedSaveSlot + 1} deleted.");
+                    RefreshSaveSlots();
+                    selectedSaveSlot = -1;
+                }
+                catch (System.Exception e)
+                {
+                    UpdateSaveStatus("Failed to delete save!");
+                    Debug.LogError($"Delete failed: {e.Message}");
+                }
+            },
+            confirmLabel: "DELETE", cancelLabel: "CANCEL", destructive: true, owner: this, skin: menuUiSkin);
     }
 
     private void UpdateSaveStatus(string message)
@@ -1229,27 +1335,9 @@ for (int i = 0; i < maxSaveSlots; i++)
             saveData.isAutosave = true;
             saveData.saveName = GenerateAutosaveName();
             
-            // Clean up old autosaves
+            string fileName = $"autosave_{DateTime.Now:yyyyMMdd_HHmmss_fff}.json";
+            SaveGameRepository.WriteAutosave(fileName, saveData);
             CleanupOldAutosaves();
-            
-            // Save the autosave
-            string autosaveDirectory = GetAutosaveDirectory();
-            if (!Directory.Exists(autosaveDirectory))
-            {
-                Directory.CreateDirectory(autosaveDirectory);
-            }
-            
-            string fileName = $"autosave_{DateTime.Now:yyyyMMdd_HHmmss}.json";
-            string filePath = Path.Combine(autosaveDirectory, fileName);
-            
-            SaveSlotData slotData = new SaveSlotData(-1) // Use -1 to indicate autosave
-            {
-                hasData = true,
-                saveData = saveData
-            };
-            
-            string jsonData = JsonUtility.ToJson(slotData, true);
-            File.WriteAllText(filePath, jsonData);
 // Show notification if enabled
             if (showAutosaveNotification)
             {
@@ -1271,27 +1359,7 @@ for (int i = 0; i < maxSaveSlots; i++)
     {
         try
         {
-            string autosaveDirectory = GetAutosaveDirectory();
-            if (!Directory.Exists(autosaveDirectory)) return;
-            
-            // Get all autosave files and sort by creation time (newest first)
-            var autosaveFiles = Directory.GetFiles(autosaveDirectory, "autosave_*.json")
-                .Select(f => new FileInfo(f))
-                .OrderByDescending(f => f.CreationTime)
-                .ToArray();
-            
-            // Delete files beyond the max count
-            for (int i = maxAutosaveFiles; i < autosaveFiles.Length; i++)
-            {
-                try
-                {
-                    autosaveFiles[i].Delete();
-}
-                catch (System.Exception e)
-                {
-                    Debug.LogWarning($"Failed to delete old autosave {autosaveFiles[i].Name}: {e.Message}");
-                }
-            }
+            SaveGameRepository.CleanupAutosaves(maxAutosaveFiles);
         }
         catch (System.Exception e)
         {
@@ -1318,59 +1386,32 @@ for (int i = 0; i < maxSaveSlots; i++)
     
     public List<GameSaveData> GetAutosaves()
     {
-        var autosaves = new List<GameSaveData>();
-        
         try
         {
-            string autosaveDirectory = GetAutosaveDirectory();
-            if (!Directory.Exists(autosaveDirectory)) return autosaves;
-            
-            var autosaveFiles = Directory.GetFiles(autosaveDirectory, "autosave_*.json");
-            
-            foreach (var filePath in autosaveFiles)
-            {
-                try
-                {
-                    string jsonData = File.ReadAllText(filePath);
-                    SaveSlotData slotData = JsonUtility.FromJson<SaveSlotData>(jsonData);
-                    
-                    if (slotData?.hasData == true && slotData.saveData != null)
-                    {
-                        autosaves.Add(slotData.saveData);
-                    }
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogWarning($"Failed to load autosave {Path.GetFileName(filePath)}: {e.Message}");
-                }
-            }
-            
-            // Sort by creation time (newest first)
-            autosaves = autosaves.OrderByDescending(a => DateTime.Parse(a.dateTime)).ToList();
+            return SaveGameRepository.Discover(maxSaveSlots)
+                .Where(entry => entry.IsAutosave && entry.IsValid)
+                .Select(SaveGameRepository.Load)
+                .Where(data => data != null)
+                .ToList();
         }
         catch (System.Exception e)
         {
             Debug.LogError($"Failed to get autosaves: {e.Message}");
+            return new List<GameSaveData>();
         }
-        
-        return autosaves;
     }
     
     public void LoadAutosave(GameSaveData autosaveData)
     {
         if (autosaveData == null) return;
-        
-        try
-        {
-            ApplySaveData(autosaveData);
-            UpdateSaveStatus($"Loaded autosave from Turn {autosaveData.currentTurn}");
-            ResumeGame();
-}
-        catch (System.Exception e)
-        {
-            UpdateSaveStatus("Failed to load autosave!");
-            Debug.LogError($"Failed to load autosave: {e.Message}");
-        }
+
+        ConfirmationDialogService.ShowConfirmation("LOAD GAME?",
+            "Loading another campaign will replace your current session.", () =>
+            {
+                if (GameManager.Instance != null)
+                    GameManager.Instance.BeginLoadSave(autosaveData);
+            },
+            confirmLabel: "LOAD", cancelLabel: "CANCEL", owner: this, skin: menuUiSkin);
     }
     
     private void ShowAutosaveNotification(string message)

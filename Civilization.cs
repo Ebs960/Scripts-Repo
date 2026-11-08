@@ -5606,10 +5606,10 @@ return true;
     /// This is now the primary method for founding cities.
     /// </summary>
     /// <param name="tileIndex">The tile where the city will be founded.</param>
-    public void FoundNewCity(int tileIndex, HexGrid gridOverride = null, PlanetGenerator planetOverride = null, GameManager.PlanetLayerType cityLayer = GameManager.PlanetLayerType.Surface)
+    public void FoundNewCity(int tileIndex, HexGrid gridOverride = null, PlanetGenerator planetOverride = null,
+        GameManager.PlanetLayerType cityLayer = GameManager.PlanetLayerType.Surface, bool ignoreCityCap = false)
     {
-// City-cap gating
-        if (!CanFoundMoreCities())
+        if (!ignoreCityCap && !CanFoundMoreCities())
         {
             Debug.LogWarning($"[{civData?.civName ?? "Civ"}] cannot found a new city: at city cap ({cities?.Count ?? 0}/{CurrentCityCap}).");
             return;

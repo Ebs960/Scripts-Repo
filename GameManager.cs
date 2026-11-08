@@ -113,6 +113,10 @@ public class GameManager : MonoBehaviour
     private List<string> realBodies;
     private List<PlanetConfig> activePlanetConfigs = new List<PlanetConfig>();
     private int totalPlanets;
+    private int worldGenerationSeed;
+    private PauseMenuManager.GameSaveData pendingLoadSave;
+    private string pendingLoadFailure;
+    private bool loadTransitionActive;
 
     public int currentPlanetIndex = 0;
     public PlanetGenerator GetPlanetGenerator(int planetIndex) => planetGenerators.TryGetValue(planetIndex, out var gen) ? gen : null;
@@ -1100,17 +1104,113 @@ public class GameManager : MonoBehaviour
         // Now wait a frame to let Awake() run everywhere else
         yield return null;
 
-        // Start the game
+        PauseMenuManager.GameSaveData requestedLoad = pendingLoadSave;
+        if (requestedLoad != null)
+        {
+            if (!SaveGameRepository.IsRestorable(requestedLoad, out string reason)
+                || !requestedLoad.generationSettings.Restore())
+            {
+                FailPendingLoad(string.IsNullOrEmpty(reason)
+                    ? "The saved game setup could not be restored."
+                    : reason);
+                yield break;
+            }
+            worldGenerationSeed = requestedLoad.worldGenerationSeed;
+        }
+        else
+        {
+            worldGenerationSeed = GameSetupData.useRandomWorldSeed
+                ? UnityEngine.Random.Range(int.MinValue, int.MaxValue)
+                : GameSetupData.worldSeed;
+        }
+        UnityEngine.Random.InitState(worldGenerationSeed);
+
         if (!gameInProgress)
             yield return StartCoroutine(StartNewGame());
 
-        // Optional delay so player sees 100% for a moment
-        yield return new WaitForSeconds(0.5f);
+        if (!gameInProgress)
+        {
+            if (requestedLoad != null)
+                FailPendingLoad("The game scene did not finish initializing.");
+            yield break;
+        }
 
-        // Wait for game to be ready
-        yield return new WaitUntil(() => gameInProgress);
+        if (requestedLoad != null)
+        {
+            bool restored = false;
+            string restoreError = null;
+            yield return StartCoroutine(LoadGameFromSaveDataRoutine(requestedLoad,
+                (success, error) => { restored = success; restoreError = error; }));
+            if (!restored)
+            {
+                FailPendingLoad(string.IsNullOrEmpty(restoreError)
+                    ? "The saved campaign could not be restored."
+                    : restoreError);
+                yield break;
+            }
+
+            pendingLoadSave = null;
+            loadTransitionActive = false;
+            gamePaused = false;
+            Time.timeScale = 1f;
+            if (pendingLoadSave == null)
+                HideLoadingPanel();
+            OnGameStarted?.Invoke();
+            if (MusicManager.Instance != null)
+                MusicManager.Instance.PlayMusic();
+        }
+        else
+        {
+            yield return new WaitForSeconds(0.5f);
+            yield return new WaitUntil(() => gameInProgress);
+        }
 
         // TileHoverSystem is self-initializing, no setup needed
+    }
+
+    public void BeginLoadSave(PauseMenuManager.GameSaveData saveData)
+    {
+        if (loadTransitionActive)
+            return;
+        if (!SaveGameRepository.IsRestorable(saveData, out string reason))
+        {
+            UIManager.Instance?.ShowNotification(reason);
+            Debug.LogError($"[GameManager] Cannot start load: {reason}");
+            return;
+        }
+
+        loadTransitionActive = true;
+        pendingLoadSave = saveData;
+        pendingLoadFailure = null;
+        Time.timeScale = 1f;
+        gamePaused = false;
+        gameInProgress = false;
+        _autoInitStarted = false;
+        _managersInitialized = false;
+        _cachedManagers = new ManagerCache();
+        CleanupMemory();
+        SceneManager.LoadScene(GameSceneName);
+    }
+
+    public bool TryConsumeLoadFailure(out string message)
+    {
+        message = pendingLoadFailure;
+        pendingLoadFailure = null;
+        return !string.IsNullOrWhiteSpace(message);
+    }
+
+    private void FailPendingLoad(string reason)
+    {
+        pendingLoadSave = null;
+        loadTransitionActive = false;
+        pendingLoadFailure = reason;
+        gameInProgress = false;
+        gamePaused = false;
+        Time.timeScale = 1f;
+        if (MusicManager.Instance != null)
+            MusicManager.Instance.StopMusicImmediate();
+        CleanupMemory();
+        SceneManager.LoadScene("MainMenu");
     }
 
     /// <summary>
@@ -1338,15 +1438,14 @@ public class GameManager : MonoBehaviour
         
 
         // Hide loading panel before startup audio/events so generation is fully finished first.
-        HideLoadingPanel();
+        if (pendingLoadSave == null)
+            HideLoadingPanel();
 
-        // Game is now ready
-        OnGameStarted?.Invoke();
-
-        // Start game music now that everything is loaded and the loading panel is hidden
-        if (MusicManager.Instance != null)
+        if (pendingLoadSave == null)
         {
-            MusicManager.Instance.PlayMusic();
+            OnGameStarted?.Invoke();
+            if (MusicManager.Instance != null)
+                MusicManager.Instance.PlayMusic();
         }
 
         
@@ -1526,16 +1625,15 @@ public class GameManager : MonoBehaviour
         // Update loading progress - Final steps
         UpdateLoadingProgress(1.0f, "Game ready!");
 
-        // CRITICAL: Hide loading panel now that game is ready
-        HideLoadingPanel();
+        // Keep the loading screen visible until saved state restoration has finished.
+        if (pendingLoadSave == null)
+            HideLoadingPanel();
 
-        // Game is now ready
-        OnGameStarted?.Invoke();
-
-        // Start game music now that everything is loaded and the loading panel is hidden
-        if (MusicManager.Instance != null)
+        if (pendingLoadSave == null)
         {
-            MusicManager.Instance.PlayMusic();
+            OnGameStarted?.Invoke();
+            if (MusicManager.Instance != null)
+                MusicManager.Instance.PlayMusic();
         }
 
         
@@ -2010,6 +2108,7 @@ public class GameManager : MonoBehaviour
             yield break;
         }
         generator.planetIndex = planetIndex;
+        generator.SetGenerationSeed(GetPlanetGenerationSeed(planetIndex));
 
         // Assign the exact ScriptableObject entry that requested this planet.
         if (assignedConfig != null)
@@ -2537,6 +2636,17 @@ public class GameManager : MonoBehaviour
     {
         PauseMenuManager.GameSaveData saveData = new PauseMenuManager.GameSaveData
         {
+            saveFormatVersion = 2,
+            worldGenerationSeed = worldGenerationSeed,
+            generationSettings = GameSetupDataSnapshot.Capture(),
+            planetSeeds = planetGenerators
+                .Where(pair => pair.Value != null)
+                .OrderBy(pair => pair.Key)
+                .Select(pair => new PauseMenuManager.PlanetSeedSaveData
+                {
+                    planetIndex = pair.Key,
+                    seed = pair.Value.seed
+                }).ToList(),
             saveName = string.IsNullOrEmpty(saveName) ? $"save_{System.DateTime.Now:yyyyMMdd_HHmmss}" : saveName,
             currentTurn = currentTurn,
             mapSize = mapSize,
@@ -2584,6 +2694,25 @@ public class GameManager : MonoBehaviour
 
         saveData.participantStates = SaveGameRegistry.CaptureAll();
         return saveData;
+    }
+
+    private int GetPlanetGenerationSeed(int planetIndex)
+    {
+        if (pendingLoadSave != null && pendingLoadSave.planetSeeds != null)
+        {
+            var saved = pendingLoadSave.planetSeeds.FirstOrDefault(seed => seed != null && seed.planetIndex == planetIndex);
+            if (saved != null)
+                return saved.seed;
+        }
+
+        return unchecked(worldGenerationSeed ^ (planetIndex * 0x45D9F3B));
+    }
+
+    public string GetPlanetNameForSave(int planetIndex)
+    {
+        return planetData.TryGetValue(planetIndex, out PlanetData data) && data != null
+            ? data.planetName
+            : $"Planet {planetIndex}";
     }
 
     private PauseMenuManager.WorldSnapshotData CaptureWorldSnapshot()
@@ -2987,17 +3116,10 @@ public class GameManager : MonoBehaviour
         try
         {
             PauseMenuManager.GameSaveData saveData = BuildSaveData(saveName);
-
-            string saveDirectory = System.IO.Path.Combine(Application.persistentDataPath, "Saves");
-            if (!System.IO.Directory.Exists(saveDirectory))
-            {
-                System.IO.Directory.CreateDirectory(saveDirectory);
-            }
-
-            string fileName = string.IsNullOrEmpty(saveName) ? $"save_{System.DateTime.Now:yyyyMMdd_HHmmss}.json" : $"{saveName}.json";
-            string filePath = System.IO.Path.Combine(saveDirectory, fileName);
-            string jsonData = JsonUtility.ToJson(saveData, true);
-            System.IO.File.WriteAllText(filePath, jsonData);
+            string directName = string.IsNullOrWhiteSpace(saveName)
+                ? $"save_{System.DateTime.Now:yyyyMMdd_HHmmss}"
+                : saveName;
+            SaveGameRepository.WriteDirectSave(directName, saveData);
 
             if (UIManager.Instance != null)
             {
@@ -3021,41 +3143,18 @@ public class GameManager : MonoBehaviour
     {
         try
         {
-            string saveDirectory = System.IO.Path.Combine(Application.persistentDataPath, "Saves");
-            string fileName = string.IsNullOrEmpty(saveName) ? "save.json" : $"{saveName}.json";
-            string filePath = System.IO.Path.Combine(saveDirectory, fileName);
-            
-            if (!System.IO.File.Exists(filePath))
+            if (!SaveGameRepository.TryReadDirectSave(saveName, out PauseMenuManager.GameSaveData saveData))
             {
-                Debug.LogWarning($"[GameManager] Save file not found: {filePath}");
-                if (UIManager.Instance != null)
-                {
-                    UIManager.Instance.ShowNotification($"Save file not found: {saveName}");
-                }
+                UIManager.Instance?.ShowNotification($"Save file not found or invalid: {saveName}");
                 return;
             }
-            
-            // Read and parse save data
-            string jsonData = System.IO.File.ReadAllText(filePath);
-            PauseMenuManager.GameSaveData saveData = JsonUtility.FromJson<PauseMenuManager.GameSaveData>(jsonData);
-            
-            if (saveData == null)
+            if (!SaveGameRepository.IsRestorable(saveData, out string reason))
             {
-                Debug.LogError("[GameManager] Failed to parse save data");
-                if (UIManager.Instance != null)
-                {
-                    UIManager.Instance.ShowNotification("Failed to load game: corrupted save data");
-                }
+                UIManager.Instance?.ShowNotification(reason);
                 return;
             }
-            
-            // Use existing LoadGameFromSaveData method
+
             LoadGameFromSaveData(saveData);
-// Show notification if UIManager is available
-            if (UIManager.Instance != null)
-            {
-                UIManager.Instance.ShowNotification($"Game loaded: {saveData.saveName}");
-            }
         }
         catch (System.Exception e)
         {
@@ -3074,12 +3173,48 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void LoadGameFromSaveData(PauseMenuManager.GameSaveData saveData)
     {
-        StartCoroutine(LoadGameFromSaveDataRoutine(saveData));
+        BeginLoadSave(saveData);
     }
 
-    private System.Collections.IEnumerator LoadGameFromSaveDataRoutine(PauseMenuManager.GameSaveData saveData)
+    private System.Collections.IEnumerator LoadGameFromSaveDataRoutine(PauseMenuManager.GameSaveData saveData,
+        Action<bool, string> completed = null)
     {
+        if (!SaveGameRepository.IsRestorable(saveData, out string validationError))
+        {
+            completed?.Invoke(false, validationError);
+            yield break;
+        }
+
+        if (planetGenerators == null || planetGenerators.Count == 0
+            || !planetGenerators.ContainsKey(saveData.currentPlanetIndex))
+        {
+            completed?.Invoke(false, "The restored world does not contain the saved current planet.");
+            yield break;
+        }
+        foreach (PauseMenuManager.PlanetSeedSaveData savedSeed in saveData.planetSeeds)
+        {
+            if (savedSeed == null || !planetGenerators.TryGetValue(savedSeed.planetIndex, out PlanetGenerator generated)
+                || generated == null || generated.seed != savedSeed.seed)
+            {
+                completed?.Invoke(false, "The regenerated planet layout does not match the saved campaign.");
+                yield break;
+            }
+        }
+
+        var allCivilizations = CivilizationManager.Instance != null
+            ? CivilizationManager.Instance.GetAllCivs()
+            : null;
+        Civilization savedPlayer = allCivilizations?.FirstOrDefault(c =>
+            c != null && c.civData != null
+            && string.Equals(c.civData.civName, saveData.playerCivName, StringComparison.Ordinal));
+        if (savedPlayer == null)
+        {
+            completed?.Invoke(false, $"Saved player civilization '{saveData.playerCivName}' was not generated.");
+            yield break;
+        }
+
         var worldSnapshot = GetWorldSnapshot(saveData);
+        string restoreError = null;
         
 
         // Basic fields
@@ -3099,18 +3234,12 @@ public class GameManager : MonoBehaviour
         // Legacy: enableMultiPlanetSystem is always true, ignore loaded value for compatibility
         currentPlanetIndex = saveData.currentPlanetIndex;
 
-        // Apply camera transform after scene objects exist
-        yield return null; // wait a frame
-        if (Camera.main != null)
-        {
-            Camera.main.transform.position = saveData.cameraPosition;
-            Camera.main.transform.eulerAngles = saveData.cameraRotation;
-        }
-
         // Ensure core managers are present
         FindCoreManagersInScene();
 
         // Wait a frame so that managers/units created in FindCoreManagersInScene have Awake/Start called
+        yield return null;
+        ClearGeneratedCampaignEntities();
         yield return null;
         AnimalManager.Instance?.ImportEcologyStates(saveData.ecologyStates);
 
@@ -3122,19 +3251,7 @@ public class GameManager : MonoBehaviour
         {
             if (CivilizationManager.Instance != null)
             {
-                var allCivs = CivilizationManager.Instance.GetAllCivs();
-                Civilization matched = !string.IsNullOrEmpty(saveData.playerCivName) && allCivs != null
-                    ? allCivs.FirstOrDefault(c => c != null && c.civData != null && c.civData.civName == saveData.playerCivName)
-                    : null;
-
-                if (matched != null)
-                {
-                    CivilizationManager.Instance.playerCiv = matched;
-                }
-                else if (saveData.playerCivIndex >= 0 && allCivs != null && saveData.playerCivIndex < allCivs.Count)
-                {
-                    CivilizationManager.Instance.playerCiv = allCivs[saveData.playerCivIndex];
-                }
+                CivilizationManager.Instance.playerCiv = savedPlayer;
             }
         }
         catch (System.Exception e)
@@ -3149,6 +3266,7 @@ public class GameManager : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogWarning($"Failed to restore city state: {e.Message}\n{e.StackTrace}");
+            restoreError = "Saved city state could not be restored: " + e.Message;
         }
 
         try
@@ -3158,26 +3276,12 @@ public class GameManager : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogWarning($"Failed to restore civilization progression: {e.Message}\n{e.StackTrace}");
+            restoreError = "Saved civilization progression could not be restored: " + e.Message;
         }
 
         // Derived topology/presence indexes are rebuilt only after authoritative cities exist.
         PlanetSimulationManager.RebuildPresenceCache();
         TradeNetworkManager.Instance?.RebuildRegistry();
-
-        // Import improvement manager assignments AFTER units are present and registered
-        if (worldSnapshot.jobAssignments != null && worldSnapshot.jobAssignments.Count > 0)
-        {
-            // Allow a small delay for UnitRegistry to populate (in case units are spawned next frame)
-            yield return null;
-            try
-            {
-                ImprovementManager.Instance?.ImportJobAssignments(worldSnapshot.jobAssignments);
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"Failed to import job assignments: {e.Message}");
-            }
-        }
 
         // ===== Restore units from save data =====
         yield return null;
@@ -3189,6 +3293,21 @@ public class GameManager : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogWarning($"Failed to restore units from save data: {e.Message}\n{e.StackTrace}");
+            restoreError = "Saved units could not be restored: " + e.Message;
+        }
+
+        if (worldSnapshot.jobAssignments != null && worldSnapshot.jobAssignments.Count > 0)
+        {
+            yield return null;
+            try
+            {
+                ImprovementManager.Instance?.ImportJobAssignments(worldSnapshot.jobAssignments);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"Failed to import job assignments: {e.Message}");
+                restoreError = "Saved job assignments could not be restored: " + e.Message;
+            }
         }
 
         try
@@ -3217,7 +3336,46 @@ public class GameManager : MonoBehaviour
             Debug.LogWarning($"Failed to restore legacy crisis state: {e.Message}");
         }
 
-        
+        if (!string.IsNullOrEmpty(restoreError))
+        {
+            completed?.Invoke(false, restoreError);
+            yield break;
+        }
+
+        if (CivilizationManager.Instance != null)
+            CivilizationManager.Instance.playerCiv = savedPlayer;
+        SetCurrentPlanet(saveData.currentPlanetIndex);
+        yield return null;
+        if (Camera.main != null)
+        {
+            Camera.main.transform.position = saveData.cameraPosition;
+            Camera.main.transform.eulerAngles = saveData.cameraRotation;
+        }
+        completed?.Invoke(true, null);
+    }
+
+    private void ClearGeneratedCampaignEntities()
+    {
+        foreach (var unit in FindObjectsByType<BaseUnit>(FindObjectsInactive.Include))
+            if (unit != null)
+                Destroy(unit.gameObject);
+        foreach (var band in FindObjectsByType<Band>(FindObjectsInactive.Include))
+            if (band != null)
+                Destroy(band.gameObject);
+        foreach (var herd in FindObjectsByType<Herd>(FindObjectsInactive.Include))
+            if (herd != null)
+                Destroy(herd.gameObject);
+
+        var civilizations = CivilizationManager.Instance?.GetAllCivs();
+        if (civilizations == null) return;
+        foreach (var civilization in civilizations)
+        {
+            if (civilization == null) continue;
+            civilization.combatUnits?.Clear();
+            civilization.workerUnits?.Clear();
+            civilization.bands?.Clear();
+            civilization.herds?.Clear();
+        }
     }
 
     private void RestoreCityStatesFromSnapshot(PauseMenuManager.WorldSnapshotData snapshot)
@@ -3250,10 +3408,27 @@ public class GameManager : MonoBehaviour
         foreach (var cityData in snapshot.cities.OrderBy(c => c.ownerCivIndex).ThenBy(c => c.ownerCityListIndex))
         {
             if (cityData == null) continue;
+            if (cityData.ownerCivIndex < 0 || cityData.ownerCivIndex >= allCivs.Count
+                || allCivs[cityData.ownerCivIndex] == null)
+                throw new InvalidOperationException($"Saved city '{cityData.cityName}' has an invalid owner.");
+
             if (!cityLookup.TryGetValue((cityData.planetIndex, cityData.centerTileIndex), out var city) || city == null)
             {
-                Debug.LogWarning($"[SaveLoad] Could not find city at planet {cityData.planetIndex}, tile {cityData.centerTileIndex}.");
-                continue;
+                var planet = GetPlanetGenerator(cityData.planetIndex);
+                var grid = planet != null ? planet.Grid : null;
+                if (planet == null || grid == null || grid.tileCenters == null
+                    || cityData.centerTileIndex < 0 || cityData.centerTileIndex >= grid.tileCenters.Length)
+                    throw new InvalidOperationException(
+                        $"Saved city '{cityData.cityName}' references an unavailable planet or tile.");
+
+                allCivs[cityData.ownerCivIndex].FoundNewCity(
+                    cityData.centerTileIndex, grid, planet, ignoreCityCap: true);
+                city = allCivs[cityData.ownerCivIndex].cities?.FirstOrDefault(candidate =>
+                    candidate != null && candidate.planetIndex == cityData.planetIndex
+                    && candidate.centerTileIndex == cityData.centerTileIndex);
+                if (city == null)
+                    throw new InvalidOperationException($"Could not recreate saved city '{cityData.cityName}'.");
+                cityLookup[(cityData.planetIndex, cityData.centerTileIndex)] = city;
             }
 
             Civilization ownerCiv = cityData.ownerCivIndex >= 0 && cityData.ownerCivIndex < allCivs.Count ? allCivs[cityData.ownerCivIndex] : city.owner;

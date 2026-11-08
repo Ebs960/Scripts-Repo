@@ -732,6 +732,18 @@ public class PlanetGenerator : MonoBehaviour, IHexasphereGenerator
         }
     }
 
+    public void SetGenerationSeed(int generationSeed)
+    {
+        seed = generationSeed;
+        randomSeed = false;
+        noise = new NoiseSampler(seed);
+        var rand = new System.Random(seed);
+        noiseOffset = new Vector3(
+            (float)(rand.NextDouble() * 2000.0 - 1000.0),
+            (float)(rand.NextDouble() * 2000.0 - 1000.0),
+            (float)(rand.NextDouble() * 2000.0 - 1000.0));
+    }
+
     /// <summary>
     /// Release GPU/native resources related to this planet (textures, buffers, baker caches).
     /// Call when unloading or switching planets to reduce VRAM and native memory usage.

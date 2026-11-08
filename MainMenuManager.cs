@@ -78,6 +78,7 @@ public class MainMenuManager : MonoBehaviour
     public Button loadGameButton;          // Load saved game (new)
     public Button optionsButton;           // Options menu (new)
     public Button quitGameButton;          // Quit game (new)
+    [SerializeField] private MenuUiSkin menuUiSkin;
 
     [Header("Game Setup Controls")]
     // Civilization counts (now dropdowns using TextMeshPro)
@@ -538,6 +539,9 @@ public class MainMenuManager : MonoBehaviour
         ValidateDropdown("Wildlife", animalPrevalenceDropdown, 6);
         ValidateDropdown("Map Size", mapSizeDropdown, 3);
         
+        if (gameManager != null && gameManager.TryConsumeLoadFailure(out string loadFailure))
+            ConfirmationDialogService.ShowMessage("LOAD FAILED", loadFailure, this, menuUiSkin);
+
         MenuLog("[MainMenuManager] Start() completed successfully");
     }
 
@@ -1084,11 +1088,35 @@ public class MainMenuManager : MonoBehaviour
     // Called when "Load Game" is clicked
     void OnLoadGameClicked()
     {
-        // For now, just log that load was clicked
-        // The actual load game functionality will be handled in the pause menu during gameplay
-        // or we could create a separate load game scene/panel here
-// TODO: Create a load game panel similar to the pause menu's save/load system
-        // This would show available save slots and allow loading before starting a new game
+        if (mainMenuPanel != null)
+            mainMenuPanel.SetActive(false);
+        SaveLoadMenuUI.Show(SaveLoadMenuUI.BrowserMode.Load,
+            SaveGameRepository.GetManualSlotCapacity(), menuUiSkin, this, null, LoadSelectedSave, ReturnFromLoadBrowser);
+    }
+
+    private void ReturnFromLoadBrowser()
+    {
+        if (mainMenuPanel != null)
+            mainMenuPanel.SetActive(true);
+    }
+
+    private void LoadSelectedSave(SaveGameRepository.SaveEntry entry)
+    {
+        if (entry == null || !entry.CanLoad)
+            return;
+        if (gameManager == null)
+        {
+            ConfirmationDialogService.ShowMessage("LOAD FAILED", "The game manager is unavailable.", this, menuUiSkin);
+            return;
+        }
+        if (!SaveGameRepository.IsRestorable(entry.Data, out string reason))
+        {
+            ConfirmationDialogService.ShowMessage("LOAD FAILED", reason, this, menuUiSkin);
+            return;
+        }
+
+        SaveLoadMenuUI.CloseForTransition();
+        gameManager.BeginLoadSave(entry.Data);
     }
     
     // Called when "Quit Game" is clicked
