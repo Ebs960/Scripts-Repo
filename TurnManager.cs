@@ -107,6 +107,9 @@ public class TurnManager : MonoBehaviour
         currentIndex = -1;
         turnsStarted = true;
 
+        // Capture the starting normal-civilization roster before any can be eliminated.
+        VictoryManager.InitializeMatch();
+
         var gameManager = GameManager.Instance;
         if (gameManager != null)
         {
