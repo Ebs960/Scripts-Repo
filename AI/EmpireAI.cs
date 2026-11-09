@@ -823,10 +823,11 @@ public class EmpireAI
 
         // Start from leader preference
         VictoryType best = civ.leader != null ? civ.leader.preferredVictory : VictoryType.Domination;
+        if (!VictoryManager.IsEnabled(best)) best = VictoryType.Domination;
 
         // Reassess based on current progress and situation
         float bestScore = ScoreVictoryPath(civ, ctx, best);
-        foreach (VictoryType vt in System.Enum.GetValues(typeof(VictoryType)))
+        foreach (VictoryType vt in VictoryManager.EnabledTypes)
         {
             if (vt == best) continue;
             float s = ScoreVictoryPath(civ, ctx, vt);
