@@ -18,6 +18,7 @@ public class GameManager : MonoBehaviour
     public Civilization WinningCivilization { get; private set; }
     public TechData VictoryTechnology { get; private set; }
     public string VictoryReason { get; private set; }
+    public VictoryType? WinningVictoryType { get; private set; }
 
     [Header("Generator Prefabs")]
     [Tooltip("PlanetGenerator prefab to instantiate - assign 'New Map Shit/Earth.prefab'")]
@@ -2510,6 +2511,13 @@ public class GameManager : MonoBehaviour
     public void EndGame()
     {
         EndGame(null, null, null);
+    }
+
+    /// <summary>End a campaign with one of the enabled victory types.</summary>
+    public void CompleteVictory(Civilization winner, VictoryType type, string reason)
+    {
+        WinningVictoryType = type;
+        EndGame(winner, null, reason);
     }
 
     /// <summary>
