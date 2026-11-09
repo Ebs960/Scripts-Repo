@@ -149,12 +149,8 @@ return;
         if (civ.isPlayerControlled)
             UIManager.Instance?.ShowNotification($"Technology researched: {DisplayName(tech)}");
 
-        if (tech.IsVictoryTech)
-        {
-            string civName = civ.civData != null ? civ.civData.civName : "A civilization";
-            string techName = !string.IsNullOrWhiteSpace(tech.techName) ? tech.techName : tech.name;
-            GameManager.Instance?.EndGame(civ, tech, $"{civName} wins by researching {techName}!");
-        }
+        // A single technology no longer ends the game. Science requires the complete catalog.
+        VictoryManager.CheckScience(civ);
     }
 
     private static string DisplayName(TechData tech) =>
