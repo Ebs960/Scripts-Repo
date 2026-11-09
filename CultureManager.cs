@@ -132,5 +132,6 @@ public class CultureManager : MonoBehaviour
         civ.OnCultureAdopted(cult);
 
         OnCultureResearchCompleted?.Invoke(civ, cult);
+        VictoryManager.CheckCulture(civ);
     }
 }

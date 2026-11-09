@@ -50,7 +50,10 @@ public class SubjectManager : MonoBehaviour, ISaveGameParticipant
     private const float ResourceTributeEndedOpinion = 4f;
 
     private static void RaiseContractChanged(Civilization overlord, Civilization subject)
-        => ContractChanged?.Invoke(overlord, subject);
+    {
+        ContractChanged?.Invoke(overlord, subject);
+        VictoryManager.CheckDomination();
+    }
 
     // ── ISaveGameParticipant ──────────────────────────────────────────────────
     public string SaveKey => "SubjectManager_v1";

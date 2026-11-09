@@ -178,7 +178,10 @@ public class CivilizationManager : MonoBehaviour
         if (playerCiv == civ) playerCiv = null;
         if (civ != null) aiPlanner.RemoveDangerMapsForCivilization(civ);
         if (changed)
+        {
             NotifyCivilizationRegistryChanged();
+            VictoryManager.CheckDomination();
+        }
     }
 
     private void NotifyCivilizationRegistryChanged()
