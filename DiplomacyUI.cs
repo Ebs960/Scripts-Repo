@@ -4,6 +4,7 @@ using TMPro;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Full diplomacy negotiation screen.
@@ -19,6 +20,7 @@ public class DiplomacyUI : MonoBehaviour
     [Header("Main Panel")]
     public GameObject mainPanel;
     public Button closeButton;
+    [SerializeField] private CanvasGroup ledgerControls;
 
     [Header("Left Section – Civ List")]
     public Transform civListContainer;
@@ -303,7 +305,10 @@ public class DiplomacyUI : MonoBehaviour
             UIManager.Instance?.ShowNotification("Accept or reject the incoming proposal before closing diplomacy.");
             return;
         }
-        gameObject.SetActive(false);
+        if (UIManager.Instance != null && UIManager.Instance.diplomacyPanel == gameObject)
+            UIManager.Instance.HidePanel("DiplomacyPanel");
+        else
+            gameObject.SetActive(false);
         selectedCiv = null;
         currentOffer = null;
     }
@@ -507,8 +512,8 @@ public class DiplomacyUI : MonoBehaviour
         if ((overlord == playerCiv && subject == selectedCiv)
             || (overlord == selectedCiv && subject == playerCiv))
         {
-            RefreshSubjectSummary();
-            RefreshActionButtons();
+            SetActiveTab(activeTab == LedgerTab.Subjects && !HasRelevantSubjectContract()
+                ? LedgerTab.Overview : activeTab);
         }
     }
 
@@ -711,10 +716,11 @@ public class DiplomacyUI : MonoBehaviour
             }
 
             // Remove button (only in edit mode)
-            if (allowRemove)
+            var removeBtn = row.GetComponentInChildren<Button>(true);
+            if (removeBtn != null)
             {
-                var removeBtn = row.GetComponentInChildren<Button>();
-                if (removeBtn != null)
+                removeBtn.gameObject.SetActive(allowRemove);
+                if (allowRemove)
                 {
                     var captured = item;
                     removeBtn.onClick.AddListener(() =>
@@ -870,9 +876,10 @@ public class DiplomacyUI : MonoBehaviour
         if (selectedCiv == null || isIncomingProposal) return;
         pickerForPlayerGive = isOurSide;
         pickerMode = PickerMode.Gold;
+        if (itemPickerConfirmButton != null) itemPickerConfirmButton.gameObject.SetActive(true);
         if (goldInputPanel != null) goldInputPanel.SetActive(true);
         if (resourceQuantityPanel != null) resourceQuantityPanel.SetActive(false);
-        if (itemPickerPanel != null) itemPickerPanel.SetActive(true);
+        ShowPickerModal();
         if (itemPickerContainer != null) itemPickerContainer.gameObject.SetActive(false);
         if (itemPickerTitleText != null)
             itemPickerTitleText.text = isOurSide ? "Offer Gold" : "Demand Gold";
@@ -881,6 +888,7 @@ public class DiplomacyUI : MonoBehaviour
         {
             goldInputField.text = "";
             goldInputField.contentType = TMP_InputField.ContentType.IntegerNumber;
+            goldInputField.Select();
         }
         var giver = GetGiverForUiSide(isOurSide);
         int available = giver != null ? Mathf.Max(0, giver.gold - GetCommittedGold(isOurSide)) : 0;
@@ -920,6 +928,7 @@ public class DiplomacyUI : MonoBehaviour
                 pendingResourceMaximum = capturedAvailable;
                 pickerForPlayerGive = isOurSide;
                 pickerMode = PickerMode.ResourceQuantity;
+                if (itemPickerConfirmButton != null) itemPickerConfirmButton.gameObject.SetActive(true);
                 if (itemPickerTitleText != null) itemPickerTitleText.text = $"Choose {capturedRes.resourceName} quantity";
                 if (itemPickerDetailText != null) itemPickerDetailText.text = $"Available: {capturedAvailable}";
                 if (itemPickerContainer != null) itemPickerContainer.gameObject.SetActive(false);
@@ -928,6 +937,7 @@ public class DiplomacyUI : MonoBehaviour
                 {
                     resourceQuantityInputField.text = "1";
                     resourceQuantityInputField.contentType = TMP_InputField.ContentType.IntegerNumber;
+                    resourceQuantityInputField.Select();
                 }
             });
             pickerItems.Add(row);
@@ -999,22 +1009,39 @@ public class DiplomacyUI : MonoBehaviour
     private void OpenItemPicker(string title)
     {
         ClearPickerItems();
-        if (itemPickerPanel != null) itemPickerPanel.SetActive(true);
+        ShowPickerModal();
+        if (itemPickerConfirmButton != null) itemPickerConfirmButton.gameObject.SetActive(false);
+        if (itemPickerDetailText != null) itemPickerDetailText.text = string.Empty;
         if (itemPickerContainer != null) itemPickerContainer.gameObject.SetActive(true);
         if (goldInputPanel != null) goldInputPanel.SetActive(false);
         if (resourceQuantityPanel != null) resourceQuantityPanel.SetActive(false);
         if (itemPickerTitleText != null) itemPickerTitleText.text = title;
     }
 
+    private void ShowPickerModal()
+    {
+        if (itemPickerPanel == null) return;
+        if (ledgerControls != null) ledgerControls.interactable = false;
+        itemPickerPanel.SetActive(true);
+        if (itemPickerCloseButton != null) itemPickerCloseButton.Select();
+    }
+
     private void CloseItemPicker()
     {
         ClearPickerItems();
+        bool wasOpen = itemPickerPanel != null && itemPickerPanel.activeSelf;
         if (itemPickerPanel != null) itemPickerPanel.SetActive(false);
         if (goldInputPanel != null) goldInputPanel.SetActive(false);
         if (resourceQuantityPanel != null) resourceQuantityPanel.SetActive(false);
         pendingResource = null;
         pendingResourceMaximum = 0;
         pickerMode = PickerMode.None;
+        if (wasOpen)
+        {
+            if (ledgerControls != null) ledgerControls.interactable = true;
+            if (EventSystem.current != null && negotiateTabButton != null && negotiateTabButton.isActiveAndEnabled)
+                negotiateTabButton.Select();
+        }
     }
 
     private void ConfirmPickerSelection()
@@ -1124,6 +1151,8 @@ public class DiplomacyUI : MonoBehaviour
     private void SetDealError(string message)
     {
         if (dealStatusText != null) dealStatusText.text = message;
+        if (itemPickerPanel != null && itemPickerPanel.activeInHierarchy && itemPickerDetailText != null)
+            itemPickerDetailText.text = message;
         UIManager.Instance?.ShowNotification(message);
     }
 

@@ -30,6 +30,8 @@ Generated from serialized asset GUID references, not filenames alone. Veto masks
 
 ## Cross-system findings
 
+The campaign Government UI uses [Government_Policy UI.prefab](../UI/Government_Policy%20UI.prefab) and [the authored Government panel assets](../Governments/Government%20Panel%20UI). Its 11 policy headers use icons keyed by the current `PolicyArea` values, not the retired category numbers. The shared confirmation is an inactive nested prefab instance so adoption, replacement, repeal, and other political actions can display their own prompt before invoking the existing rules. Welfare & Health uses the Housing icon; Eugenicism uses its existing emblem when no full illustration is assigned.
+
 - **Inactive configuration fixed:** every disabled institution now has zero seats and no veto domains. Elder Council, Republic, Oligarchy, Theocracy, Merchant Republic, Confederate Republic, Federal Republic, and Parliamentary Democracy now use appropriately named institutions. Democracy deliberately uses elections without a council; representation and legislature are independent concepts.
 - **Balance outliers normalized:** Chiefdom's +100% melee became +10%; Feudal Monarchy's +50% gold became +12%; Merchant Republic's +55% gold became +20% plus route/trade mechanics; Empathic Union's +100% culture became +20%; Theocracy's +50% faith became +25%.
 - **Policy access:** the matrix lists every direct `requiredGovernments` GUID. Policies without entries are broadly or structurally gated. Existing automatic revocation on government loss remains intact.

@@ -18,4 +18,6 @@ Walls and gates can identify the pair of tactical cells whose shared edge they p
 
 ## Preserved systems and follow-up
 
+The campaign battle flow uses the authored [confrontation](../UI/Resources/TacticalBattleUI/BattleConfrontationPanel.prefab), [tactical HUD](../UI/Resources/TacticalBattleUI/TacticalBattleCanvas.prefab), and [result](../UI/Resources/TacticalBattleUI/BattleResultPanel.prefab) prefabs. Their shell and action artwork is assigned in the prefab assets. Action artwork does not intercept clicks or replace existing labels or callbacks. Edit these prefabs in place; rebuilding them with the tactical prefab builder replaces the authored artwork with placeholders.
+
 Occupancy, commands, turns, manual deployment, reinforcement groups, transports/carriers, underwater depth, commander multipliers, deterministic RNG, result application, and campaign consequences remain on the existing battle infrastructure. Tactical fuel/endurance was removed without removing carrier launch/recovery. Further authored environment prefabs and balance tuning can be supplied through existing profiles; gameplay features do not depend on decorative prefab availability.

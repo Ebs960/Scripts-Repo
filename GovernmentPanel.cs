@@ -85,7 +85,7 @@ public class GovernmentPanel : MonoBehaviour
             return;
         }
         Instance = this;
-        if (panelRoot != null) panelRoot.SetActive(false);
+        if (panelRoot != null && panelRoot != gameObject) panelRoot.SetActive(false);
     }
 
     private void OnEnable()

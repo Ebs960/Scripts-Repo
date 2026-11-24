@@ -129,5 +129,12 @@ MonoBehaviour:
     backgroundImage: {fileID: 21300000, guid: ba9e09d6b4f0fd24aa6d926e62693807, type: 3}
     useCustomWidth: 0
     customWidth: 0
+  segments:
+  - sprite: {fileID: 21300000, guid: 05b25073289d4c96866224db4d169774, type: 3}
+    startAge: 0
+    endAge: 19
+    displayWidth: 0
+  displayHeight: 1024
+  showEraMarkers: 0
   backgroundScale: 1
   imageSpacing: 0

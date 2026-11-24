@@ -16,12 +16,13 @@ public class PoliticalConfirmRequest
     public Action onCancel;
 }
 
-/// <summary>The shared Yes/No political confirmation; the prompt is authored artwork. Actions run only on Confirm.</summary>
+/// <summary>The shared political confirmation. Actions run only on Confirm.</summary>
 public class PoliticalConfirmDialog : MonoBehaviour
 {
     [SerializeField] private GameObject root;
     [SerializeField] private Button confirmButton;
     [SerializeField] private Button cancelButton;
+    [SerializeField] private TMP_Text promptText;
 
     private PoliticalConfirmRequest pending;
 
@@ -32,6 +33,8 @@ public class PoliticalConfirmDialog : MonoBehaviour
     {
         if (request == null) return;
         pending = request;
+        GovernmentUiUtil.SetText(promptText, string.IsNullOrWhiteSpace(request.description)
+            ? request.title : $"{request.title}\n{request.description}");
 
         GovernmentUiUtil.SetClick(confirmButton, Confirm);
         GovernmentUiUtil.SetClick(cancelButton, Cancel);

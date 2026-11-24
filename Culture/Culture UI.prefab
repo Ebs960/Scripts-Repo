@@ -1315,6 +1315,10 @@ MonoBehaviour:
   legacyInformationPanels:
   - {fileID: 1816222923006180840}
   backgroundData: {fileID: 11400000, guid: 9a63fa7a1e5595249a4e654aae3180b9, type: 2}
+  mainShellSprite: {fileID: 21300000, guid: 6191ffc131a62d641836ca226a0ce673, type: 3}
+  nodeButtonSprite: {fileID: 21300000, guid: 458787dacfd5dba4e88f2dda370ce205, type: 3}
+  researchProgressSprite: {fileID: 21300000, guid: 680be164fc629df4685a761be3d7b058, type: 3}
+  hoverPopupSprite: {fileID: 21300000, guid: 59cb3c865d92b4c448cf56f154836df1, type: 3}
   useCustomLayout: 1
   layoutJson: {fileID: 4900000, guid: a18b7138504ac864e8c09b280719322b, type: 3}
   cultureNodeSize: {x: 300, y: 200}

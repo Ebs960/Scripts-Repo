@@ -8,7 +8,16 @@ using UnityEngine.UI;
 /// <summary>One authored dropdown row for one policy area holding up to two active policies.</summary>
 public class PolicyAreaDropdownUI : MonoBehaviour
 {
+    [Serializable]
+    private struct AreaArtwork
+    {
+        public PolicyArea area;
+        public Sprite sprite;
+    }
+
     [SerializeField] private TMP_Text areaNameText;
+    [SerializeField] private Image areaIcon;
+    [SerializeField] private AreaArtwork[] areaArtwork = Array.Empty<AreaArtwork>();
     [SerializeField] private Button dropdownButton;
     [Tooltip("Shows both active policies stacked on two lines.")]
     [SerializeField] private TMP_Text currentPolicyText;
@@ -36,6 +45,7 @@ public class PolicyAreaDropdownUI : MonoBehaviour
         onPolicySelected = selected; onRepealRequested = repeal;
         active = manager != null ? manager.GetActivePoliciesInArea(civ, area) : new List<PolicyData>();
         GovernmentUiUtil.SetText(areaNameText, GovernmentPresentation.PolicyAreaDisplayName(area));
+        GovernmentUiUtil.SetImage(areaIcon, Array.Find(areaArtwork, entry => entry.area == area).sprite);
         GovernmentUiUtil.SetText(currentPolicyText, FormatActivePolicies(active));
         GovernmentUiUtil.SetText(capacityText, $"{active.Count}/{PolicyManager.MaxActivePoliciesPerArea}");
         GovernmentUiUtil.SetClick(dropdownButton, Toggle);

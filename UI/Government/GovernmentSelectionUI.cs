@@ -70,6 +70,8 @@ public class GovernmentSelectionUI : GovernmentScreenBase
             (row, entry) => row.Bind(entry.government, Select));
         GovernmentUiUtil.RestoreScroll(listScroll, scroll);
         GovernmentUiUtil.SetText(emptyText, entries.Count == 0 ? "No governments are available yet." : string.Empty);
+        if (emptyText != null)
+            GovernmentUiUtil.SetActive(emptyText.gameObject, entries.Count == 0);
 
         RefreshDetail();
     }

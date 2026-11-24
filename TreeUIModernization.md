@@ -6,7 +6,7 @@ This guide includes the panoramic modernization and the full-screen shell/hover-
 
 The remote `feature/tech-culture-hover-popups` branch and draft PR #545 were checked. The local shared popup/model already improves on that draft by computing details without permanent labels and scrolling rather than truncating them. Existing helpers are reused; no new C# scripts or dependencies were added in this integration.
 
-The four requested blue/gold sprites were not identified in the current project's imported files. The similarly named `New UI Icons/Research and Culture Progress Bar.png` and `UI/Tech Entry Template.png` are older parchment artwork and are deliberately NOT assigned as substitutes. Import the actual new assets and assign the same four sprites on BOTH `TechUI` and `CultureUI`:
+Both campaign prefabs now reference the four supplied blue/gold sprites. The older parchment node and progress artwork is not used by the modern tree presentation:
 
 | Controller Field | Required Sprite | Shared Component Destination |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ The four requested blue/gold sprites were not identified in the current project'
 | `researchProgressSprite` | Research Progress Bar Background, blue/gold channel | `TreePanelView.researchProgressSprite` |
 | `hoverPopupSprite` | Technology/Culture Hover Popup Background, title and divider | `ResearchHoverPopup.backgroundSprite` |
 
-Inspector tooltips repeat the intended artwork for each slot. Missing shell art leaves the center transparent; missing node/progress/popup art uses plain functional blue UI, not unrelated artwork. Final visual matching requires the actual sprites.
+The shared shell uses nine-slice borders measured from its transparent opening. This keeps the viewport inside the frame without letterboxing the shell at ultrawide or 4:3 aspect ratios. Missing shell art leaves the center transparent; missing node/progress/popup art uses plain functional blue UI.
 
 Import all four as **Sprite (2D and UI)**, Single, **Full Rect**, with alpha transparency enabled and sufficient texture resolution. Preserve alpha in the source files; do not flatten the shell's transparent opening. Keep the existing Canvas/CanvasScaler settings. In Sprite Editor, measure borders from the artwork rather than guessing pixel values:
 
@@ -36,7 +36,7 @@ Full-screen/hover-popup follow-up:
 - `ResearchPopupInfo.cs`: existing data model now exposes a separate optional Units section.
 - `ResearchHoverPopup.cs`: existing shared popup now respects the sprite's slice borders/title band or unsliced aspect ratio, without recoloring supplied art or adding an extra artwork border.
 - `Tech/Technology UI.prefab`, `Culture/Culture UI.prefab`: additive `legacyInformationPanels` references hide `Technology Title` and `Cultural Development` on Show. Existing object IDs, sprite GUIDs, controller references, content, layouts and close buttons are retained.
-- This existing guide is updated. No new scripts, components, artwork, packages or `.meta` files were created for this integration.
+- The campaign art update adds import metadata for the supplied murals and wires the four skin sprites. It adds no scripts, components, or packages.
 
 Original panorama modernization:
 
@@ -69,28 +69,15 @@ Age lookups divide a multi-age segment into equal chronological slots for grid f
 
 The renderer creates `BackgroundContainer` behind nodes and lines. Images and era labels have raycasts disabled. Backgrounds, labels, lines and nodes are all inside the same scroll content, so they pan/zoom together.
 
-## Assign the Ten Murals
+## Active Campaign Murals
 
-1. Import each mural as Sprite (2D and UI), preferably Full Rect. Avoid transparent gutters at the adjoining image edges. Choose sufficient texture resolution/max size and filtering in Unity; the code cannot eliminate seams already painted into the artwork or introduced by texture import/compression.
-2. Open the TechTreeBackgroundData asset already referenced by Technology UI and Tech Tree Builder. Set `segments` size to **5** and assign the five Technology sprites in chronological order.
-3. Repeat on the CultureTreeBackgroundData asset, assigning the five Culture sprites. Do not share the same asset between the independent systems.
-4. Set start/end ages to the history actually depicted by each image. The following is an example covering the existing twenty enum values, not an automatic or required mapping:
+Each tree uses its own 8192 x 682 Full Rect sprite and one segment spanning Paleolithic through Galactic. The default and Standalone texture limits are 8192. At a display height of 1024, each mural is about 12,300 layout units wide, preserving the source aspect ratio. The old age artwork remains a fallback when the `segments` array is empty.
 
-| Segment | Start | End |
-| --- | --- | --- |
-| 1 | PaleolithicAge | BronzeAge |
-| 2 | IronAge | FeudalAge |
-| 3 | CastleAge | EnlightenmentAge |
-| 4 | SteamAge | InformationAge |
-| 5 | NanoAge | GalacticAge |
-
-5. Set `imageSpacing = 0`, `backgroundScale = 1`, and a common `displayHeight` (for example 1000). For exact 3:1 murals, `displayWidth = 0` then resolves to 3000 per segment. Alternatively assign each segment its own width using the aspect-correct rule above.
-6. Retain the old age entries as a reversible fallback. Clearing `segments` returns to them. Do not duplicate a single multi-age mural across its constituent ages.
-7. Optionally enable `showEraMarkers`. This adds noninteractive range labels 40 layout units above the mural using TMP's default font, or omits them if no default font exists. Final bounds include that label band. Keep saved nodes clear of it; labels default off to preserve existing compositions.
+Saved nodes retain their authored positions. Age-based fallback and optional age navigation use equal-width age slots; these are not alignment markers for painted era transitions. Era markers remain disabled.
 
 ## Inspector and Prefab Setup
 
-The existing runtime panels and node prefabs are reused. The only required prefab data additions have been made: the old static headings are listed as legacy objects to hide on Show. Header/progress/popup objects are created when absent, not serialized as duplicate hierarchies. Assign the four controller sprites above; preserve existing serialized references and any scene-instance overrides. No builder-prefab changes or JSON migration are needed.
+The existing runtime panels and node prefabs are reused. The old static headings are listed as legacy objects to hide on Show. Header/progress/popup objects are created when absent, not serialized as duplicate hierarchies. Both controller sprite sets are already assigned; preserve existing serialized references and scene-instance overrides. No builder-prefab changes or JSON migration are needed.
 
 For each runtime panel:
 

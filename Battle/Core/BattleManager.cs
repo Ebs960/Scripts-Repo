@@ -129,8 +129,8 @@ public sealed class BattleManager : MonoBehaviour, ISaveGameParticipant
 
         participantCollector = new BattleParticipantCollector(ruleset);
         mapBuilder = new BattleMapBuilder(ruleset);
-        BattlePreviewUI.GetOrCreate(this).Bind(this);
         BattleHUD.GetOrCreate(this).Bind(this);
+        BattlePreviewUI.GetOrCreate(this).Bind(this);
         var presenter = BattlePresenter.GetOrCreate(this);
         presenter.Bind(this);
         BattleResultUI.GetOrCreate(this).Bind(this);

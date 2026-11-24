@@ -2,7 +2,6 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public sealed class DiplomacyConfirmationDialog : MonoBehaviour
@@ -14,6 +13,7 @@ public sealed class DiplomacyConfirmationDialog : MonoBehaviour
     [SerializeField] private TMP_Text cancelLabelText;
     [SerializeField] private Button confirmButton;
     [SerializeField] private Button cancelButton;
+    [SerializeField] private CanvasGroup ledgerControls;
 
     private Action onConfirm;
     private Action onCancel;
@@ -30,12 +30,6 @@ public sealed class DiplomacyConfirmationDialog : MonoBehaviour
         Root.SetActive(false);
     }
 
-    private void Update()
-    {
-        if (!IsVisible || Keyboard.current == null || !Keyboard.current[Key.Escape].wasPressedThisFrame) return;
-        Cancel();
-    }
-
     public void Show(string title, string description, string confirmLabel, string cancelLabel,
         Action confirm, Action cancel = null)
     {
@@ -47,9 +41,10 @@ public sealed class DiplomacyConfirmationDialog : MonoBehaviour
         if (confirmLabelText != null) confirmLabelText.text = string.IsNullOrWhiteSpace(confirmLabel) ? "Confirm" : confirmLabel;
         if (cancelLabelText != null) cancelLabelText.text = string.IsNullOrWhiteSpace(cancelLabel) ? "Cancel" : cancelLabel;
         previousSelection = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+        if (ledgerControls != null) ledgerControls.interactable = false;
         Root.SetActive(true);
-        if (EventSystem.current != null && confirmButton != null)
-            EventSystem.current.SetSelectedGameObject(confirmButton.gameObject);
+        if (EventSystem.current != null && cancelButton != null)
+            EventSystem.current.SetSelectedGameObject(cancelButton.gameObject);
     }
 
     public void Confirm()
@@ -85,6 +80,7 @@ public sealed class DiplomacyConfirmationDialog : MonoBehaviour
         onConfirm = null;
         onCancel = null;
         Root.SetActive(false);
+        if (ledgerControls != null) ledgerControls.interactable = true;
         if (EventSystem.current != null)
             EventSystem.current.SetSelectedGameObject(previousSelection);
         previousSelection = null;

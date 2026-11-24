@@ -212,7 +212,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 6a020eecb62377b4a99d58cf0179ee75, type: 3}
+  m_Sprite: {fileID: 21300000, guid: f307dd5f90608a145b7636c7f8392932, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -314,6 +314,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1dbbf42ade1c4b3eaa72a4f8010c4db3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PolicyAreaDropdownUI
+  areaIcon: {fileID: 8210000000000000014}
+  areaArtwork:
+  - area: 1
+    sprite: {fileID: 21300000, guid: 989b76e9ad85c0d4783abfec38769b1d, type: 3}
+  - area: 2
+    sprite: {fileID: 21300000, guid: 6317456be39f1b24bb7eb10d1b875109, type: 3}
+  - area: 3
+    sprite: {fileID: 21300000, guid: 1698edc262edc7a44ad2e0d1ff464b04, type: 3}
+  - area: 4
+    sprite: {fileID: 21300000, guid: dcbe73c25de05ca4680057aea6ecdc32, type: 3}
+  - area: 5
+    sprite: {fileID: 21300000, guid: b319829fed57b074eb523cf483e8d7dc, type: 3}
+  - area: 7
+    sprite: {fileID: 21300000, guid: 576663751d96a8141907e754dd236f81, type: 3}
+  - area: 10
+    sprite: {fileID: 21300000, guid: 367ce700156105641b0b13231735ee4e, type: 3}
+  - area: 11
+    sprite: {fileID: 21300000, guid: c5c78df3807d2b743b3b377f43f4f2c9, type: 3}
+  - area: 12
+    sprite: {fileID: 21300000, guid: 09b35e3e84119d5469d6bd37b85c33da, type: 3}
+  - area: 14
+    sprite: {fileID: 21300000, guid: 574bfe02f1763ef4793478b78c7f0f4c, type: 3}
+  - area: 17
+    sprite: {fileID: 21300000, guid: 863fbcf9f16f8b64fa5a5a21bd3db61e, type: 3}
   areaNameText: {fileID: 5360474443975840367}
   dropdownButton: {fileID: 4283449637931405380}
   currentPolicyText: {fileID: 3513209222198996655}
@@ -564,6 +588,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 8210000000000000012}
   - {fileID: 6630097187218464735}
   - {fileID: 6400444826600537591}
   - {fileID: 3735511670734310801}
@@ -985,3 +1010,61 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!1 &8210000000000000011
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8210000000000000012}
+  - component: {fileID: 8210000000000000013}
+  - component: {fileID: 8210000000000000014}
+  - component: {fileID: 8210000000000000015}
+  m_Layer: 5
+  m_Name: Policy Area Icon
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!224 &8210000000000000012
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 8210000000000000011}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 9000000000000000001}
+  m_AnchorMin: {x: 0, y: 0.5}
+  m_AnchorMax: {x: 0, y: 0.5}
+  m_AnchoredPosition: {x: 16, y: 0}
+  m_SizeDelta: {x: 32, y: 32}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &8210000000000000013
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 8210000000000000011}
+  m_CullTransparentMesh: 1
+--- !u!114 &8210000000000000014
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 8210000000000000011}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_Maskable: 1
+  m_Sprite: {fileID: 0}
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillAmount: 1
+--- !u!114 &8210000000000000015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 8210000000000000011}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_MinWidth: 32
+  m_MinHeight: 32
+  m_PreferredWidth: 32
+  m_PreferredHeight: 32
+  m_FlexibleWidth: 0
+  m_FlexibleHeight: 0
+  m_LayoutPriority: 1
