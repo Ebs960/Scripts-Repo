@@ -25,6 +25,8 @@ public class GameManager : MonoBehaviour
     /// <summary>True while a saved campaign is being reconstructed; victory evaluation is suspended.</summary>
     public bool IsRestoringSave { get; private set; }
     public event Action<VictoryResult> OnMatchConcluded;
+    [SerializeField] private EndgameScreenUI endgameScreenPrefab;
+    private EndgameScreenUI endgameScreen;
 
     private GameInteractionStateService concludedInteractionService;
 
@@ -2578,12 +2580,30 @@ public class GameManager : MonoBehaviour
 
         UIManager.Instance?.ShowNotification(message);
         OnMatchConcluded?.Invoke(result);
-        EndgameScreenUI.Show(result);
+        if (endgameScreenPrefab == null)
+        {
+            Debug.LogError("[GameManager] The Endgame Screen prefab is not assigned.", this);
+            return;
+        }
+
+        var player = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+        var playerData = player != null ? player.civData : null;
+        var playerLeader = player != null ? player.leader : null;
+        endgameScreen = Instantiate(endgameScreenPrefab);
+        endgameScreen.Present(result,
+            playerData != null ? playerData : GameSetupData.selectedPlayerCivilizationData ?? selectedPlayerCivilizationData,
+            playerLeader != null ? playerLeader.leaderName : GameSetupData.selectedLeaderData?.leaderName);
     }
 
     /// <summary>Clears any previous match outcome so a new or loaded campaign starts clean.</summary>
     private void ResetMatchConclusion()
     {
+        if (endgameScreen != null)
+        {
+            endgameScreen.gameObject.SetActive(false);
+            Destroy(endgameScreen.gameObject);
+            endgameScreen = null;
+        }
         MatchResult = null;
         WinningCivilization = null;
         VictoryTechnology = null;
@@ -2607,7 +2627,6 @@ public class GameManager : MonoBehaviour
 
     private void ReturnToMainMenu()
     {
-        EndgameScreenUI.CloseCurrent();
         ResetMatchConclusion();
 
         gameInProgress = false;

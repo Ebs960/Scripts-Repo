@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using TMPro;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// EditMode tests for the pure victory rules that VictoryManager builds on. These run inside the
@@ -8,6 +11,36 @@ using UnityEngine;
 /// </summary>
 public sealed class VictoryRulesTests
 {
+    [TestCase(VictoryType.Domination, true, "Domination Victory")]
+    [TestCase(VictoryType.Science, true, "Science Victory")]
+    [TestCase(VictoryType.Culture, true, "Culture Victory")]
+    [TestCase(VictoryType.Science, false, "Science Victory — China")]
+    public void RomeResultUsesPlayerArtworkAndActualCondition(VictoryType type, bool playerWon, string subtitle)
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Scripts Repo/UI/Endgame Screen.prefab");
+        var rome = AssetDatabase.LoadAssetAtPath<CivData>("Assets/Scripts Repo/Civilizations/Rome.asset");
+        var instance = Object.Instantiate(prefab);
+        try
+        {
+            instance.GetComponent<EndgameScreenUI>().Present(new VictoryResult
+            {
+                Type = type,
+                PlayerWon = playerWon,
+                WinnerCivName = playerWon ? "Rome" : "China"
+            }, rome, "Germanicus");
+            var art = instance.transform.Find("Civilization Illustration").GetComponent<Image>();
+            Assert.That(art.sprite.name, Is.EqualTo(playerWon ? "Rome Victory Screen" : "Rome Defeat Screen"));
+            Assert.That(instance.transform.Find("Victory Condition").GetComponent<TMP_Text>().text, Is.EqualTo(subtitle));
+            Assert.That(instance.transform.Find("Player Leader").GetComponent<TMP_Text>().text, Is.EqualTo("Germanicus"));
+            var button = instance.transform.Find("Main Menu Button").GetComponent<Button>();
+            Assert.That(button.onClick.GetPersistentMethodName(0), Is.EqualTo(nameof(EndgameScreenUI.ReturnToMainMenu)));
+        }
+        finally
+        {
+            Object.DestroyImmediate(instance);
+        }
+    }
+
     private readonly List<ScriptableObject> created = new List<ScriptableObject>();
 
     private TechData Tech()

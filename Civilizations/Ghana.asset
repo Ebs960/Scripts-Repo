@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   civName: Ghana
   icon: {fileID: 21300000, guid: 33f050d48f92ca043b12b9b8a1f60d91, type: 3}
+  victoryIllustration: {fileID: 21300000, guid: ab260c25fd51f7f4b9a9c7a73fcd3221, type: 3}
+  defeatIllustration: {fileID: 21300000, guid: 0a8810e1a35d27b44a932b5bda2e4bd3, type: 3}
   cityNames:
   - Ooga Booga
   - Ashant

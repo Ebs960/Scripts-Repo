@@ -15,6 +15,8 @@ MonoBehaviour:
   civName: Incan Empire
   icon: {fileID: 0}
   factionSelectionArtwork: {fileID: 0}
+  victoryIllustration: {fileID: 21300000, guid: 762a1075e05fe3840af613a8f1435bdc, type: 3}
+  defeatIllustration: {fileID: 21300000, guid: f2fa621e4ebd5204da7c14aaafedd159, type: 3}
   cityNames:
   - Cusco
   - Quito

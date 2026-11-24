@@ -175,6 +175,7 @@ public sealed class VictoryMatchState
 {
     public int version = 1;
     public List<string> majorCivNames = new List<string>();
+    public List<string> initialMajorCivNames;
     public List<string> eliminatedCivNames = new List<string>();
     public bool concluded;
     public string winnerCivName;

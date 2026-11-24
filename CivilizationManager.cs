@@ -267,6 +267,7 @@ public class CivilizationManager : MonoBehaviour
     private IEnumerator CompleteAITurn(Civilization civ)
     {
         yield return null;
+        if (GameManager.Instance?.IsMatchConcluded == true) yield break;
 
         AIActorTier tier = ResolveActorTier(civ);
 
@@ -280,13 +281,16 @@ public class CivilizationManager : MonoBehaviour
         aiPlanner.SetBudget(AiBudget.For(aiDifficulty, tier));
         aiPlanner.PlanTurn(civ);
         yield return null;
+        if (GameManager.Instance?.IsMatchConcluded == true) yield break;
         aiPlanner.ExecuteCommands();
         yield return null;
+        if (GameManager.Instance?.IsMatchConcluded == true) yield break;
 
         // Bands and herds are non-unit actors and deliberately run after tactical movement.
         // Keep this as one phase so every actor tier receives it exactly once per turn.
         aiPlanner.ExecutePostCommandDecisions(civ);
         yield return null;
+        if (GameManager.Instance?.IsMatchConcluded == true) yield break;
 
         // ───── Phase 2: High-level strategic decisions (retained) ─────
         // These handle empire-wide choices that don't map to single-unit commands.
@@ -296,13 +300,16 @@ public class CivilizationManager : MonoBehaviour
         //   Major:     + full empire strategy, capital relocation (only if capital lost), religion.
         PerformSeasonalDecisions(civ);
         PerformTechnologicalDecisions(civ);
+        if (GameManager.Instance?.IsMatchConcluded == true) yield break;
         PerformCulturalDecisions(civ);
         if (tier == AIActorTier.Tribe)
             yield break;
 
         yield return null;
+        if (GameManager.Instance?.IsMatchConcluded == true) yield break;
         PerformImprovementUpgradeDecisions(civ);
         PerformStrategicDecisions(civ);
+        if (GameManager.Instance?.IsMatchConcluded == true) yield break;
         PerformDiplomaticDecisions(civ);
         if (tier == AIActorTier.CityState)
             yield break;
@@ -311,6 +318,7 @@ public class CivilizationManager : MonoBehaviour
         if (civ.CapitalCity == null)
             EvaluateCapitalRelocation(civ);
         yield return null;
+        if (GameManager.Instance?.IsMatchConcluded == true) yield break;
         PerformReligiousDecisions(civ);
     }
     

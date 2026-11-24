@@ -44,6 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08a5353c72672444ea1c2562e1245e13, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  endgameScreenPrefab: {fileID: 910010, guid: 180e133bf7bf44aa8b17d551c2280219, type: 3}
   planetGeneratorPrefab: {fileID: 5948921737104557089, guid: 09392ee2ad8a51640a8a88d6e0043fd5, type: 3}
   genericPlanetPrefab: {fileID: 5948921737104557089, guid: 09392ee2ad8a51640a8a88d6e0043fd5, type: 3}
   civilizationManagerPrefab: {fileID: 5078762782248899889, guid: d3086756317f18443b83fc6b9506ac20, type: 3}

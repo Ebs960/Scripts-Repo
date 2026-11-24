@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   civName: Aztecs
   icon: {fileID: 21300000, guid: 38bb44eb50c87f1419ec6c607bc304fc, type: 3}
+  victoryIllustration: {fileID: 21300000, guid: 27f5ebb7d835a7d44be30d393ce8cbc6, type: 3}
+  defeatIllustration: {fileID: 21300000, guid: 3b38f0b7e42abbb4e93207692887600d, type: 3}
   cityNames:
   - Tenochtitlan
   - Texcoco

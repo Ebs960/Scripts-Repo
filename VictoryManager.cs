@@ -16,6 +16,7 @@ public sealed class VictoryManager : MonoBehaviour, ISaveGameParticipant
     public static event Action<VictoryResult> MatchConcluded;
 
     private readonly List<string> majorRoster = new List<string>();
+    private readonly List<string> initialMajorRoster = new List<string>();
     private readonly HashSet<string> eliminated = new HashSet<string>(StringComparer.Ordinal);
     private bool initialized;
     private VictoryMatchState restoredConclusion;
@@ -65,6 +66,7 @@ public sealed class VictoryManager : MonoBehaviour, ISaveGameParticipant
     public void InitializeMatch()
     {
         majorRoster.Clear();
+        initialMajorRoster.Clear();
         eliminated.Clear();
         IsConcluded = false;
         Result = null;
@@ -77,6 +79,7 @@ public sealed class VictoryManager : MonoBehaviour, ISaveGameParticipant
                 TryAddToRoster(civ);
         }
 
+        initialMajorRoster.AddRange(majorRoster);
         initialized = true;
         Debug.Log($"[VictoryManager] Match initialized with {majorRoster.Count} major civilizations.");
     }
@@ -181,7 +184,7 @@ public sealed class VictoryManager : MonoBehaviour, ISaveGameParticipant
         switch (type)
         {
             case VictoryType.Domination:
-                EvaluateDomination(civ, out progress.Current, out progress.Total);
+                EvaluateDomination(civ, initialMajorRoster, out progress.Current, out progress.Total);
                 break;
             case VictoryType.Science:
                 progress.Current = VictoryRules.CountCatalogCompletion(
@@ -211,11 +214,14 @@ public sealed class VictoryManager : MonoBehaviour, ISaveGameParticipant
     // ── Internals ─────────────────────────────────────────────────────────────
 
     private bool EvaluateDomination(Civilization candidate, out int resolved, out int total)
+        => EvaluateDomination(candidate, majorRoster, out resolved, out total);
+
+    private bool EvaluateDomination(Civilization candidate, IReadOnlyList<string> roster, out int resolved, out int total)
     {
         var subjects = SubjectManager.Instance;
         bool subordinated = subjects != null && subjects.IsSubject(candidate);
         return VictoryRules.EvaluateDomination(
-            majorRoster,
+            roster,
             CivName(candidate),
             IsDefeated(candidate) || subordinated,
             rivalName => IsRivalDefeated(rivalName),
@@ -326,6 +332,7 @@ public sealed class VictoryManager : MonoBehaviour, ISaveGameParticipant
         var state = new VictoryMatchState
         {
             majorCivNames = new List<string>(majorRoster),
+            initialMajorCivNames = new List<string>(initialMajorRoster),
             eliminatedCivNames = new List<string>(eliminated),
             concluded = IsConcluded,
         };
@@ -354,6 +361,8 @@ public sealed class VictoryManager : MonoBehaviour, ISaveGameParticipant
             if (!merged.Contains(name)) merged.Add(name);
         majorRoster.Clear();
         majorRoster.AddRange(merged);
+        initialMajorRoster.Clear();
+        initialMajorRoster.AddRange(state.initialMajorCivNames ?? state.majorCivNames ?? merged);
 
         eliminated.Clear();
         if (state.eliminatedCivNames != null)

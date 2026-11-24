@@ -151,6 +151,9 @@ public class TurnManager : MonoBehaviour
 
         foreach (Action<Civilization, int> handler in handlers.GetInvocationList())
         {
+            if (GameManager.Instance != null && GameManager.Instance.IsMatchConcluded)
+                yield break;
+
             var handlerSw = Stopwatch.StartNew();
             try
             {
@@ -192,18 +195,24 @@ public class TurnManager : MonoBehaviour
         {
             var endingCiv = civs[currentIndex];
             OnCivTurnEnded?.Invoke(endingCiv, round);
+            if (GameManager.Instance != null && GameManager.Instance.IsMatchConcluded)
+                yield break;
 
             // If we just ended the last civ in the list, run end-of-round phases.
             if (currentIndex == civs.Count - 1)
             {
                 var roundSw = Stopwatch.StartNew();
                 OnRoundEnded?.Invoke(round);
+                if (GameManager.Instance != null && GameManager.Instance.IsMatchConcluded)
+                    yield break;
                 long msRoundEnded = roundSw.ElapsedMilliseconds;
                 OnNeutralTurn?.Invoke(round);
                 // Wait for animal processing to complete before advancing to next round
                 // (previously fire-and-forget — animals kept moving through civ turns).
                 if (AnimalManager.Instance != null)
                     yield return StartCoroutine(AnimalManager.Instance.ProcessTurnCoroutine());
+                if (GameManager.Instance != null && GameManager.Instance.IsMatchConcluded)
+                    yield break;
                 long msNeutralTurn = roundSw.ElapsedMilliseconds;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.Log($"[TurnProfile] ROUND-END round={round} | OnRoundEnded={msRoundEnded}ms OnNeutralTurn={msNeutralTurn - msRoundEnded}ms");
@@ -263,6 +272,9 @@ public class TurnManager : MonoBehaviour
             }
         }
 
+        if (GameManager.Instance != null && GameManager.Instance.IsMatchConcluded)
+            yield break;
+
         // Advance to next civ
         currentIndex++;
         if (currentIndex >= civs.Count) currentIndex = 0;
@@ -292,6 +304,8 @@ public class TurnManager : MonoBehaviour
         OnAIProcessingChanged?.Invoke(!isPlayer, civ);
 
         civ.BeginTurn(round);
+        if (gameManager != null && gameManager.IsMatchConcluded)
+            yield break;
         long msBeginTurn = sw.ElapsedMilliseconds;
 
         // Guard: if BeginTurn flagged this civ for removal (lost all units/cities via famine, etc.)
@@ -324,6 +338,8 @@ public class TurnManager : MonoBehaviour
 
         long msBeforeTurnChanged = sw.ElapsedMilliseconds;
         yield return StartCoroutine(InvokeTurnChangedHandlers(civ, round, isPlayer, civType, civLabel));
+        if (gameManager != null && gameManager.IsMatchConcluded)
+            yield break;
         long msOnTurnChanged = sw.ElapsedMilliseconds;
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
