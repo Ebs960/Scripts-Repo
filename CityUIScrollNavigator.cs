@@ -44,6 +44,7 @@ public class CityUIScrollNavigator : MonoBehaviour
     {
         if (scrollRect != null)
             scrollRect.onValueChanged.AddListener(OnScrollValueChanged);
+        UpdateNavigationHighlight();
     }
 
     private void OnDisable()
@@ -71,9 +72,8 @@ public class CityUIScrollNavigator : MonoBehaviour
         if (viewport == null)
             return;
 
-        Bounds sectionBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(contentRoot, section);
         float scrollableHeight = Mathf.Max(0f, contentRoot.rect.height - viewport.rect.height);
-        float distanceFromContentTop = contentRoot.rect.yMax - sectionBounds.max.y;
+        float distanceFromContentTop = contentRoot.rect.yMax - TopInContent(section);
 
         scrollRect.StopMovement();
         scrollRect.verticalNormalizedPosition = scrollableHeight <= Mathf.Epsilon
@@ -132,8 +132,7 @@ public class CityUIScrollNavigator : MonoBehaviour
         if (viewport == null)
             return;
 
-        float viewportTop = RectTransformUtility.CalculateRelativeRectTransformBounds(
-            contentRoot, viewport).max.y;
+        float viewportTop = TopInContent(viewport);
         CityUITab nearestTab = CurrentSection;
         float nearestDistance = float.MaxValue;
 
@@ -143,8 +142,7 @@ public class CityUIScrollNavigator : MonoBehaviour
             if (section == null || !section.gameObject.activeInHierarchy)
                 continue;
 
-            float sectionTop = RectTransformUtility.CalculateRelativeRectTransformBounds(
-                contentRoot, section).max.y;
+            float sectionTop = TopInContent(section);
             float distance = Mathf.Abs(viewportTop - sectionTop);
             if (distance < nearestDistance)
             {
@@ -162,7 +160,28 @@ public class CityUIScrollNavigator : MonoBehaviour
             return;
 
         CurrentSection = tab;
+        UpdateNavigationHighlight();
         SectionChanged?.Invoke(tab);
+    }
+
+    private float TopInContent(RectTransform rect)
+        => contentRoot.InverseTransformPoint(rect.TransformPoint(new Vector3(0, rect.rect.yMax))).y;
+
+    private void UpdateNavigationHighlight()
+    {
+        Highlight(citizensButton, CityUITab.Overview);
+        Highlight(productionButton, CityUITab.Production);
+        Highlight(buildingsButton, CityUITab.BuildingsAndSpecialists);
+        Highlight(crimeDiseaseButton, CityUITab.CrimeAndDisease);
+        Highlight(unitStorageButton, CityUITab.UnitStorage);
+    }
+
+    private void Highlight(Button button, CityUITab tab)
+    {
+        if (button == null) return;
+        var colors = button.colors;
+        colors.normalColor = CurrentSection == tab ? Color.white : new Color(0.72f, 0.74f, 0.77f);
+        button.colors = colors;
     }
 
     private void NavigateFromButton(CityUITab tab)

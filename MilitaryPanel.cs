@@ -14,13 +14,8 @@ using UnityEngine.UI;
 /// assigned commanders (Governors/Admirals), with UI to assign/remove commanders via
 /// MilitaryCommanderAssignmentService.
 ///
-/// Show(Civilization)/ShowDefault()/Hide() mirror EquipmentManagerPanel's API so UIManager's
-/// existing SendMessage-based wiring (ShowEquipmentPanel/HideEquipmentPanel) continues to work
-/// unchanged if this panel's root GameObject is assigned to UIManager's `equipmentPanel` field.
-///
-/// NOTE: `equipmentPanelInstance` must be assigned in the Inspector to the existing Equipment
-/// Panel GameObject already present in the scene/HUD prefab -- it is intentionally NOT
-/// instantiated or reparented here.
+/// The campaign opens this through UIManager's military panel reference. The Equipment tab
+/// opens the separate campaign Equipment panel unless an embedded panel is assigned.
 /// </summary>
 public class MilitaryPanel : MonoBehaviour
 {
@@ -83,7 +78,7 @@ public class MilitaryPanel : MonoBehaviour
 
         if (equipmentTabButton != null) equipmentTabButton.onClick.AddListener(ShowEquipmentTab);
         if (armiesTabButton != null) armiesTabButton.onClick.AddListener(ShowArmiesTab);
-        if (closeButton != null) closeButton.onClick.AddListener(Hide);
+        if (closeButton != null) closeButton.onClick.AddListener(Close);
         if (closeCommanderManagementButton != null) closeCommanderManagementButton.onClick.AddListener(CloseCommanderManagement);
         if (assignCommanderButton != null) assignCommanderButton.onClick.AddListener(OnAssignCommanderClicked);
 
@@ -124,17 +119,21 @@ public class MilitaryPanel : MonoBehaviour
     public void Show(Civilization civ)
     {
         currentCiv = civ;
-        if (equipmentManagerPanel != null) equipmentManagerPanel.Show(civ);
-        PopulateArmies();
-        ShowEquipmentTab();
+        if (commanderManagementPanel != null) commanderManagementPanel.SetActive(false);
+        managingFormationId = null;
+        ShowArmiesTab();
         gameObject.SetActive(true);
     }
 
     public void ShowDefault()
     {
-        if (equipmentManagerPanel != null) equipmentManagerPanel.ShowDefault();
-        ShowEquipmentTab();
-        gameObject.SetActive(true);
+        Show(null);
+    }
+
+    private void Close()
+    {
+        Hide();
+        UIManager.Instance?.HidePanel("MilitaryPanel");
     }
 
     public void Hide()
@@ -148,13 +147,24 @@ public class MilitaryPanel : MonoBehaviour
 
     public void ShowEquipmentTab()
     {
-        if (equipmentPanelInstance != null) equipmentPanelInstance.SetActive(true);
+        if (equipmentPanelInstance == null)
+        {
+            UIManager.Instance?.ShowEquipmentPanel(currentCiv);
+            return;
+        }
+        if (equipmentManagerPanel != null)
+        {
+            if (currentCiv != null) equipmentManagerPanel.Show(currentCiv);
+            else equipmentManagerPanel.ShowDefault();
+        }
+        else equipmentPanelInstance.SetActive(true);
         if (armiesTabContent != null) armiesTabContent.SetActive(false);
     }
 
     public void ShowArmiesTab()
     {
-        if (equipmentPanelInstance != null) equipmentPanelInstance.SetActive(false);
+        if (equipmentManagerPanel != null) equipmentManagerPanel.Hide();
+        else if (equipmentPanelInstance != null) equipmentPanelInstance.SetActive(false);
         if (armiesTabContent != null) armiesTabContent.SetActive(true);
         PopulateArmies();
     }
@@ -219,8 +229,22 @@ public class MilitaryPanel : MonoBehaviour
             unitListContainer.gameObject.SetActive(false);
             EnsureListLayout(unitListContainer);
             BuildUnitRows(formation.Members, unitListContainer);
-            if (expandButton != null)
-                expandButton.onClick.AddListener(() => unitListContainer.gameObject.SetActive(!unitListContainer.gameObject.activeSelf));
+            if (expandButton != null && entry.transform is RectTransform entryRect)
+            {
+                float collapsedHeight = entryRect.rect.height;
+                expandButton.interactable = unitListContainer.childCount > 0;
+                expandButton.onClick.AddListener(() =>
+                {
+                    bool expanded = !unitListContainer.gameObject.activeSelf;
+                    unitListContainer.gameObject.SetActive(expanded);
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(unitListContainer);
+                    float height = expanded
+                        ? Mathf.Max(collapsedHeight, -unitListContainer.anchoredPosition.y + unitListContainer.rect.height + 8f)
+                        : collapsedHeight;
+                    entryRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
+                    LayoutRebuilder.MarkLayoutForRebuild(armyListContent);
+                });
+            }
         }
     }
 

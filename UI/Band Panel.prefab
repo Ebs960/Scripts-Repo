@@ -4601,6 +4601,7 @@ GameObject:
   - component: {fileID: 1371}
   - component: {fileID: 1372}
   - component: {fileID: 1373}
+  - component: {fileID: 641001002}
   m_Layer: 5
   m_Name: Forage Button
   m_TagString: Untagged
@@ -4631,11 +4632,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1369}
   m_Enabled: 1
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Color: {r: 0.2, g: 0.14, b: 0.07, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 5a2576c1488a0f44185d77f17b3cfeb6, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillMethod: 4
   m_FillAmount: 1
 --- !u!114 &1373
@@ -4713,6 +4714,7 @@ GameObject:
   - component: {fileID: 1380}
   - component: {fileID: 1381}
   - component: {fileID: 1382}
+  - component: {fileID: 641001000}
   m_Layer: 5
   m_Name: Pack Encamp Button
   m_TagString: Untagged
@@ -4743,11 +4745,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1378}
   m_Enabled: 1
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Color: {r: 0.2, g: 0.14, b: 0.07, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 6ef772d80742650438eccde2fd609305, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillMethod: 4
   m_FillAmount: 1
 --- !u!114 &1382
@@ -4787,10 +4789,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1379}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_SizeDelta: {x: 0, y: 19}
+  m_Pivot: {x: 0.5, y: 0}
 --- !u!222 &1385
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -4825,6 +4827,7 @@ GameObject:
   - component: {fileID: 1389}
   - component: {fileID: 1390}
   - component: {fileID: 1391}
+  - component: {fileID: 641001001}
   m_Layer: 5
   m_Name: Splinter Band Button
   m_TagString: Untagged
@@ -4855,11 +4858,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1387}
   m_Enabled: 1
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Color: {r: 0.2, g: 0.14, b: 0.07, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: ec414f71fdf391346a5039eab8e3841a, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillMethod: 4
   m_FillAmount: 1
 --- !u!114 &1391
@@ -4899,10 +4902,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1388}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_SizeDelta: {x: 0, y: 19}
+  m_Pivot: {x: 0.5, y: 0}
 --- !u!222 &1394
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -4925,6 +4928,32 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_enableWordWrapping: 1
   m_isRichText: 1
+--- !u!114 &641001000
+MonoBehaviour:
+  m_GameObject: {fileID: 1378}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: 76
+  m_PreferredWidth: -1
+  m_PreferredHeight: 76
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: 0
+  m_LayoutPriority: 1
+--- !u!114 &641001001
+MonoBehaviour:
+  m_GameObject: {fileID: 1387}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: 76
+  m_PreferredWidth: -1
+  m_PreferredHeight: 76
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: 0
+  m_LayoutPriority: 1
 --- !u!1 &1396
 GameObject:
   m_ObjectHideFlags: 0
@@ -4937,6 +4966,7 @@ GameObject:
   - component: {fileID: 1398}
   - component: {fileID: 1399}
   - component: {fileID: 1400}
+  - component: {fileID: 641001003}
   m_Layer: 5
   m_Name: Found Settlement Button
   m_TagString: Untagged
@@ -4967,11 +4997,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1396}
   m_Enabled: 1
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Color: {r: 0.62, g: 0.25, b: 0.07, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: add1d92f077d8124397b06793370df41, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillMethod: 4
   m_FillAmount: 1
 --- !u!114 &1400
@@ -5037,6 +5067,32 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_enableWordWrapping: 1
   m_isRichText: 1
+--- !u!114 &641001002
+MonoBehaviour:
+  m_GameObject: {fileID: 1369}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: 76
+  m_PreferredWidth: -1
+  m_PreferredHeight: 76
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: 0
+  m_LayoutPriority: 1
+--- !u!114 &641001003
+MonoBehaviour:
+  m_GameObject: {fileID: 1396}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: 76
+  m_PreferredWidth: -1
+  m_PreferredHeight: 76
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: 0
+  m_LayoutPriority: 1
 --- !u!1 &1405
 GameObject:
   m_ObjectHideFlags: 0

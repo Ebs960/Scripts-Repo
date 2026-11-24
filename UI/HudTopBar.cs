@@ -235,7 +235,12 @@ public class HudTopBar : MonoBehaviour
     private void OpenEquipmentPanel()
     {
         if (UIManager.Instance != null && currentCiv != null)
-            UIManager.Instance.ShowEquipmentPanel(currentCiv);
+        {
+            if (UIManager.Instance.militaryPanel != null)
+                UIManager.Instance.ShowMilitaryPanel(currentCiv);
+            else
+                UIManager.Instance.ShowEquipmentPanel(currentCiv);
+        }
     }
 
     private void SubscribeTurnEvents()

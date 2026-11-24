@@ -734,18 +734,18 @@ public class UIManager : MonoBehaviour
 
     public void ShowEquipmentPanel(Civilization civ)
     {
-    if (equipmentPanel == null)
+        if (IsLoadingActive() || modalVisible) return;
+        if (equipmentPanel == null)
         {
             Debug.LogWarning("UIManager: equipmentPanel is not assigned.");
             return;
         }
-        // Prefer passing civ via SendMessage to avoid hard type dependency
+        ShowPanel("EquipmentPanel");
         if (civ != null)
             equipmentPanel.SendMessage("Show", civ, SendMessageOptions.DontRequireReceiver);
         else
             equipmentPanel.SendMessage("ShowDefault", SendMessageOptions.DontRequireReceiver);
-    ShowPanel("EquipmentPanel");
-    WireUIInteractions(equipmentPanel);
+        WireUIInteractions(equipmentPanel);
     }
 
     public void HideEquipmentPanel()
@@ -762,11 +762,14 @@ public class UIManager : MonoBehaviour
             Debug.LogWarning("UIManager: militaryPanel is not assigned.");
             return;
         }
-        if (civ != null)
-            militaryPanel.SendMessage("Show", civ, SendMessageOptions.DontRequireReceiver);
-        else
-            militaryPanel.SendMessage("ShowDefault", SendMessageOptions.DontRequireReceiver);
+        if (IsLoadingActive() || modalVisible) return;
+        if (!militaryPanel.TryGetComponent<MilitaryPanel>(out var controller))
+        {
+            Debug.LogWarning("UIManager: militaryPanel has no MilitaryPanel controller.");
+            return;
+        }
         ShowPanel("MilitaryPanel");
+        controller.Show(civ);
         WireUIInteractions(militaryPanel);
     }
 

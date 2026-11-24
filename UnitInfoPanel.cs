@@ -12,6 +12,9 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private Image unitIconImage; // Display the unit's icon
     [SerializeField] private TextMeshProUGUI unitNameText;
     [SerializeField] private TextMeshProUGUI unitTypeText;
+    private BaseUnit statusUnit;
+    private string displayedStatus;
+    private float nextStatusRefresh;
     [SerializeField] private TextMeshProUGUI unitDescriptionText;
     [SerializeField] private TextMeshProUGUI levelText;
     [SerializeField] private TextMeshProUGUI experienceText;
@@ -348,8 +351,41 @@ public class UnitInfoPanel : MonoBehaviour
     private void LateUpdate()
     {
         SubscribeToGameEvents();
-        if (IsVisible && currentCombatUnit == null && currentWorkerUnit == null)
+        if (!IsVisible) return;
+        if (currentCombatUnit == null && currentWorkerUnit == null)
             HidePanel();
+        else if (Time.unscaledTime >= nextStatusRefresh)
+        {
+            nextStatusRefresh = Time.unscaledTime + 0.2f;
+            RefreshUnitStatus();
+        }
+    }
+
+    private void RefreshUnitStatus()
+    {
+        if (unitTypeText == null) return;
+
+        BaseUnit unit = currentCombatUnit != null ? (BaseUnit)currentCombatUnit : currentWorkerUnit;
+        if (unit == null) return;
+        string status;
+        if (unit.isStored) status = "Stored";
+        else if (unit.isMoving) status = "Moving";
+        else if ((unit.moveOrderPath != null && unit.moveOrderNextStep < unit.moveOrderPath.Count) ||
+                 (unit.queuedSpacePath != null && unit.queuedSpacePathCursor < unit.queuedSpacePath.Count))
+            status = "Move queued";
+        else if (currentCombatUnit != null && unit.IsFortified &&
+                 CampaignArmyService.IsInDefenseMode(currentCombatUnit))
+            status = "Defense mode";
+        else if (unit.IsFortified) status = "Fortified";
+        else if (unit.IsInOrbit) status = "In orbit";
+        else status = "No move order";
+
+        if (statusUnit == unit && displayedStatus == status) return;
+        statusUnit = unit;
+        displayedStatus = status;
+        string type = currentCombatUnit != null && currentCombatUnit.data != null
+            ? currentCombatUnit.data.unitType.ToString() : "Worker";
+        unitTypeText.text = $"{type}  |  {status}";
     }
 
 
@@ -382,6 +418,8 @@ public class UnitInfoPanel : MonoBehaviour
 
     private void ClearPanelInfo()
     {
+        statusUnit = null;
+        displayedStatus = null;
         // Set all text fields to their default "empty" state and ensure they are visible
         if (unitNameText != null) { unitNameText.text = "No Unit Selected"; unitNameText.gameObject.SetActive(true); }
         if (unitTypeText != null) { unitTypeText.text = "---"; unitTypeText.gameObject.SetActive(true); }
@@ -617,7 +655,7 @@ public class UnitInfoPanel : MonoBehaviour
 
 
         unitNameText.text = currentCombatUnit.data.unitName;
-        unitTypeText.text = currentCombatUnit.data.unitType.ToString();
+        RefreshUnitStatus();
         SetUnitDescription(currentCombatUnit.data.description, currentCombatUnit.data.unitName);
 
         // Display unit icon
@@ -677,7 +715,7 @@ public class UnitInfoPanel : MonoBehaviour
 
 
         unitNameText.text = currentWorkerUnit.data.unitName;
-        unitTypeText.text = "Worker Unit";
+        RefreshUnitStatus();
         SetUnitDescription(currentWorkerUnit.data.description, currentWorkerUnit.data.unitName);
 
         // Display worker icon (was missing, causing stale/blank icon in worker panel)

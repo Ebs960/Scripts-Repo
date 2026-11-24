@@ -42,14 +42,14 @@ public class EquipmentManagerPanel : MonoBehaviour
         foreach (var slot in Slots()) if (slot != null) slot.Clicked += SelectSlot;
         if (applyToAllButton != null) applyToAllButton.onClick.AddListener(ApplyToAll);
         if (equipAvailableButton != null) equipAvailableButton.onClick.AddListener(EquipAvailable);
-        if (closeButton != null) closeButton.onClick.AddListener(Hide);
+        if (closeButton != null) closeButton.onClick.AddListener(Close);
     }
     private void OnDestroy()
     {
         foreach (var slot in Slots()) if (slot != null) slot.Clicked -= SelectSlot;
         if (applyToAllButton != null) applyToAllButton.onClick.RemoveListener(ApplyToAll);
         if (equipAvailableButton != null) equipAvailableButton.onClick.RemoveListener(EquipAvailable);
-        if (closeButton != null) closeButton.onClick.RemoveListener(Hide);
+        if (closeButton != null) closeButton.onClick.RemoveListener(Close);
         Unsubscribe();
     }
     public void Show(Civilization civ)
@@ -61,8 +61,28 @@ public class EquipmentManagerPanel : MonoBehaviour
         currentCiv.OnUnlocksChanged += UnlocksChanged;
         gameObject.SetActive(true); RefreshArchetypes(true);
     }
-    public void ShowDefault() { gameObject.SetActive(true); SetActions(false); }
+    public void ShowDefault()
+    {
+        Unsubscribe();
+        currentCiv = null;
+        gameObject.SetActive(true);
+        RefreshArchetypes(true);
+    }
+
+    private void OnDisable()
+    {
+        Unsubscribe();
+        currentCiv = null;
+    }
+
     public void Hide() { Unsubscribe(); currentCiv = null; gameObject.SetActive(false); }
+
+    private void Close()
+    {
+        Hide();
+        if (UIManager.Instance != null && UIManager.Instance.equipmentPanel == gameObject)
+            UIManager.Instance.HidePanel("EquipmentPanel");
+    }
     public void SetFilter(int value) { archetypeFilter = (ArchetypeFilter)value; RefreshArchetypes(false); }
     private void Unsubscribe()
     {
@@ -83,7 +103,14 @@ public class EquipmentManagerPanel : MonoBehaviour
     }
     private void RefreshArchetypes(bool selectFirst)
     {
-        Clear(rows); if (currentCiv == null || archetypeListContent == null || archetypeRowPrefab == null) { SetActions(false); return; }
+        Clear(rows);
+        if (selectFirst) selectedArchetype = null;
+        if (currentCiv == null || archetypeListContent == null || archetypeRowPrefab == null)
+        {
+            selectedArchetype = null;
+            BindSelection();
+            return;
+        }
         var all = new List<ScriptableObject>();
         if (archetypeFilter != ArchetypeFilter.Workers && currentCiv.unlockedCombatUnits != null) all.AddRange(currentCiv.unlockedCombatUnits.Where(x => x != null));
         if (archetypeFilter != ArchetypeFilter.Military && currentCiv.unlockedWorkerUnits != null) all.AddRange(currentCiv.unlockedWorkerUnits.Where(x => x != null));
@@ -94,7 +121,7 @@ public class EquipmentManagerPanel : MonoBehaviour
             var go = Instantiate(archetypeRowPrefab, archetypeListContent); rows.Add(go); var row = go.GetComponent<UnitArchetypeRowUI>(); if (row == null) continue;
             bool worker = data is WorkerUnitData; int count = worker ? currentCiv.workerUnits.Count(x => x != null && x.data == data) : currentCiv.combatUnits.Count(x => x != null && x.data == data);
             string label = worker ? ((WorkerUnitData)data).unitName : ((CombatUnitData)data).unitName;
-            Sprite icon = worker ? ((WorkerUnitData)data).icon : ((CombatUnitData)data).icon;
+            Sprite icon = worker ? ((WorkerUnitData)data).GetIcon(currentCiv) : ((CombatUnitData)data).GetIcon(currentCiv);
             row.Bind(data, icon, label, worker ? "Worker" : ((CombatUnitData)data).unitType.ToString(), count, data == selectedArchetype);
             row.Clicked += SelectArchetype;
         }
@@ -103,15 +130,40 @@ public class EquipmentManagerPanel : MonoBehaviour
     private void SelectArchetype(ScriptableObject data) { selectedArchetype = data; RefreshArchetypes(false); }
     private void BindSelection()
     {
-        if (selectedArchetype == null) { loadout = null; SetActions(false); return; }
+        if (selectedArchetype == null)
+        {
+            loadout = null;
+            Clear(equipmentRows);
+            if (selectedArchetypeName != null) selectedArchetypeName.text = "No unit archetype available";
+            if (selectedArchetypeIcon != null) selectedArchetypeIcon.enabled = false;
+            if (statPreviewText != null) statPreviewText.text = string.Empty;
+            if (requiredText != null) requiredText.text = "Required: -";
+            if (availableText != null) availableText.text = "Available: -";
+            if (shortageText != null) shortageText.text = "Shortage: -";
+            if (projectileDropdown != null) projectileDropdown.gameObject.SetActive(false);
+            if (projectileSlot != null) projectileSlot.gameObject.SetActive(false);
+            foreach (var slot in Slots())
+            {
+                if (slot == null) continue;
+                slot.Bind(null, false, false);
+                slot.SetInteractable(false);
+            }
+            SetActions(false);
+            return;
+        }
         bool worker = selectedArchetype is WorkerUnitData; loadout = currentCiv.GetOrCreateStandardLoadout(Id(selectedArchetype), worker);
         if (selectedArchetypeName != null) selectedArchetypeName.text = worker ? ((WorkerUnitData)selectedArchetype).unitName : ((CombatUnitData)selectedArchetype).unitName;
-        if (selectedArchetypeIcon != null) selectedArchetypeIcon.sprite = worker ? ((WorkerUnitData)selectedArchetype).icon : ((CombatUnitData)selectedArchetype).icon;
+        if (selectedArchetypeIcon != null)
+        {
+            selectedArchetypeIcon.sprite = worker ? ((WorkerUnitData)selectedArchetype).GetIcon(currentCiv) : ((CombatUnitData)selectedArchetype).GetIcon(currentCiv);
+            selectedArchetypeIcon.enabled = selectedArchetypeIcon.sprite != null;
+        }
+        foreach (var slot in Slots()) if (slot != null) slot.SetInteractable(true);
         RefreshSlots(); RefreshEquipmentList(); RefreshSummary(); RefreshStats();
     }
     private void SelectSlot(EquipmentSlotUI slot)
     {
-        if (slot == null) return;
+        if (slot == null || loadout == null) return;
         if (slot.IsProjectileSlot) { RefreshProjectileChoices(); return; }
         selectedSlot = slot.SlotType; RefreshSlots(); RefreshEquipmentList(); RefreshSummary();
     }
@@ -122,7 +174,8 @@ public class EquipmentManagerPanel : MonoBehaviour
         Bind(headSlot, EquipmentType.Head); Bind(toolSlot, EquipmentType.Tool); Bind(miscSlot, EquipmentType.Miscellaneous);
         bool ammo = loadout.weapon != null && loadout.weapon.usesProjectiles;
         if (projectileSlot != null) projectileSlot.gameObject.SetActive(ammo);
-        if (!ammo) loadout.projectile = null; else RefreshProjectileChoices();
+        if (!ammo) loadout.projectile = null;
+        RefreshProjectileChoices();
     }
     private void Bind(EquipmentSlotUI ui, EquipmentType slot) { if (ui != null) ui.Bind(loadout.Get(slot), loadout.IsConfigured(slot), selectedSlot == slot); }
     private void RefreshEquipmentList()
@@ -154,7 +207,7 @@ public class EquipmentManagerPanel : MonoBehaviour
         if (x.attackBonus != 0) parts.Add($"Attack {x.attackBonus:+0.##;-0.##}"); if (x.defenseBonus != 0) parts.Add($"Defense {x.defenseBonus:+0.##;-0.##}");
         if (x.healthBonus != 0) parts.Add($"Health {x.healthBonus:+0.##;-0.##}"); if (x.movementBonus != 0) parts.Add($"Move {x.movementBonus:+0.##;-0.##}"); if (x.workPointsBonus != 0) parts.Add($"Work {x.workPointsBonus:+0.##;-0.##}"); return string.Join(", ", parts);
     }
-    private void ChooseEquipment(EquipmentData item) { loadout.Set(selectedSlot, item); RefreshSlots(); RefreshEquipmentList(); RefreshSummary(); RefreshStats(); }
+    private void ChooseEquipment(EquipmentData item) { if (loadout == null) return; loadout.Set(selectedSlot, item); RefreshSlots(); RefreshEquipmentList(); RefreshSummary(); RefreshStats(); }
     private List<BaseUnit> MatchingUnits()
     {
         if (selectedArchetype is CombatUnitData c) return currentCiv.combatUnits.Where(x => x != null && x.data == c).Cast<BaseUnit>().ToList();
@@ -163,7 +216,7 @@ public class EquipmentManagerPanel : MonoBehaviour
     }
     private List<LoadoutRequirement> Requirements()
     {
-        var result = new List<LoadoutRequirement>(); var units = MatchingUnits(); if (loadout == null) return result;
+        var result = new List<LoadoutRequirement>(); if (loadout == null || currentCiv == null) return result; var units = MatchingUnits();
         foreach (var slot in UnitLoadoutTemplate.Slots)
         {
             if (!loadout.IsConfigured(slot)) continue; var desired = loadout.Get(slot); if (desired == null) continue;
@@ -189,10 +242,12 @@ public class EquipmentManagerPanel : MonoBehaviour
     }
     private void ApplyToAll()
     {
+        if (currentCiv == null || loadout == null) return;
         if (!currentCiv.TryApplyLoadout(MatchingUnits(), loadout, out var reason)) Notify(reason); else Notify("Standard loadout applied to all matching units."); RefreshSummary();
     }
     private void EquipAvailable()
     {
+        if (currentCiv == null || loadout == null) return;
         int changed = 0; foreach (var unit in MatchingUnits()) if (currentCiv.TryApplyLoadout(new[] { unit }, loadout, out _)) changed++; Notify($"Applied the standard loadout to {changed} available unit(s)."); RefreshSummary();
     }
     private void RefreshProjectileChoices()
@@ -203,6 +258,15 @@ public class EquipmentManagerPanel : MonoBehaviour
         int index = loadout.projectile == null ? 0 : choices.IndexOf(loadout.projectile) + 1; projectileDropdown.value = Mathf.Max(0, index); projectileDropdown.onValueChanged.AddListener(i => loadout.projectile = i > 0 && i <= choices.Count ? choices[i - 1] : null);
     }
     private void SetActions(bool active) { if (applyToAllButton != null) applyToAllButton.interactable = active; if (equipAvailableButton != null) equipAvailableButton.interactable = active; }
-    private static void Clear(List<GameObject> list) { foreach (var go in list) if (go != null) Destroy(go); list.Clear(); }
+    private static void Clear(List<GameObject> list)
+    {
+        foreach (var go in list)
+        {
+            if (go == null) continue;
+            go.SetActive(false);
+            Destroy(go);
+        }
+        list.Clear();
+    }
     private static void Notify(string message) { if (UIManager.Instance != null) UIManager.Instance.ShowNotification(message); }
 }

@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
+using System.Text;
 
 public class CityUI : MonoBehaviour
 {
@@ -33,7 +34,11 @@ public class CityUI : MonoBehaviour
     [Header("Production Queue Display - Current Item")] // Placeholder for "Thing we are making"
     [SerializeField] private TextMeshProUGUI currentProductionItemNameText;
     [SerializeField] private TextMeshProUGUI currentProductionTurnsRemainingText;
-    [SerializeField] private GameObject currentProductionPanel; // To hide if queue is empty
+    [SerializeField] private GameObject currentProductionPanel;
+    [SerializeField] private Image currentProductionIcon;
+    [SerializeField] private Image productionProgressFill;
+    [SerializeField] private TMP_Text productionQueueText;
+    [SerializeField] private TMP_Text cityStatusText;
 
     [Header("Build Options")]
     [SerializeField] private Transform buildingsContainer; // Container for building options
@@ -92,6 +97,10 @@ public class CityUI : MonoBehaviour
     [SerializeField] private Button closeButton; // Assign this in the Inspector to your UI's X/close button
 
     private City currentCity;
+    private TurnManager turnSource;
+    private TechManager techSource;
+    private CultureManager cultureSource;
+    private GameObject hiddenUnitPanel;
 
     public City CurrentCity => currentCity;
     
@@ -155,6 +164,8 @@ public class CityUI : MonoBehaviour
 
     public void ShowForCity(City city)
     {
+        if (currentCity != city)
+            InvalidateBuildOptionsCache();
         currentCity = city;
         if (currentCity == null)
         {
@@ -164,12 +175,15 @@ public class CityUI : MonoBehaviour
         }
 
         // Hide the unit info panel when the city UI is opened
-        if (UIManager.Instance != null && UIManager.Instance.unitInfoPanel != null)
+        if (UIManager.Instance != null && UIManager.Instance.unitInfoPanel != null &&
+            UIManager.Instance.unitInfoPanel.activeSelf)
         {
-            UIManager.Instance.unitInfoPanel.SetActive(false);
+            hiddenUnitPanel = UIManager.Instance.unitInfoPanel;
+            hiddenUnitPanel.SetActive(false);
         }
 
         gameObject.SetActive(true);
+        SubscribeToCampaignChanges();
         CityCameraFocus.Instance?.FocusCity(currentCity);
         RefreshUI();
 
@@ -251,6 +265,13 @@ if (currentCity == null)
         if (faithPerTurnText != null) faithPerTurnText.text = $"Faith: {currentCity.GetFaithPerTurn():+#;-#;0}/turn";
         RefreshCitizenAssignmentSummary();
         RefreshFeatureTabSummaries();
+        if (cityStatusText != null)
+        {
+            int diseases = currentCity.activeDiseases?.Count ?? 0;
+            cityStatusText.text = $"Happiness {currentCity.moraleRating}/{currentCity.maxMorale}   |   " +
+                $"Order {currentCity.orderRating}/{currentCity.maxOrder}   |   " +
+                (diseases == 0 ? "No active disease" : $"Active diseases: {diseases}");
+        }
 
         // Update Governor Display
         UpdateGovernorDisplay();
@@ -527,78 +548,108 @@ if (currentCity == null)
     
     private void UpdateCurrentProductionDisplay()
     {
-        if (currentCity == null || currentCity.productionQueue == null || currentCity.productionQueue.Count == 0)
-        {
-            // No production in queue
-            if (currentProductionPanel != null) 
-                currentProductionPanel.SetActive(false);
-            if (currentProductionItemNameText != null) 
-                currentProductionItemNameText.text = "Nothing in production";
-            if (currentProductionTurnsRemainingText != null) 
-                currentProductionTurnsRemainingText.text = "";
-            return;
-        }
-
-        // We have something in production
+        var queue = currentCity.productionQueue;
+        var entry = queue != null && queue.Count > 0 ? queue[0] : null;
         if (currentProductionPanel != null)
-            currentProductionPanel.SetActive(true);
-            
-        // Get data about what's being produced
-        var currentProd = currentCity.productionQueue[0];
-        string itemName = "Unknown Item";
-        int totalCost = 1; // Default to prevent division by zero
-        
-        // Determine what type of item is being produced
-        if (currentProd.data is CombatUnitData cud) 
-        { 
-            itemName = cud.unitName; 
-            totalCost = cud.productionCost; 
-        }
-        else if (currentProd.data is WorkerUnitData wud) 
-        { 
-            itemName = wud.unitName; 
-            totalCost = wud.productionCost; 
-        }
-        else if (currentProd.data is BuildingData bd) 
-        { 
-            itemName = bd.buildingName; 
-            totalCost = bd.productionCost; 
-        }
-        else if (currentProd.data is DistrictData dd) 
-        { 
-            itemName = dd.districtName; 
-            totalCost = dd.productionCost; 
-        }
-        else if (currentProd.data is GameCombat.ProjectileData pd) // NEW: Handle projectiles
-        { 
-            itemName = pd.projectileName; 
-            totalCost = pd.productionCost; 
-        }
-        else if (currentProd.data is CrisisProjectData cpd)
-        {
-            itemName = cpd.projectName;
-            totalCost = CrisisManager.Instance != null
-                ? CrisisManager.Instance.GetResolvedProjectCost(currentCity.owner, cpd) : cpd.productionCost;
-        }
-        
-        // Update UI with production info
+            currentProductionPanel.SetActive(entry != null || productionQueueText != null);
+
+        var (itemName, totalCost, icon) = DescribeProduction(entry);
+        totalCost = Mathf.Max(0, totalCost);
+        int completed = entry == null ? 0 : Mathf.Clamp(totalCost - entry.remainingPts, 0, totalCost);
         if (currentProductionItemNameText != null)
-            currentProductionItemNameText.text =
-                $"Producing: {itemName}\nProgress: {Mathf.Max(0, totalCost - currentProd.remainingPts)}/{totalCost}\nQueue: {currentCity.productionQueue.Count} item(s)";
-        
-        // Calculate turns remaining
+            currentProductionItemNameText.text = productionQueueText == null && entry != null
+                ? $"Producing: {itemName}\nProgress: {completed}/{totalCost}\nQueue: {queue.Count} item(s)"
+                : itemName;
+        if (productionProgressFill != null)
+            productionProgressFill.fillAmount = totalCost > 0 ? (float)completed / totalCost : 0;
+        if (currentProductionIcon != null)
+        {
+            currentProductionIcon.sprite = icon;
+            currentProductionIcon.enabled = icon != null;
+        }
         if (currentProductionTurnsRemainingText != null)
         {
-            if (currentCity.productionPerTurn > 0)
-            {
-                int turnsLeft = Mathf.CeilToInt((float)currentProd.remainingPts / currentCity.productionPerTurn);
-                currentProductionTurnsRemainingText.text = $"{turnsLeft} turns left";
-            }
-            else
-            {
-                currentProductionTurnsRemainingText.text = "Stalled";
-            }
+            int remaining = entry != null ? Mathf.Max(0, entry.remainingPts) : 0;
+            string eta = remaining == 0 ? "Ready" : currentCity.productionPerTurn > 0
+                ? $"{Mathf.CeilToInt((float)remaining / currentCity.productionPerTurn)} turns"
+                : "Stalled";
+            currentProductionTurnsRemainingText.text = entry == null ? string.Empty : $"{completed}/{totalCost} production   |   {eta}";
         }
+        if (productionQueueText == null)
+            return;
+
+        int waiting = queue != null ? Mathf.Max(0, queue.Count - 1) : 0;
+        var lines = new StringBuilder("UP NEXT");
+        if (waiting == 0)
+            lines.AppendLine().Append("No queued items.");
+        else
+        {
+            const int visibleRows = 6;
+            for (int i = 1; i <= Mathf.Min(waiting, visibleRows); i++)
+                lines.AppendLine().Append(i).Append(". ").Append(DescribeProduction(queue[i]).name);
+            if (waiting > visibleRows)
+                lines.AppendLine().Append('+').Append(waiting - visibleRows).Append(" more");
+        }
+        productionQueueText.text = lines.ToString();
+    }
+
+    private (string name, int cost, Sprite icon) DescribeProduction(City.ProdEntry entry)
+    {
+        var owner = currentCity.owner;
+        return entry?.data switch
+        {
+            CombatUnitData unit => (unit.unitName, unit.productionCost, unit.GetIcon(owner)),
+            WorkerUnitData worker => (worker.unitName, worker.productionCost, worker.GetIcon(owner)),
+            BuildingData building => (building.buildingName, building.productionCost, building.GetIcon(owner)),
+            DistrictData district => (district.districtName, district.productionCost, district.icon),
+            EquipmentData equipment => (equipment.equipmentName, equipment.productionCost, equipment.icon),
+            GameCombat.ProjectileData projectile => (projectile.projectileName, projectile.productionCost, projectile.icon),
+            MissileData missile => (missile.missileName, missile.productionCost, missile.icon),
+            CrisisProjectData crisis => (crisis.projectName,
+                CrisisManager.Instance != null ? CrisisManager.Instance.GetResolvedProjectCost(owner, crisis) : crisis.productionCost, crisis.icon),
+            _ => entry == null ? ("Nothing in production", 0, null) : ("Unavailable item", Mathf.Max(0, entry.remainingPts), null)
+        };
+    }
+
+    private void SubscribeToCampaignChanges()
+    {
+        if (turnSource == null && TurnManager.Instance != null)
+        {
+            turnSource = TurnManager.Instance;
+            turnSource.OnTurnChanged += OnCityOwnerTurn;
+        }
+        if (techSource == null && TechManager.Instance != null)
+        {
+            techSource = TechManager.Instance;
+            techSource.OnTechResearchCompleted += OnCityTechnologyCompleted;
+        }
+        if (cultureSource == null && CultureManager.Instance != null)
+        {
+            cultureSource = CultureManager.Instance;
+            cultureSource.OnCultureResearchCompleted += OnCityCultureCompleted;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (turnSource != null) turnSource.OnTurnChanged -= OnCityOwnerTurn;
+        if (techSource != null) techSource.OnTechResearchCompleted -= OnCityTechnologyCompleted;
+        if (cultureSource != null) cultureSource.OnCultureResearchCompleted -= OnCityCultureCompleted;
+        turnSource = null;
+        techSource = null;
+        cultureSource = null;
+    }
+
+    private void OnCityOwnerTurn(Civilization civ, int round) => RefreshForOwner(civ);
+    private void OnCityTechnologyCompleted(Civilization civ, TechData _) => RefreshForOwner(civ);
+    private void OnCityCultureCompleted(Civilization civ, CultureData _) => RefreshForOwner(civ);
+
+    private void RefreshForOwner(Civilization civ)
+    {
+        if (currentCity == null || currentCity.owner != civ)
+            return;
+        InvalidateBuildOptionsCache();
+        RefreshUI();
     }
 
     private void LoadAvailableOptions()
@@ -706,9 +757,9 @@ if (currentCity == null)
     private void PopulateBuildOptionsList()
     {
         // Clear all containers
-        foreach (Transform t in buildingsContainer) Destroy(t.gameObject);
-        foreach (Transform t in unitsContainer) Destroy(t.gameObject);
-        foreach (Transform t in equipmentContainer) Destroy(t.gameObject);
+        ClearBuildRows(buildingsContainer);
+        ClearBuildRows(unitsContainer);
+        ClearBuildRows(equipmentContainer);
         if (projectilesContainer != null)
         {
             projectilesContainer.gameObject.SetActive(false);
@@ -749,7 +800,7 @@ if (currentCity == null)
         // Missile production options
         if (missilesContainer != null)
         {
-            foreach (Transform t in missilesContainer) Destroy(t.gameObject);
+            ClearBuildRows(missilesContainer);
             foreach (var missile in availableMissiles.OrderBy(m => m.productionCost))
             {
                 CreateBuildOptionButton(missile, missile.icon, missile.missileName, missile.productionCost, missilesContainer);
@@ -778,10 +829,26 @@ if (currentCity == null)
         MissilePanelUI.Instance?.OpenForCity(currentCity);
     }
 
+    private void ClearBuildRows(Transform container)
+    {
+        foreach (Transform row in container)
+        {
+            row.gameObject.SetActive(false);
+            Destroy(row.gameObject);
+        }
+    }
+
     private void CreateBuildOptionButton(ScriptableObject itemData, Sprite itemIcon, string itemName, int itemCost, Transform container)
     {
         if (buildOptionPrefab == null) return;
         var btnGO = Instantiate(buildOptionPrefab, container);
+        if (scrollNavigator != null)
+        {
+            var layout = btnGO.GetComponent<LayoutElement>();
+            if (layout == null) layout = btnGO.AddComponent<LayoutElement>();
+            layout.minHeight = 42;
+            layout.preferredHeight = 42;
+        }
         
         var iconImg = btnGO.transform.Find("Icon")?.GetComponent<Image>(); // Assuming prefab has child "Icon" with Image
         var nameText = btnGO.transform.Find("Name")?.GetComponent<TextMeshProUGUI>(); // Assuming prefab has child "Name" with TMP
@@ -966,10 +1033,8 @@ if (currentCity == null)
     {
         CityTileOverlayController.Instance?.ExitCityAssignmentMode();
         gameObject.SetActive(false);
-        // Always restore the unit info panel when the city UI is closed.
-        if (UIManager.Instance != null && UIManager.Instance.unitInfoPanel != null)
-        {
-            UIManager.Instance.unitInfoPanel.SetActive(true);
-        }
+        if (hiddenUnitPanel != null)
+            hiddenUnitPanel.SetActive(true);
+        hiddenUnitPanel = null;
     }
 }
