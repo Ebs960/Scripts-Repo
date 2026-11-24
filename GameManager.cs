@@ -19,6 +19,15 @@ public class GameManager : MonoBehaviour
     public TechData VictoryTechnology { get; private set; }
     public string VictoryReason { get; private set; }
 
+    /// <summary>Structured outcome of the current match, or null while it is still being played.</summary>
+    public VictoryResult MatchResult { get; private set; }
+    public bool IsMatchConcluded => MatchResult != null;
+    /// <summary>True while a saved campaign is being reconstructed; victory evaluation is suspended.</summary>
+    public bool IsRestoringSave { get; private set; }
+    public event Action<VictoryResult> OnMatchConcluded;
+
+    private GameInteractionStateService concludedInteractionService;
+
     [Header("Generator Prefabs")]
     [Tooltip("PlanetGenerator prefab to instantiate - assign 'New Map Shit/Earth.prefab'")]
     public GameObject planetGeneratorPrefab;
@@ -1104,6 +1113,8 @@ public class GameManager : MonoBehaviour
         // Now wait a frame to let Awake() run everywhere else
         yield return null;
 
+        ResetMatchConclusion();
+
         PauseMenuManager.GameSaveData requestedLoad = pendingLoadSave;
         if (requestedLoad != null)
         {
@@ -1139,8 +1150,10 @@ public class GameManager : MonoBehaviour
         {
             bool restored = false;
             string restoreError = null;
+            IsRestoringSave = true;
             yield return StartCoroutine(LoadGameFromSaveDataRoutine(requestedLoad,
                 (success, error) => { restored = success; restoreError = error; }));
+            IsRestoringSave = false;
             if (!restored)
             {
                 FailPendingLoad(string.IsNullOrEmpty(restoreError)
@@ -1158,6 +1171,7 @@ public class GameManager : MonoBehaviour
             OnGameStarted?.Invoke();
             if (MusicManager.Instance != null)
                 MusicManager.Instance.PlayMusic();
+            VictoryManager.Instance?.OnSaveRestored();
         }
         else
         {
@@ -1204,6 +1218,7 @@ public class GameManager : MonoBehaviour
         pendingLoadSave = null;
         loadTransitionActive = false;
         pendingLoadFailure = reason;
+        ResetMatchConclusion();
         gameInProgress = false;
         gamePaused = false;
         Time.timeScale = 1f;
@@ -2505,32 +2520,95 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Ends the current game and returns to main menu
+    /// Quits the current campaign and returns to the main menu. Used by the pause menu and by the
+    /// endgame screen's Main Menu button; does not itself decide a winner.
     /// </summary>
     public void EndGame()
     {
-        EndGame(null, null, null);
+        ReturnToMainMenu();
     }
 
     /// <summary>
-    /// Ends the game with optional victory context that UI/save systems can inspect before the scene changes.
+    /// Legacy overload. Concludes the match with an optional winner and shows the endgame screen
+    /// instead of leaving the scene immediately. Prefer <see cref="ConcludeMatch"/>.
     /// </summary>
     public void EndGame(Civilization winner, TechData victoryTech, string reason = null)
     {
-        WinningCivilization = winner;
         VictoryTechnology = victoryTech;
-        VictoryReason = reason;
-
-        if (winner != null)
+        var player = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+        ConcludeMatch(new VictoryResult
         {
-            string civName = winner.civData != null ? winner.civData.civName : "A civilization";
-            string techName = victoryTech != null ? victoryTech.techName : "a victory technology";
-            string message = string.IsNullOrWhiteSpace(reason)
-                ? $"{civName} wins by researching {techName}!"
-                : reason;
-            Debug.Log($"[GameManager] Game ended with winner: {civName}. {message}");
-            UIManager.Instance?.ShowNotification(message);
+            Winner = winner,
+            WinnerCivName = winner != null && winner.civData != null ? winner.civData.civName : null,
+            WinnerLeaderName = winner != null && winner.leader != null ? winner.leader.leaderName : null,
+            Type = null,
+            Turn = currentTurn,
+            Reason = reason,
+            PlayerWon = winner != null && winner == player,
+        });
+    }
+
+    /// <summary>
+    /// Enters the completed-game state exactly once: freezes turn progression, AI and gameplay input,
+    /// then presents the endgame screen. The scene stays loaded until the player chooses Main Menu.
+    /// </summary>
+    public void ConcludeMatch(VictoryResult result)
+    {
+        if (result == null || IsMatchConcluded)
+            return;
+
+        MatchResult = result;
+        WinningCivilization = result.Winner;
+        VictoryReason = result.Reason;
+
+        string message = !string.IsNullOrWhiteSpace(result.Reason)
+            ? result.Reason
+            : result.WinnerCivName != null
+                ? $"{result.WinnerCivName} achieves a {result.TypeDisplayName}!"
+                : "The match has concluded.";
+        Debug.Log($"[GameManager] Match concluded: {message}");
+
+        gamePaused = false;
+        Time.timeScale = 1f;
+
+        concludedInteractionService = GameInteractionStateService.GetOrCreate();
+        concludedInteractionService.OnInteractionModeChanged -= ReassertConcludedMode;
+        concludedInteractionService.OnInteractionModeChanged += ReassertConcludedMode;
+        concludedInteractionService.SetMode(GameInteractionMode.MatchConcluded);
+
+        UIManager.Instance?.ShowNotification(message);
+        OnMatchConcluded?.Invoke(result);
+        EndgameScreenUI.Show(result);
+    }
+
+    /// <summary>Clears any previous match outcome so a new or loaded campaign starts clean.</summary>
+    private void ResetMatchConclusion()
+    {
+        MatchResult = null;
+        WinningCivilization = null;
+        VictoryTechnology = null;
+        VictoryReason = null;
+        if (concludedInteractionService != null)
+        {
+            concludedInteractionService.OnInteractionModeChanged -= ReassertConcludedMode;
+            concludedInteractionService = null;
         }
+        var interaction = GameInteractionStateService.Instance;
+        if (interaction != null && interaction.Mode == GameInteractionMode.MatchConcluded)
+            interaction.SetMode(GameInteractionMode.Campaign);
+    }
+
+    // Battle resolution can hand control back to Campaign after a victory has already been declared.
+    private void ReassertConcludedMode(GameInteractionMode mode)
+    {
+        if (IsMatchConcluded && mode == GameInteractionMode.Campaign && concludedInteractionService != null)
+            concludedInteractionService.SetMode(GameInteractionMode.MatchConcluded);
+    }
+
+    private void ReturnToMainMenu()
+    {
+        EndgameScreenUI.CloseCurrent();
+        ResetMatchConclusion();
 
         gameInProgress = false;
         gamePaused = false;

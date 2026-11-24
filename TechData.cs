@@ -66,7 +66,7 @@ public class TechData : ScriptableObject
     public Biome[] requiredControlledBiomes;
 
     [Header("Victory")]
-    [Tooltip("If true, the civilization that researches this technology immediately wins and ends the game.")]
+    [Tooltip("Legacy flag. Science Victory now requires researching the complete technology tree; this flag no longer ends the game.")]
     public bool IsVictoryTech = false;
 
     [Header("Unlocks & Bonuses")]

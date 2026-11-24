@@ -25,6 +25,13 @@ public class CivData : ScriptableObject
     public Sprite icon;
     [Tooltip("Optional cinematic illustration for faction selection. Use a 16:9 landscape master; the civilization emblem remains in icon.")]
     public Sprite factionSelectionArtwork;
+
+    [Header("Endgame Illustrations")]
+    [Tooltip("Full-screen 16:9 illustration shown when the player wins the match as this civilization.")]
+    public Sprite victoryIllustration;
+    [Tooltip("Full-screen 16:9 illustration shown when the player loses the match as this civilization.")]
+    public Sprite defeatIllustration;
+
     public List<string> cityNames; // List of historical or thematic city names
     public List<string> herdNames; // List of thematic herd names (used when spawning new herds)
     public List<LeaderData> availableLeaders; // Replaced single leader with a list

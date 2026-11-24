@@ -192,4 +192,6 @@ public enum GameInteractionMode
     BattleDeployment,
     BattleActive,
     BattleResult,
+    /// <summary>The match has a final result; turns, AI and gameplay input are frozen while the endgame screen is shown.</summary>
+    MatchConcluded,
 }

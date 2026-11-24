@@ -418,7 +418,9 @@ public class PlanetaryCameraManager : MonoBehaviour
 
     void LateUpdate()
     {
-        if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
+        // Camera panning stays available after a match concludes so the final map can be reviewed.
+        var mode = GameInteractionStateService.GetOrCreate().Mode;
+        if (mode != GameInteractionMode.Campaign && mode != GameInteractionMode.MatchConcluded)
             return;
         HandleInput();
         ApplyWrap();

@@ -821,12 +821,12 @@ public class EmpireAI
         if (turnsSinceVictoryReeval < VICTORY_REEVAL_INTERVAL && LastUpdateTurn > 0) return;
         turnsSinceVictoryReeval = 0;
 
-        // Start from leader preference
-        VictoryType best = civ.leader != null ? civ.leader.preferredVictory : VictoryType.Domination;
+        // Start from leader preference, mapped onto a victory type that can actually be won.
+        VictoryType best = VictoryRules.NormalizeForAi(civ.leader != null ? civ.leader.preferredVictory : VictoryType.Domination);
 
         // Reassess based on current progress and situation
         float bestScore = ScoreVictoryPath(civ, ctx, best);
-        foreach (VictoryType vt in System.Enum.GetValues(typeof(VictoryType)))
+        foreach (VictoryType vt in VictoryRules.EnabledTypes)
         {
             if (vt == best) continue;
             float s = ScoreVictoryPath(civ, ctx, vt);
@@ -839,8 +839,8 @@ public class EmpireAI
     private float ScoreVictoryPath(Civilization civ, AIContext ctx, VictoryType vt)
     {
         float s = 0f;
-        // Leader preference
-        if (civ.leader != null && civ.leader.preferredVictory == vt) s += 10f;
+        // Leader preference (unsupported preferences count toward their mapped supported type)
+        if (civ.leader != null && VictoryRules.NormalizeForAi(civ.leader.preferredVictory) == vt) s += 10f;
 
         switch (vt)
         {

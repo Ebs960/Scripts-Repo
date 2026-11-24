@@ -127,6 +127,7 @@ public class CivilizationManager : MonoBehaviour
             if (civ != null && civ.MapActorSlot < 0)
                 civ.MapActorSlot = nextMapActorSlot++;
             NotifyCivilizationRegistryChanged();
+            VictoryManager.Instance?.NotifyCivilizationRegistered(civ);
         }
     }
 
@@ -178,7 +179,11 @@ public class CivilizationManager : MonoBehaviour
         if (playerCiv == civ) playerCiv = null;
         if (civ != null) aiPlanner.RemoveDangerMapsForCivilization(civ);
         if (changed)
+        {
             NotifyCivilizationRegistryChanged();
+            // Record the elimination before the GameObject is destroyed so it keeps counting as defeated.
+            VictoryManager.Instance?.NotifyCivilizationRemoved(civ);
+        }
     }
 
     private void NotifyCivilizationRegistryChanged()

@@ -4405,6 +4405,8 @@ public class Civilization : MonoBehaviour
                 capitalCity = null;
             city.isCapital = false;
             EnsureCapitalCity();
+            // Losing a final city can leave a rival with nothing, which may complete a Domination Victory.
+            VictoryManager.Instance?.CheckDomination();
         }
     }
 
