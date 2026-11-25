@@ -168,6 +168,8 @@ public class MainMenuManager : MonoBehaviour
     private readonly Dictionary<CivData, Button> generatedCivButtons = new Dictionary<CivData, Button>();
     private readonly Dictionary<Button, UnityEngine.Events.UnityAction> civSelectionCallbacks = new Dictionary<Button, UnityEngine.Events.UnityAction>();
     private FactionSelectionPresentation factionSelectionPresentation;
+    private Sprite defaultLeaderSelectionBackground;
+    private bool leaderSelectionBackgroundInitialized;
     private Color selectedButtonColor = new Color(.13f, .20f, .30f, 1f);
     private Color normalButtonColor = new Color(.055f, .085f, .14f, 1f);
     
@@ -1485,6 +1487,8 @@ public class MainMenuManager : MonoBehaviour
 
     void PopulateLeaderList()
     {
+        ApplyLeaderEntryBackground(null);
+
         // Clear existing buttons
         foreach (var button in leaderButtons)
         {
@@ -1519,20 +1523,27 @@ public class MainMenuManager : MonoBehaviour
 
     private void ApplyLeaderEntryBackground(LeaderData leaderData)
     {
-        if (!enableLeaderEntryBackgroundOverrides || leaderData == null || leaderSelectionEntries == null)
+        if (!enableLeaderEntryBackgroundOverrides || leaderSelectionBackgroundImage == null)
             return;
 
-        for (int i = 0; i < leaderSelectionEntries.Count; i++)
+        if (!leaderSelectionBackgroundInitialized)
         {
-            var entry = leaderSelectionEntries[i];
-            if (entry.leaderData != leaderData) continue;
-
-            if (leaderSelectionBackgroundImage != null && entry.backgroundSprite != null)
-            {
-                leaderSelectionBackgroundImage.sprite = entry.backgroundSprite;
-            }
-            return;
+            defaultLeaderSelectionBackground = leaderSelectionBackgroundImage.sprite;
+            leaderSelectionBackgroundInitialized = true;
         }
+
+        Sprite artwork = null;
+        if (leaderData != null && leaderSelectionEntries != null)
+        {
+            foreach (var entry in leaderSelectionEntries)
+            {
+                if (entry.leaderData != leaderData || entry.backgroundSprite == null) continue;
+                artwork = entry.backgroundSprite;
+                break;
+            }
+        }
+
+        leaderSelectionBackgroundImage.sprite = artwork != null ? artwork : defaultLeaderSelectionBackground;
     }
 
     void OnLeaderButtonClicked(Button clickedButton, LeaderData leaderData)

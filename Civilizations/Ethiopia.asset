@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   civName: Ethiopia
   icon: {fileID: 21300000, guid: f69d25dd0f705b349bb843f00971a6c7, type: 3}
+  factionSelectionArtwork: {fileID: 21300000, guid: 9f5d9019bf51d9e40a8cd145c18198b7, type: 3}
   victoryIllustration: {fileID: 21300000, guid: 5457e7f0eae7933438a519cc5a7385fa, type: 3}
   defeatIllustration: {fileID: 21300000, guid: df55f3a9137b47e4ea5e48ca2d925217, type: 3}
   cityNames:

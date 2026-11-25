@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   civName: Scotland
   icon: {fileID: 21300000, guid: a3de0375c12f2ae44af93ab45b4d7668, type: 3}
+  factionSelectionArtwork: {fileID: 21300000, guid: d1adab688ca101a4985fd0d6a812590d, type: 3}
   victoryIllustration: {fileID: 21300000, guid: 6581bf7221360c74bbf67db18cf7a62e, type: 3}
   defeatIllustration: {fileID: 21300000, guid: 628dbbb796d5e26439d71ad06e28a905, type: 3}
   cityNames:

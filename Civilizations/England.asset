@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   civName: England
   icon: {fileID: 21300000, guid: 7007d3a6ac7140b46bc179bd7ddccb52, type: 3}
+  factionSelectionArtwork: {fileID: 21300000, guid: b74ba401e5bfd6a4594e00c5705b941e, type: 3}
   victoryIllustration: {fileID: 21300000, guid: 04f6ec9ac1183974f8cd1afd15ef52a0, type: 3}
   defeatIllustration: {fileID: 21300000, guid: 1f96b34d8587fd74baa87c49bbcf33dc, type: 3}
   cityNames:

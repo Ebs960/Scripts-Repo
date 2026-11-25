@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CivData
   civName: Arabia
   icon: {fileID: 21300000, guid: c18c07d6a609cbe4db55accef30cef27, type: 3}
+  factionSelectionArtwork: {fileID: 21300000, guid: f6700e98ecbf30e4082094689e4da45e, type: 3}
   victoryIllustration: {fileID: 21300000, guid: fca4baf3925c54a4bb8bc9c5d97613a8, type: 3}
   defeatIllustration: {fileID: 21300000, guid: 2159087fb51d6fd48aa36be113783cf7, type: 3}
   cityNames:

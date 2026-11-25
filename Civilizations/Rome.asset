@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CivData
   civName: Rome
   icon: {fileID: 21300000, guid: 9936fc2b2e1ac9949b91a76f98e44d9d, type: 3}
+  factionSelectionArtwork: {fileID: 21300000, guid: ad6580ed6d516fe4798aaaf170c4f0eb, type: 3}
   victoryIllustration: {fileID: 21300000, guid: 18b99aa7a2be46c4b9f2027730a44c37, type: 3}
   defeatIllustration: {fileID: 21300000, guid: d83baa6e9e2e9cb4ab95ce30f266342d, type: 3}
   cityNames:

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CivData
   civName: Mali
   icon: {fileID: 21300000, guid: b6457a3019956ce4f9418a4813db5f41, type: 3}
+  factionSelectionArtwork: {fileID: 21300000, guid: 1cd9e70a78b70d5479e2b1b6265e71ee, type: 3}
   victoryIllustration: {fileID: 21300000, guid: 37b04feef13e2b147b40b37e22c7e316, type: 3}
   defeatIllustration: {fileID: 21300000, guid: cc2562b303dce6541a687e8d225b6405, type: 3}
   cityNames:

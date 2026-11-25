@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   civName: Zulu
   icon: {fileID: 21300000, guid: bcf550e706222fb41b8bde8424d20215, type: 3}
+  factionSelectionArtwork: {fileID: 21300000, guid: 0115b4be411ea7f4e8cdbf53e9a75bad, type: 3}
   victoryIllustration: {fileID: 21300000, guid: 27c9b636b88dd20438de43a1907c7aa0, type: 3}
   defeatIllustration: {fileID: 21300000, guid: e6224be25a5dafe4e97446d22eb6e578, type: 3}
   cityNames:

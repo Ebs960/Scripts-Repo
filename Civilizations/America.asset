@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   civName: America
   icon: {fileID: 0}
-  factionSelectionArtwork: {fileID: 0}
+  factionSelectionArtwork: {fileID: 21300000, guid: 72244b1f2682fe34c8669a484b2237c9, type: 3}
   victoryIllustration: {fileID: 21300000, guid: 025bcc8dccf864042abdda8dcfa983fc, type: 3}
   defeatIllustration: {fileID: 21300000, guid: 4bde1702946f68b468449bcde1783118, type: 3}
   cityNames:

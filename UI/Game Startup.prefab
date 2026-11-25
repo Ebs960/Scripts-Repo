@@ -26332,50 +26332,76 @@ MonoBehaviour:
   selectLeaderButton: {fileID: 2250839886836066489}
   backFromLeaderButton: {fileID: 3201546602749412978}
   leaderSelectionEntries:
-  - leaderData: {fileID: 11400000, guid: 87aaf74be5956394597b7914028b7dc0, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 1c0d852bac544604db3a3d3a8d363d51, type: 3}
-  - leaderData: {fileID: 11400000, guid: 07d588cc890c82b4ba62aaa3a25425de, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: c3eeac66dab5adb498953444b1a1e592, type: 3}
-  - leaderData: {fileID: 11400000, guid: dc3a8818a91544645a55444c54ca1c7f, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 6ee95a993c58ec84383a6904bf2f0b98, type: 3}
-  - leaderData: {fileID: 11400000, guid: 021b3d04bc464a94884c4b3dc01fd97e, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 7d044b13a50d3b34d8d3112e077f3fe1, type: 3}
-  - leaderData: {fileID: 11400000, guid: 510e963779829434cb14f0d16aa6e1c6, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: f7430d4c368332141a2faaf374e900d0, type: 3}
-  - leaderData: {fileID: 11400000, guid: caaba88b1624e204f9f39b0aa8fd806d, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 0f7d93376b11c0248843907659ddf3d3, type: 3}
+  - leaderData: {fileID: 11400000, guid: 40626504bfed4e20aedf91f1147e5350, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 377752e3ffde4f63adc21456d00858ee, type: 3}
   - leaderData: {fileID: 11400000, guid: dc4cb2a7cd971d64d9da2b8d25c72e60, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 51252c01f6b16f54eae521b55e5abf67, type: 3}
+    backgroundSprite: {fileID: 21300000, guid: a51cdf3d317742b494f7375964dccd6a, type: 3}
+  - leaderData: {fileID: 11400000, guid: 6f037c0518484e0cadde25acc444b2c0, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 5fda0d0b32d1de14385efcb1cfda7091, type: 3}
+  - leaderData: {fileID: 11400000, guid: 947c615a2a324ecc87210c070b886e6e, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: b73879f5cc5b3a64383fd885ba28f29b, type: 3}
+  - leaderData: {fileID: 11400000, guid: 87aaf74be5956394597b7914028b7dc0, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: be94e2ea0f4e9b7448e5867c6e609c56, type: 3}
+  - leaderData: {fileID: 11400000, guid: c1ec0b5ef26045c0a25e53cfca054b7d, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 0e7310f38edbe1441b3411392eba4a0e, type: 3}
+  - leaderData: {fileID: 11400000, guid: 07d588cc890c82b4ba62aaa3a25425de, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: b2f67927d21e0e9488816b487cda358f, type: 3}
+  - leaderData: {fileID: 11400000, guid: 9d3b530d343b4663be89128032ac5df7, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: be56ec57a96c700449d3cc8e510c96ea, type: 3}
+  - leaderData: {fileID: 11400000, guid: dc3a8818a91544645a55444c54ca1c7f, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 73d56621977712944b279f5ae3992bab, type: 3}
+  - leaderData: {fileID: 11400000, guid: 021b3d04bc464a94884c4b3dc01fd97e, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 113cf3a402589f8409f796d4596abe6f, type: 3}
+  - leaderData: {fileID: 11400000, guid: 8c44b2f28ced4be0ba532857a774223f, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: dd21add8610f7f34fa35c2e63b5abb75, type: 3}
+  - leaderData: {fileID: 11400000, guid: 1912f4ef2dcb4d2db4c11814a04d08a2, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 824833ab00d95a946bee49cdb65b794a, type: 3}
+  - leaderData: {fileID: 11400000, guid: 510e963779829434cb14f0d16aa6e1c6, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 03fed539a5d601c41946d499bb7dbd34, type: 3}
+  - leaderData: {fileID: 11400000, guid: caaba88b1624e204f9f39b0aa8fd806d, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: e8983cdc6b16af1439d826a12422f7ba, type: 3}
   - leaderData: {fileID: 11400000, guid: 2e0541514bd2b8444967489b7b56c542, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: b54ec57a7e5bf54478596dc3618b811b, type: 3}
+    backgroundSprite: {fileID: 21300000, guid: 5205a5d4ddc4d3a43bb4fc926b25b0c1, type: 3}
   - leaderData: {fileID: 11400000, guid: e7fb8d24be69d3e46a75ef2913c8f3e4, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 8bbd2bc136991774bb438a333e086811, type: 3}
+    backgroundSprite: {fileID: 21300000, guid: 2a709e74bd89a664381f8b2b413d9bc5, type: 3}
   - leaderData: {fileID: 11400000, guid: 18a9aee08bf003745829a6bec5350d27, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: d74a2e036f8dc2f448c5667caf9d03bb, type: 3}
+    backgroundSprite: {fileID: 21300000, guid: 254ca2bc582fd5f40a07abc3b84c11a9, type: 3}
   - leaderData: {fileID: 11400000, guid: 25c8049437cd5a246aeee67d2d92dc61, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 510433d0e0374a64f8b42c8d19e41284, type: 3}
-  - leaderData: {fileID: 11400000, guid: 8733f293cf2f7c143885ef88b97bf47e, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 5fd7fc09403a8aa46997da43f5a55e70, type: 3}
-  - leaderData: {fileID: 11400000, guid: e538a0d3b75df654fb0663be3a510c2d, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: d07a067a2f6140a41b4767f072efa103, type: 3}
-  - leaderData: {fileID: 11400000, guid: ec349cea732fe184aa3ecaf48e3b1143, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 841d8252ef38c2648bc4b7b6b41301b5, type: 3}
-  - leaderData: {fileID: 11400000, guid: fd6f6a835eb312548bd0511a31edce58, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: d1888ab05303a834c8e66d692f8d4a63, type: 3}
-  - leaderData: {fileID: 11400000, guid: 94b09ab2381784c458b260bd64dedc58, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 5a8fbce6a843ecb4e85aad52abf4762d, type: 3}
-  - leaderData: {fileID: 11400000, guid: c23fbb17349e6594fa70f442ecc9ec59, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: c3b55419a77510e45a75e7906f8dfb77, type: 3}
-  - leaderData: {fileID: 11400000, guid: 8986ef88dd372de49812184882161303, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: c0271db904b0fa44b998b885de7d5493, type: 3}
-  - leaderData: {fileID: 11400000, guid: e698916196c445349a7043cc4f2fdb58, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: d4a95cd219296174ca45596d188adb1e, type: 3}
-  - leaderData: {fileID: 11400000, guid: 1714416d521229a4bbc9c12bd083f7e7, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 4b0702ff9ab35e64a9cbf0290013e855, type: 3}
-  - leaderData: {fileID: 11400000, guid: 6d2746dd20c4a7a4ea2cc258e6d46298, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: bb60cc6b999780d458e7068bcc53a7f0, type: 3}
+    backgroundSprite: {fileID: 21300000, guid: 2d89c9da896f69245983b9cd0f172d6d, type: 3}
   - leaderData: {fileID: 11400000, guid: 7a76036a90a2556459993a5b67c15dbc, type: 2}
-    backgroundSprite: {fileID: 21300000, guid: 0239d61a1c353034aa9b2864797049de, type: 3}
+    backgroundSprite: {fileID: 21300000, guid: 26691c59d6cb60a4090891e783e098c9, type: 3}
+  - leaderData: {fileID: 11400000, guid: 8733f293cf2f7c143885ef88b97bf47e, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 6c168336aaf94ce47889b9fb952802ed, type: 3}
+  - leaderData: {fileID: 11400000, guid: e538a0d3b75df654fb0663be3a510c2d, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 26f10ca40c1b4ea4eb9548141abe2ff5, type: 3}
+  - leaderData: {fileID: 11400000, guid: ec349cea732fe184aa3ecaf48e3b1143, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 6d3700fa3c455c04c8638057e10bbc54, type: 3}
+  - leaderData: {fileID: 11400000, guid: fd6f6a835eb312548bd0511a31edce58, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 0028919541047d548b89c6b41a4b259d, type: 3}
+  - leaderData: {fileID: 11400000, guid: f3ee0c5dc9b82cb4ca09502b74c02a28, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 3b5fbcd45d1bffe48b97e4a8b2387504, type: 3}
+  - leaderData: {fileID: 11400000, guid: e8b9f0a706f047699f2a9cb598e4e86b, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: ba496f20429c2634a8e8005f7e7d7739, type: 3}
+  - leaderData: {fileID: 11400000, guid: 901ae39201dd49bc95d32c42eadb5daa, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 1480479da451376438b0b3c028dae356, type: 3}
+  - leaderData: {fileID: 11400000, guid: 7d2b55afb5494b48936c5e0815c66d61, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 4141a646b56ab494ca5881bb4e808f61, type: 3}
+  - leaderData: {fileID: 11400000, guid: 861a7decee288b04d9137fe62d5111e5, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 2e4c8ce3f563cee41a11b599c52a7626, type: 3}
+  - leaderData: {fileID: 11400000, guid: e698916196c445349a7043cc4f2fdb58, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 6f1ab7b7428b7d840a498f55eada1b60, type: 3}
+  - leaderData: {fileID: 11400000, guid: 94b09ab2381784c458b260bd64dedc58, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 192da0cd6a328d64db47e2bbdae61e14, type: 3}
+  - leaderData: {fileID: 11400000, guid: c23fbb17349e6594fa70f442ecc9ec59, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 752e972128a76e94cb3d0357ad95a766, type: 3}
+  - leaderData: {fileID: 11400000, guid: 52618c8776fa48de98104b27a0758f57, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 6554d9a64c4f64148bfcf93da244a078, type: 3}
+  - leaderData: {fileID: 11400000, guid: 8986ef88dd372de49812184882161303, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: 329ea4a12c00c5c449d80f9ca8d60b2e, type: 3}
+  - leaderData: {fileID: 11400000, guid: 1714416d521229a4bbc9c12bd083f7e7, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: dc67ea89c386d664596b126511882c0e, type: 3}
+  - leaderData: {fileID: 11400000, guid: 6d2746dd20c4a7a4ea2cc258e6d46298, type: 2}
+    backgroundSprite: {fileID: 21300000, guid: b827c1c3ebe91b447a51424bc07e924b, type: 3}
   enableLeaderEntryBackgroundOverrides: 1
   newGameButton: {fileID: 3794759851740996759}
   loadGameButton: {fileID: 5516998952986199058}

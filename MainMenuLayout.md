@@ -115,3 +115,9 @@ Selection and Game Setup, and every Back route. Verify one background remains
 selected during navigation, then restart the menu/application to verify the
 remaining shuffle order persists. Verify cover cropping and the noninteractive
 background with assigned art. Check Quit in the Editor and in a player build.
+## New campaign selection artwork
+
+- [Civilization artwork and emblems](./UI/Selection%20UI/Civilizations) are organized separately from [leader artwork](./UI/Selection%20UI/Leaders). Keep each image's `.meta` file with it when moving or renaming it.
+- The civilization view reads `CivData.factionSelectionArtwork` and uses a placeholder when none is assigned. The leader view reads `leaderSelectionEntries` in the [Game Startup prefab](./UI/Game%20Startup.prefab), matching by `LeaderData` reference. Opening the leader picker or selecting a leader without artwork restores its default background.
+- All 20 playable civilizations and their 35 selectable leaders have selection illustrations assigned. The images in both selection folders are imported as Sprite (2D and UI), Single.
+- Both supplied selection shells are stored with their artwork for the layout pass; they are not assigned to the live layout yet.
