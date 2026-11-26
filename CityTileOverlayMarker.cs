@@ -13,10 +13,19 @@ public class CityTileOverlayMarker : MonoBehaviour
     [SerializeField] private Image selectedOutline;
     [SerializeField] private Button button;
 
+    [Header("State Art")]
+    [SerializeField] private Image stateIcon;
+    [SerializeField] private Sprite workedSprite;
+    [SerializeField] private Sprite unworkedSprite;
+    [SerializeField] private Sprite unavailableSprite;
+
     private City city;
     private int tileIndex;
     private CityTileOverlayController controller;
     public int TileIndex => tileIndex;
+
+    /// <summary>False when this city cannot put a citizen on the tile (not owned, or worked by a sister city).</summary>
+    public bool IsAvailable { get; private set; } = true;
 
     public void Initialize(City city, int tileIndex, CityTileOverlayController controller)
     {
@@ -29,10 +38,17 @@ public class CityTileOverlayMarker : MonoBehaviour
         Refresh();
     }
 
+    /// <summary>Scales the marker so it is the given width in world units.</summary>
+    public void SetWorldSize(float width)
+    {
+        float authoredWidth = transform is RectTransform rect && rect.rect.width > 0f ? rect.rect.width : 1f;
+        transform.localScale = Vector3.one * (width / authoredWidth);
+    }
+
     private void LateUpdate()
     {
         Camera cam = Camera.main;
-        if (cam != null) transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position);
+        if (cam != null) transform.rotation = cam.transform.rotation;
     }
 
     public void Refresh()
@@ -42,10 +58,25 @@ public class CityTileOverlayMarker : MonoBehaviour
         bool worked = assignment != null;
         bool rural = assignment != null && assignment.jobType == CityCitizenJobType.RuralSpecialist;
         bool locked = assignment != null && assignment.locked;
+        IsAvailable = worked || (city.IsTileWorkableByThisCity(tileIndex) && !IsWorkedByAnotherCity());
+        if (stateIcon != null)
+        {
+            Sprite state = worked ? workedSprite : IsAvailable ? unworkedSprite : unavailableSprite;
+            if (state != null) stateIcon.sprite = state;
+        }
         if (workedIcon != null) workedIcon.gameObject.SetActive(worked && !rural);
         if (ruralSpecialistIcon != null) ruralSpecialistIcon.gameObject.SetActive(rural);
         if (lockIcon != null) lockIcon.gameObject.SetActive(locked);
         if (yieldText != null) yieldText.text = BuildYieldText();
+    }
+
+    private bool IsWorkedByAnotherCity()
+    {
+        var cities = city.owner != null ? city.owner.cities : null;
+        if (cities == null) return false;
+        foreach (var other in cities)
+            if (other != null && other != city && other.GetTileAssignment(tileIndex) != null) return true;
+        return false;
     }
 
     public void SetSelected(bool selected)

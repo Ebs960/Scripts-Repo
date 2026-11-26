@@ -550,40 +550,24 @@ public class ImprovementInstance : MonoBehaviour
         if (data == null || tileIndex < 0) return false;
 
         var ts = TileSystem.GetForPlanet(planetIndex) ?? TileSystem.Instance;
-        if (ts != null && ts.isReady)
+        var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
+        var civOwner = this.owner ?? tileData?.improvementOwner;
+        // Only the player's own improvements can be managed.
+        if (civOwner == null || !civOwner.isPlayerControlled) return false;
+
+        if (ImprovementManager.Instance == null)
         {
-            var tileData = ts.GetTileData(tileIndex);
-            var civOwner = this.owner ?? tileData?.improvementOwner;
-            if (civOwner == null || !civOwner.isPlayerControlled) return false;
-            // Use the ImprovementManager-provided reference only (no fallbacks)
-            var upgradeUI = ImprovementManager.Instance != null ? ImprovementManager.Instance.improvementUpgradeUI : null;
-            if (upgradeUI == null)
-            {
-                Debug.LogWarning("ImprovementUpgradeUI reference not assigned on ImprovementManager. Cannot open upgrade panel.");
-                return false;
-            }
-            // Hide the unit info panel (if visible) so the upgrade panel is not obscured.
-            if (UIManager.Instance != null)
-                UIManager.Instance.HideUnitInfoPanel();
-            upgradeUI.ShowUpgradePanel(data, tileIndex, civOwner, planetIndex);
-            return true;
+            Debug.LogError($"[ImprovementInstance] No ImprovementManager is active, so '{data.improvementName}' on tile {tileIndex} cannot be managed.", this);
+            return false;
         }
-        else
-        {
-            var tileData = ts != null ? ts.GetTileData(tileIndex) : null;
-            var civOwner = this.owner ?? tileData?.improvementOwner;
-            if (civOwner == null || !civOwner.isPlayerControlled) return false;
-            var upgradeUI = ImprovementManager.Instance != null ? ImprovementManager.Instance.improvementUpgradeUI : null;
-            if (upgradeUI == null)
-            {
-                Debug.LogWarning("ImprovementUpgradeUI reference not assigned on ImprovementManager. Cannot open upgrade panel.");
-                return false;
-            }
-            if (UIManager.Instance != null)
-                UIManager.Instance.HideUnitInfoPanel();
-            upgradeUI.ShowUpgradePanel(data, tileIndex, civOwner, planetIndex);
-            return true;
-        }
+        // The manager reports a missing panel itself.
+        var upgradeUI = ImprovementManager.Instance.ResolveUpgradeUI();
+        if (upgradeUI == null) return false;
+
+        // Hide the unit info panel (if visible) so the upgrade panel is not obscured.
+        if (UIManager.Instance != null)
+            UIManager.Instance.HideUnitInfoPanel();
+        return upgradeUI.ShowUpgradePanel(data, tileIndex, civOwner, planetIndex);
     }
 
     public bool HasApplied(string idOrName)

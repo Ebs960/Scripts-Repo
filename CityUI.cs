@@ -67,6 +67,14 @@ public class CityUI : MonoBehaviour
     [Header("Crime & Disease Tab")]
     [SerializeField] private TextMeshProUGUI citySecuritySummaryText;
     [SerializeField] private TextMeshProUGUI diseaseSummaryText;
+    [Tooltip("Four sprites, from secure to collapsing order.")]
+    [SerializeField] private Sprite[] crimeIndicatorSprites;
+    [SerializeField] private Image crimeIndicatorImage;
+    [SerializeField] private TextMeshProUGUI crimeIndicatorLabel;
+    [Tooltip("Four sprites, from healthy to epidemic.")]
+    [SerializeField] private Sprite[] diseaseIndicatorSprites;
+    [SerializeField] private Image diseaseIndicatorImage;
+    [SerializeField] private TextMeshProUGUI diseaseIndicatorLabel;
 
     [Header("Unit Storage Tab")]
     [SerializeField] private TextMeshProUGUI unitStorageSummaryText;
@@ -416,13 +424,39 @@ if (currentCity == null)
                 $"Bandit Risk from Unemployment: +{currentCity.CachedBanditRiskFromUnemployment}";
         }
 
+        int activeDiseaseCount = currentCity.activeDiseases?.Count(d => d != null && d.data != null) ?? 0;
         if (diseaseSummaryText != null)
         {
-            int activeDiseaseCount = currentCity.activeDiseases?.Count(d => d != null && d.data != null) ?? 0;
             diseaseSummaryText.text = activeDiseaseCount == 0
                 ? "No active diseases"
                 : $"Active Diseases: {activeDiseaseCount}";
         }
+
+        RefreshCrimeAndDiseaseIndicators(activeDiseaseCount);
+    }
+
+    private static readonly string[] OrderLevelNames = { "Secure", "Uneasy", "Lawless", "Collapsing" };
+    private static readonly string[] DiseaseLevelNames = { "Healthy", "Illness", "Outbreak", "Epidemic" };
+
+    private void RefreshCrimeAndDiseaseIndicators(int activeDiseaseCount)
+    {
+        float order = currentCity.maxOrder > 0 ? (float)currentCity.orderRating / currentCity.maxOrder : 1f;
+        int crimeLevel = order >= 0.75f ? 0 : order >= 0.5f ? 1 : order >= 0.25f ? 2 : 3;
+        SetIndicator(crimeIndicatorImage, crimeIndicatorSprites, crimeLevel);
+        if (crimeIndicatorLabel != null)
+            crimeIndicatorLabel.text = $"{OrderLevelNames[crimeLevel]}\nOrder {currentCity.orderRating}/{currentCity.maxOrder}";
+
+        int diseaseLevel = Mathf.Clamp(activeDiseaseCount, 0, 3);
+        SetIndicator(diseaseIndicatorImage, diseaseIndicatorSprites, diseaseLevel);
+        if (diseaseIndicatorLabel != null)
+            diseaseIndicatorLabel.text = $"{DiseaseLevelNames[diseaseLevel]}\n{(activeDiseaseCount == 0 ? "No active diseases" : activeDiseaseCount + " active")}";
+    }
+
+    private static void SetIndicator(Image image, Sprite[] sprites, int level)
+    {
+        if (image == null || sprites == null || sprites.Length == 0) return;
+        var sprite = sprites[Mathf.Clamp(level, 0, sprites.Length - 1)];
+        if (sprite != null) image.sprite = sprite;
     }
 
     private void RefreshUnitStorageSummary()

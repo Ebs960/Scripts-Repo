@@ -162,15 +162,16 @@ public sealed class BandPanel : MonoBehaviour
     private void RefreshGarrison()
     {
         selectedGarrison.RemoveWhere(x => x == null || !band.Garrison.Contains(x));
-        Set(garrisonHeaderText, $"Garrison Management — {band.Garrison.Count}/{band.GarrisonCapacity} {(garrisonExpanded ? "▾" : "▸")}");
+        Set(garrisonHeaderText, $"Garrison Management — {band.Garrison.Count}/{band.GarrisonCapacity} {(garrisonExpanded ? "[-]" : "[+]")}");
         if (garrisonExpandedRoot != null) garrisonExpandedRoot.SetActive(garrisonExpanded);
         if (!garrisonExpanded) return;
         ClearChildren(garrisonEntriesRoot);
         foreach (var unit in band.Garrison.Where(x => x != null))
         {
-            var go = new GameObject("Garrison Unit", typeof(RectTransform), typeof(Image), typeof(Button)); go.transform.SetParent(garrisonEntriesRoot, false);
-            var label = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>(); label.transform.SetParent(go.transform, false); label.text = unit.UnitName; label.fontSize = 12; label.raycastTarget = false;
-            go.GetComponent<Image>().color = selectedGarrison.Contains(unit) ? new Color(.72f,.42f,.14f) : new Color(.12f,.14f,.18f);
+            var go = new GameObject("Garrison Unit", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement)); go.transform.SetParent(garrisonEntriesRoot, false); go.GetComponent<LayoutElement>().preferredHeight = 28f;
+            var label = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>(); label.transform.SetParent(go.transform, false); label.text = unit.UnitName; label.fontSize = 14; label.raycastTarget = false; label.alignment = TextAlignmentOptions.MidlineLeft; label.color = new Color(.93f,.87f,.74f);
+            var labelRect = label.rectTransform; labelRect.anchorMin = Vector2.zero; labelRect.anchorMax = Vector2.one; labelRect.offsetMin = new Vector2(8f, 0f); labelRect.offsetMax = new Vector2(-8f, 0f);
+            go.GetComponent<Image>().color = selectedGarrison.Contains(unit) ? new Color(.6f,.36f,.16f) : new Color(.13f,.12f,.11f,.85f);
             go.GetComponent<Button>().onClick.AddListener(() => { if (!selectedGarrison.Add(unit)) selectedGarrison.Remove(unit); RefreshGarrison(); });
         }
         nearbyArmies.Clear();

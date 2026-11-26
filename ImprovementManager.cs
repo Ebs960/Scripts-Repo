@@ -30,6 +30,42 @@ public class ImprovementManager : MonoBehaviour
 
     public event System.Action<Civilization, ImprovementData, int, int> OnImprovementBuilt;
     public event System.Action<Civilization, ImprovementData, int, int, ImprovementRemovalReason> OnImprovementRemoved;
+    /// <summary>Raised when an improvement or construction site changes without being built or removed: (tileIndex, planetIndex).</summary>
+    public event System.Action<int, int> OnImprovementStateChanged;
+
+    private void RaiseStateChanged(int tileIndex, int planetIndex)
+    {
+        OnImprovementStateChanged?.Invoke(tileIndex, ResolvePlanetIndex(planetIndex));
+    }
+
+    /// <summary>Read-only snapshot of a build job, for display.</summary>
+    public struct ConstructionStatus
+    {
+        public ImprovementData Improvement;
+        public Civilization Owner;
+        public int RequiredWork;
+        public int RemainingWork;
+        public int AssignedWorkers;
+        public int CompletedWork => Mathf.Max(0, RequiredWork - RemainingWork);
+        public float Progress => RequiredWork > 0 ? Mathf.Clamp01((float)CompletedWork / RequiredWork) : 0f;
+    }
+
+    /// <summary>Reports the build job on a tile without changing it. Returns false when nothing is being built there.</summary>
+    public bool TryGetConstructionStatus(int tileIndex, int planetIndex, out ConstructionStatus status)
+    {
+        status = default;
+        var job = FindBuildJob(tileIndex, ResolvePlanetIndex(planetIndex));
+        if (job == null || job.data == null) return false;
+        status = new ConstructionStatus
+        {
+            Improvement = job.data,
+            Owner = job.owner,
+            RequiredWork = Mathf.Max(1, job.data.workCost),
+            RemainingWork = Mathf.Max(0, job.remainingWork),
+            AssignedWorkers = job.assignedWorkerPersistentIds != null ? job.assignedWorkerPersistentIds.Count : 0
+        };
+        return true;
+    }
 
     [Header("Runtime")]
     [Tooltip("Incremented whenever road improvements change so cached road-network data can be invalidated")]
@@ -50,8 +86,31 @@ public class ImprovementManager : MonoBehaviour
     public List<RoadConnectionConfig> roadConnectionConfigs = new List<RoadConnectionConfig>();
 
     [Header("UI References")]
-    [Tooltip("Optional: assign the ImprovementUpgradeUI instance here so ImprovementInstance can open it without a scene search.")]
+    [Tooltip("The scene's Improvement panel. Assigned on the scene instance; located automatically if the reference is lost.")]
     public ImprovementUpgradeUI improvementUpgradeUI;
+    private bool reportedMissingUpgradeUI;
+
+    /// <summary>
+    /// Returns the improvement panel. Uses the serialized reference, and otherwise the single panel in the loaded scene
+    /// (it is saved inactive, so inactive objects are searched). Never creates a panel; reports a missing one once.
+    /// </summary>
+    public ImprovementUpgradeUI ResolveUpgradeUI()
+    {
+        if (improvementUpgradeUI != null) return improvementUpgradeUI;
+
+        improvementUpgradeUI = FindAnyObjectByType<ImprovementUpgradeUI>(FindObjectsInactive.Include);
+        if (improvementUpgradeUI != null)
+        {
+            Debug.LogWarning("[ImprovementManager] improvementUpgradeUI was not assigned; using the panel found in the scene. Assign it on the ImprovementManager to avoid this search.", this);
+            reportedMissingUpgradeUI = false;
+        }
+        else if (!reportedMissingUpgradeUI)
+        {
+            reportedMissingUpgradeUI = true;
+            Debug.LogError("[ImprovementManager] No ImprovementUpgradeUI exists in the loaded scene, so improvements cannot be managed. Add the 'Improvement Upgrade UI' prefab to the scene and assign it to ImprovementManager.improvementUpgradeUI.", this);
+        }
+        return improvementUpgradeUI;
+    }
     [Tooltip("Optional: world-space label prefab to show an icon above instantiated improvements")]
     public GameObject improvementLabelPrefab;
 
@@ -110,6 +169,7 @@ public class ImprovementManager : MonoBehaviour
 
         impInstance.currentLaborType = laborType;
         tileData.currentLaborTypeId = laborType.GetLaborKey();
+        RaiseStateChanged(tileIndex, planetIndex);
         return true;
     }
 
@@ -264,6 +324,44 @@ public class ImprovementManager : MonoBehaviour
     {
         if (GameManager.Instance != null)
             GameManager.Instance.OnPlanetReady -= HandlePlanetReady;
+        UnsubscribeFromSiteClicks();
+        if (Instance == this) Instance = null;
+    }
+
+    // ---- construction sites: open the improvement panel when one is clicked ----
+    private TileSystem siteClickTileSystem;
+    private int siteClickPlanetIndex = int.MinValue;
+
+    void Update()
+    {
+        // Tile clicks are raised per planet, so follow the planet being viewed.
+        int planet = GameManager.Instance != null ? GameManager.Instance.currentPlanetIndex : 0;
+        if (siteClickTileSystem != null && siteClickPlanetIndex == planet) return;
+        UnsubscribeFromSiteClicks();
+        siteClickTileSystem = TileSystem.GetForPlanet(planet) ?? TileSystem.Instance;
+        if (siteClickTileSystem == null) return;
+        siteClickPlanetIndex = planet;
+        siteClickTileSystem.OnTileClicked += HandleConstructionSiteClicked;
+    }
+
+    private void UnsubscribeFromSiteClicks()
+    {
+        if (siteClickTileSystem != null) siteClickTileSystem.OnTileClicked -= HandleConstructionSiteClicked;
+        siteClickTileSystem = null;
+        siteClickPlanetIndex = int.MinValue;
+    }
+
+    // Never consumes the click: unit selection and orders on the tile keep working.
+    private bool HandleConstructionSiteClicked(int tileIndex, Vector3 worldPos)
+    {
+        if (InputManager.Instance != null && InputManager.Instance.IsPointerOverUI()) return false;
+        var job = FindBuildJob(tileIndex, siteClickPlanetIndex);
+        if (job == null || job.owner == null || !job.owner.isPlayerControlled) return false;
+        // While a unit is selected the click is an order for that unit, not a request to inspect the site.
+        if (UnitSelectionManager.Instance != null && UnitSelectionManager.Instance.HasSelectedUnit()) return false;
+        var panel = ResolveUpgradeUI();
+        if (panel != null) panel.ShowConstructionPanel(tileIndex, job.owner, job.planetIndex);
+        return false;
     }
 
     private void HandlePlanetReady(int planetIndex)
@@ -463,6 +561,7 @@ public class ImprovementManager : MonoBehaviour
     // Notify listeners that a worker was assigned
     if (GameEventManager.Instance != null)
         GameEventManager.Instance.RaiseWorkerAssignedToJob(worker, tileIndex, planetIndex);
+    RaiseStateChanged(tileIndex, planetIndex);
     return true;
     }
 
@@ -627,6 +726,8 @@ public class ImprovementManager : MonoBehaviour
 
         if (job.remainingWork <= 0)
             CompleteJob(job);
+        else if (applied > 0)
+            RaiseStateChanged(tileIndex, planetIndex);
 
         return applied;
     }
@@ -793,44 +894,6 @@ public class ImprovementManager : MonoBehaviour
                 // Note: production remains city-scoped and is not applied here.
             }
         }
-    }
-
-    /// <summary>
-    /// Apply the immediate yields for a single tile improvement to the owning civ.
-    /// Used to give instant UI feedback when an upgrade is built.
-    /// </summary>
-    public void ApplyImprovementYieldsForTile(int tileIndex, Civilization civ, int planetIndex = -1)
-    {
-        if (civ == null) return;
-        int pIndex = ResolvePlanetIndex(planetIndex);
-        var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
-        var planetGen = civ != null ? civ.GetPlanetGeneratorForIndex(pIndex) ?? (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(pIndex) : null)
-                       : (GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(pIndex) : null);
-        var td = ts != null ? ts.GetTileData(tileIndex) : (planetGen != null ? planetGen.GetHexTileData(tileIndex) : null);
-        if (td == null) return;
-        if (td.owner != civ) return;
-        if (!td.HasImprovement) return;
-        if (td.HasCity) return;
-
-        var ty = td.GetTotalYield();
-        if (td.HasResource && td.resource != null)
-        {
-            ty.Food -= td.resource.foodPerTurn;
-            ty.Gold -= td.resource.goldPerTurn;
-            ty.Science -= td.resource.sciencePerTurn;
-            ty.Culture -= td.resource.culturePerTurn;
-            ty.Policy -= td.resource.policyPointsPerTurn;
-            ty.Faith -= td.resource.faithPerTurn;
-        }
-
-        var impInstance = td.improvementInstanceObject != null ? td.improvementInstanceObject.GetComponent<ImprovementInstance>() : null;
-        ApplyImprovementResourceProductionToCiv(civ, td.improvement, impInstance);
-
-        if (ty.Food != 0) civ.AddFood(ty.Food);
-        if (ty.Gold != 0) civ.AddGold(ty.Gold);
-        if (ty.Culture != 0) civ.culture += ty.Culture;
-        if (ty.Policy != 0) civ.AddPolicyPoints(ty.Policy);
-        if (ty.Faith != 0) civ.AddFaith(ty.Faith);
     }
 
     private void CompleteJob(BuildJob job)
@@ -1775,7 +1838,6 @@ public class ImprovementManager : MonoBehaviour
             return false;
         }
 
-        ApplyImprovementYieldsForTile(tileIndex, actor, planetIndex);
         return true;
     }
 
@@ -1883,6 +1945,7 @@ public class ImprovementManager : MonoBehaviour
         td.RecomputeImprovementDefenseAggregates();
         if (planetIndex >= 0 && ts != null) ts.SetTileDataOnPlanet(tileIndex, td, planetIndex);
         else if (ts != null) ts.SetTileData(tileIndex, td);
+        RaiseStateChanged(tileIndex, planetIndex);
         return true;
     }
 

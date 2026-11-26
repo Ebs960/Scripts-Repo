@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Greece
   m_EditorClassIdentifier:
   civName: Greece
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: caad6de0ff05aac41acbb2513874e3a2, type: 3}
   factionSelectionArtwork: {fileID: 21300000, guid: 87875ebc92df00d4e846bc11fa18b33e, type: 3}
   victoryIllustration: {fileID: 21300000, guid: 1258eff8961ae704db2c8687719d903a, type: 3}
   defeatIllustration: {fileID: 21300000, guid: e6145414f1f86bd46809d68b591a7968, type: 3}

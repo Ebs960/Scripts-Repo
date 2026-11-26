@@ -102,6 +102,8 @@ public class MilitaryPanel : MonoBehaviour
     private static void EnsureListLayout(RectTransform container)
     {
         if (container == null) return;
+        // A layout saved in the prefab (list or grid) takes precedence over this fallback.
+        if (container.GetComponent<LayoutGroup>() != null) return;
         if (!container.TryGetComponent<VerticalLayoutGroup>(out var layout))
             layout = container.gameObject.AddComponent<VerticalLayoutGroup>();
         layout.childAlignment = TextAnchor.UpperCenter;

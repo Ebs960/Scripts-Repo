@@ -466,6 +466,101 @@ public class HexTileData
     }
 
     /// <summary>
+    /// Read-only breakdown of what the improvement on this tile contributes per turn: its base data, the owner's
+    /// improvement bonuses, the labor multiplier and installed upgrades. GetTotalYield adds <see cref="ImprovementYieldBreakdown.Total"/>,
+    /// so anything that displays these numbers shows exactly what gameplay uses. Calling this awards nothing.
+    /// </summary>
+    public ImprovementYieldBreakdown GetImprovementYieldBreakdown()
+    {
+        var result = new ImprovementYieldBreakdown { LaborMultiplier = 1f };
+        if (!HasImprovement) return result;
+
+        result.HasImprovement = true;
+        result.DisasterDamaged = isDisasterDamaged;
+        result.Base = new TileYield
+        {
+            Food = improvement.foodPerTurn,
+            Production = improvement.productionPerTurn,
+            Gold = improvement.goldPerTurn,
+            Science = improvement.sciencePerTurn,
+            Culture = improvement.culturePerTurn,
+            Policy = improvement.policyPointsPerTurn,
+            Faith = improvement.faithPerTurn
+        };
+
+        int f = result.Base.Food;
+        int p = result.Base.Production;
+        int g = result.Base.Gold;
+        int s = result.Base.Science;
+        int c = result.Base.Culture;
+        int pol = result.Base.Policy;
+        int fa = result.Base.Faith;
+
+        if (HasOwner)
+        {
+            int planetIndex = ResolveTilePlanetIndex(this);
+            var agg = AggregateImprovementBonusesLocal(owner, improvement, planetIndex);
+            f = Mathf.RoundToInt((f + agg.foodAdd) * (1f + agg.foodPct));
+            p = Mathf.RoundToInt((p + agg.productionAdd) * (1f + agg.productionPct));
+            g = Mathf.RoundToInt((g + agg.goldAdd) * (1f + agg.goldPct));
+            s = Mathf.RoundToInt((s + agg.scienceAdd) * (1f + agg.sciencePct));
+            c = Mathf.RoundToInt((c + agg.cultureAdd) * (1f + agg.culturePct));
+            pol = Mathf.RoundToInt((pol + agg.policyAdd) * (1f + agg.policyPct));
+            fa = Mathf.RoundToInt((fa + agg.faithAdd) * (1f + agg.faithPct));
+        }
+        result.WithBonuses = new TileYield { Food = f, Production = p, Gold = g, Science = s, Culture = c, Policy = pol, Faith = fa };
+
+        var laborInstance = improvementInstanceObject != null ? improvementInstanceObject.GetComponent<ImprovementInstance>() : null;
+        if (laborInstance != null && laborInstance.currentLaborType != null)
+            result.LaborMultiplier = laborInstance.currentLaborType.outputMultiplier;
+
+        result.AfterLabor = new TileYield
+        {
+            Food = Mathf.RoundToInt(f * result.LaborMultiplier),
+            Production = Mathf.RoundToInt(p * result.LaborMultiplier),
+            Gold = Mathf.RoundToInt(g * result.LaborMultiplier),
+            Science = Mathf.RoundToInt(s * result.LaborMultiplier),
+            Culture = Mathf.RoundToInt(c * result.LaborMultiplier),
+            Policy = Mathf.RoundToInt(pol * result.LaborMultiplier),
+            Faith = Mathf.RoundToInt(fa * result.LaborMultiplier)
+        };
+
+        if (builtUpgrades != null && builtUpgrades.Count > 0 && improvement.availableUpgrades != null)
+        {
+            foreach (var built in builtUpgrades)
+            {
+                if (string.IsNullOrEmpty(built)) continue;
+                var found = System.Array.Find(improvement.availableUpgrades, u => u != null && (!string.IsNullOrEmpty(u.upgradeId) ? u.upgradeId == built : u.upgradeName == built));
+                if (found == null) continue;
+                result.Upgrades.Food += found.additionalFood;
+                result.Upgrades.Production += found.additionalProduction;
+                result.Upgrades.Gold += found.additionalGold;
+                result.Upgrades.Science += found.additionalScience;
+                result.Upgrades.Culture += found.additionalCulture;
+                result.Upgrades.Policy += found.additionalPolicyPoints;
+                result.Upgrades.Faith += found.additionalFaith;
+            }
+        }
+
+        // A disaster-damaged improvement yields nothing until repaired.
+        if (!isDisasterDamaged)
+        {
+            result.Total = new TileYield
+            {
+                Food = result.AfterLabor.Food + result.Upgrades.Food,
+                Production = result.AfterLabor.Production + result.Upgrades.Production,
+                Gold = result.AfterLabor.Gold + result.Upgrades.Gold,
+                Science = result.AfterLabor.Science + result.Upgrades.Science,
+                Culture = result.AfterLabor.Culture + result.Upgrades.Culture,
+                Policy = result.AfterLabor.Policy + result.Upgrades.Policy,
+                Faith = result.AfterLabor.Faith + result.Upgrades.Faith
+            };
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Total effective yield after improvements, resource, and season.
     /// You can call this per-turn in your city/civ income loops.
     /// </summary>
@@ -495,60 +590,15 @@ public class HexTileData
             y.Faith = Mathf.RoundToInt((y.Faith + tileAgg.faithAdd) * (1f + tileAgg.faithPct));
         }
 
-        if (HasImprovement && !isDisasterDamaged)
-        {
-            int f = improvement.foodPerTurn;
-            int p = improvement.productionPerTurn;
-            int g = improvement.goldPerTurn;
-            int s = improvement.sciencePerTurn;
-            int c = improvement.culturePerTurn;
-            int pol = improvement.policyPointsPerTurn;
-            int fa = improvement.faithPerTurn;
-
-            if (HasOwner)
-            {
-                int planetIndex = ResolveTilePlanetIndex(this);
-                var agg = AggregateImprovementBonusesLocal(owner, improvement, planetIndex);
-                f = Mathf.RoundToInt((f + agg.foodAdd) * (1f + agg.foodPct));
-                p = Mathf.RoundToInt((p + agg.productionAdd) * (1f + agg.productionPct));
-                g = Mathf.RoundToInt((g + agg.goldAdd) * (1f + agg.goldPct));
-                s = Mathf.RoundToInt((s + agg.scienceAdd) * (1f + agg.sciencePct));
-                c = Mathf.RoundToInt((c + agg.cultureAdd) * (1f + agg.culturePct));
-                pol = Mathf.RoundToInt((pol + agg.policyAdd) * (1f + agg.policyPct));
-                fa = Mathf.RoundToInt((fa + agg.faithAdd) * (1f + agg.faithPct));
-            }
-
-            float laborMultiplier = 1f;
-            var laborInstance = improvementInstanceObject != null ? improvementInstanceObject.GetComponent<ImprovementInstance>() : null;
-            if (laborInstance != null && laborInstance.currentLaborType != null)
-                laborMultiplier = laborInstance.currentLaborType.outputMultiplier;
-
-            y.Food += Mathf.RoundToInt(f * laborMultiplier);
-            y.Production += Mathf.RoundToInt(p * laborMultiplier);
-            y.Gold += Mathf.RoundToInt(g * laborMultiplier);
-            y.Science += Mathf.RoundToInt(s * laborMultiplier);
-            y.Culture += Mathf.RoundToInt(c * laborMultiplier);
-            y.Policy += Mathf.RoundToInt(pol * laborMultiplier);
-            y.Faith += Mathf.RoundToInt(fa * laborMultiplier);
-        }
-
-        // Add contributions from any built upgrades on this improvement (additional yields)
-        if (HasImprovement && !isDisasterDamaged && builtUpgrades != null && builtUpgrades.Count > 0 && improvement != null && improvement.availableUpgrades != null)
-        {
-            foreach (var built in builtUpgrades)
-            {
-                if (string.IsNullOrEmpty(built)) continue;
-                var found = System.Array.Find(improvement.availableUpgrades, u => (!string.IsNullOrEmpty(u.upgradeId) ? u.upgradeId == built : u.upgradeName == built));
-                if (found == null) continue;
-                y.Food += found.additionalFood;
-                y.Production += found.additionalProduction;
-                y.Gold += found.additionalGold;
-                y.Science += found.additionalScience;
-                y.Culture += found.additionalCulture;
-                y.Policy += found.additionalPolicyPoints;
-                y.Faith += found.additionalFaith;
-            }
-        }
+        // Improvement, labor and upgrade yields come from the same calculation the improvement panel displays.
+        var improvementYield = GetImprovementYieldBreakdown();
+        y.Food += improvementYield.Total.Food;
+        y.Production += improvementYield.Total.Production;
+        y.Gold += improvementYield.Total.Gold;
+        y.Science += improvementYield.Total.Science;
+        y.Culture += improvementYield.Total.Culture;
+        y.Policy += improvementYield.Total.Policy;
+        y.Faith += improvementYield.Total.Faith;
 
         if (HasResource)
         {
@@ -640,4 +690,23 @@ public struct TileYield
     public int Culture;
     public int Policy;
     public int Faith;
+}
+
+/// <summary>Per-turn contribution of a tile's improvement, split into the stages gameplay applies.</summary>
+public struct ImprovementYieldBreakdown
+{
+    public bool HasImprovement;
+    /// <summary>True when disaster damage is suppressing the improvement; <see cref="Total"/> is then zero.</summary>
+    public bool DisasterDamaged;
+    /// <summary>Yields written on the improvement's data asset.</summary>
+    public TileYield Base;
+    /// <summary>Base yields after the owner's improvement bonuses.</summary>
+    public TileYield WithBonuses;
+    public float LaborMultiplier;
+    /// <summary><see cref="WithBonuses"/> scaled by the labor multiplier.</summary>
+    public TileYield AfterLabor;
+    /// <summary>Flat yields added by installed upgrades (not scaled by labor).</summary>
+    public TileYield Upgrades;
+    /// <summary>What the improvement actually adds to the tile each turn.</summary>
+    public TileYield Total;
 }

@@ -76,6 +76,14 @@ public class CityCitizenAssignmentPanel : MonoBehaviour
         var assignment = currentCity.GetTileAssignment(selectedTileIndex);
         if (selectedTileAssignmentText != null) selectedTileAssignmentText.text = assignment != null ? assignment.GetDebugLabel() : "Unassigned";
         WireSelectedTileButtons();
+        if (assignTileWorkerButton != null) assignTileWorkerButton.interactable = assignment == null;
+        if (unassignTileButton != null) unassignTileButton.interactable = assignment != null;
+        if (lockTileButton != null)
+        {
+            lockTileButton.interactable = assignment != null;
+            var lockLabel = lockTileButton.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (lockLabel != null) lockLabel.text = assignment != null && assignment.locked ? "UNLOCK" : "LOCK";
+        }
         RefreshRuralSpecialistButtons(td);
     }
 
@@ -216,7 +224,11 @@ public class CityCitizenAssignmentPanel : MonoBehaviour
 
     private void RefreshAll()
     {
-        CityTileOverlayController.Instance?.RefreshOverlay();
-        Refresh();
+        // Refreshing the overlay also refreshes this panel.
+        var overlay = CityTileOverlayController.Instance;
+        if (overlay != null) overlay.RefreshOverlay();
+        else Refresh();
+        foreach (var view in FindObjectsByType<CityUI>(FindObjectsInactive.Exclude))
+            view.RefreshUI();
     }
 }

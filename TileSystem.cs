@@ -91,6 +91,14 @@ public class TileSystem : MonoBehaviour
     // Consumable tile-click handler: return true to consume the click and stop propagation.
     public delegate bool TileClickHandler(int tileIndex, Vector3 worldPos);
     public event TileClickHandler OnTileClicked;                 // (tile, worldPos) -> bool consumed
+
+    /// <summary>Subscribes a click handler ahead of the existing ones, for a temporary mode that must see clicks first.</summary>
+    public void AddPriorityTileClickHandler(TileClickHandler handler)
+    {
+        if (handler == null) return;
+        OnTileClicked -= handler;
+        OnTileClicked = handler + OnTileClicked;
+    }
     // Resource change event: (tileIndex, oldResource, newResource)
     public event Action<int, ResourceData, ResourceData> OnTileResourceChanged;
 

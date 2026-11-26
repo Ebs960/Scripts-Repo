@@ -5,14 +5,27 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
+/// <summary>How an improvement option is presented. Derived from the rules' evaluation; it does not change them.</summary>
+public enum ImprovementOptionState
+{
+    Available,
+    Installed,
+    Locked,
+    Unaffordable,
+    Incompatible,
+    Unavailable
+}
+
 /// <summary>
-/// Prefab-facing view for one improvement option. Locked and installed options remain visible
-/// so the player can see the complete contents of a slot and why an option cannot be selected.
+/// Prefab-facing view for one improvement option (an upgrade or a labor type). The layout and artwork are saved
+/// in the row prefab. Locked and installed options remain visible so the player can see the complete contents
+/// of a slot and why an option cannot be selected.
 /// </summary>
 public class ImprovementUpgradeOptionRow : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     [SerializeField] private Image icon;
     [SerializeField] private TextMeshProUGUI nameText;
+    [Tooltip("Optional. When unassigned the description is shown in the tooltip only.")]
     [SerializeField] private TextMeshProUGUI descriptionText;
     [SerializeField] private TextMeshProUGUI effectsText;
     [SerializeField] private TextMeshProUGUI costText;
@@ -20,116 +33,116 @@ public class ImprovementUpgradeOptionRow : MonoBehaviour, IPointerEnterHandler, 
     [SerializeField] private Button selectButton;
     [SerializeField] private Graphic stateGraphic;
     [SerializeField] private Color availableColor = Color.white;
-    [SerializeField] private Color unavailableColor = new Color(0.65f, 0.65f, 0.65f, 1f);
-    [SerializeField] private Color installedColor = new Color(0.75f, 0.85f, 0.7f, 1f);
-    private ImprovementUpgradeData boundUpgrade;
-    private ImprovementUpgradeEvaluation boundEvaluation;
+    [SerializeField] private Color unavailableColor = new Color(0.62f, 0.62f, 0.68f, 1f);
+    [SerializeField] private Color installedColor = new Color(0.78f, 0.95f, 0.78f, 1f);
+    [SerializeField] private Color availableStatusColor = new Color(0.88f, 0.76f, 0.48f, 1f);
+    [SerializeField] private Color installedStatusColor = new Color(0.55f, 0.85f, 0.55f, 1f);
+    [SerializeField] private Color blockedStatusColor = new Color(0.9f, 0.5f, 0.4f, 1f);
 
-    private void Awake()
+    private string tooltipTitle;
+    private string tooltipBody;
+
+    /// <summary>Maps the rules' evaluation onto a presentation state. Path conflicts are reported by the caller as Incompatible.</summary>
+    public static ImprovementOptionState StateFor(ImprovementUpgradeEvaluation evaluation)
     {
-        EnsureVisualTree();
-    }
-
-    private void EnsureVisualTree()
-    {
-        var root = transform as RectTransform;
-        if (root != null && root.sizeDelta.y <= 0f) root.sizeDelta = new Vector2(root.sizeDelta.x, 96f);
-
-        if (stateGraphic == null)
+        switch (evaluation.Availability)
         {
-            var image = gameObject.GetComponent<Image>() ?? gameObject.AddComponent<Image>();
-            image.color = availableColor;
-            stateGraphic = image;
+            case ImprovementUpgradeAvailability.Available: return ImprovementOptionState.Available;
+            case ImprovementUpgradeAvailability.Installed: return ImprovementOptionState.Installed;
+            case ImprovementUpgradeAvailability.Locked: return ImprovementOptionState.Locked;
+            case ImprovementUpgradeAvailability.Unaffordable: return ImprovementOptionState.Unaffordable;
+            default: return ImprovementOptionState.Unavailable;
         }
-        if (selectButton == null)
+    }
+
+    public static string LabelFor(ImprovementOptionState state)
+    {
+        switch (state)
         {
-            selectButton = gameObject.GetComponent<Button>() ?? gameObject.AddComponent<Button>();
-            selectButton.targetGraphic = stateGraphic;
+            case ImprovementOptionState.Available: return "AVAILABLE";
+            case ImprovementOptionState.Installed: return "INSTALLED";
+            case ImprovementOptionState.Locked: return "LOCKED";
+            case ImprovementOptionState.Unaffordable: return "CANNOT AFFORD";
+            case ImprovementOptionState.Incompatible: return "INCOMPATIBLE";
+            default: return "UNAVAILABLE";
         }
-
-        icon ??= CreateImage("Icon", new Vector2(8f, -8f), new Vector2(64f, 64f));
-        nameText ??= CreateText("Name", "Upgrade", 18f, new Vector2(82f, -6f), new Vector2(230f, 24f));
-        descriptionText ??= CreateText("Description", "Description", 13f, new Vector2(82f, -31f), new Vector2(360f, 36f));
-        effectsText ??= CreateText("Effects", "Effects", 13f, new Vector2(82f, -68f), new Vector2(360f, 22f));
-        costText ??= CreateText("Cost", "Cost", 14f, new Vector2(450f, -8f), new Vector2(145f, 36f));
-        statusText ??= CreateText("Status", "Status", 13f, new Vector2(450f, -49f), new Vector2(145f, 38f));
-    }
-
-    private Image CreateImage(string objectName, Vector2 position, Vector2 size)
-    {
-        var child = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        child.transform.SetParent(transform, false);
-        var rect = (RectTransform)child.transform;
-        rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
-        rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = position;
-        rect.sizeDelta = size;
-        return child.GetComponent<Image>();
-    }
-
-    private TextMeshProUGUI CreateText(string objectName, string value, float fontSize, Vector2 position, Vector2 size)
-    {
-        var child = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        child.transform.SetParent(transform, false);
-        var rect = (RectTransform)child.transform;
-        rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
-        rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = position;
-        rect.sizeDelta = size;
-        var text = child.GetComponent<TextMeshProUGUI>();
-        text.text = value;
-        text.fontSize = fontSize;
-        text.textWrappingMode = TextWrappingModes.Normal;
-        text.raycastTarget = false;
-        return text;
     }
 
     public void Bind(ImprovementUpgradeData upgrade, ImprovementUpgradeEvaluation evaluation, Action selected)
     {
+        Bind(upgrade, evaluation, StateFor(evaluation), null, selected);
+    }
+
+    /// <param name="requirements">Extra tooltip lines (prerequisites, replacements, exclusions); may be null.</param>
+    public void Bind(ImprovementUpgradeData upgrade, ImprovementUpgradeEvaluation evaluation, ImprovementOptionState state,
+        string requirements, Action selected)
+    {
         if (upgrade == null) return;
-        EnsureVisualTree();
-        boundUpgrade = upgrade;
-        boundEvaluation = evaluation;
+        string effects = ImprovementUpgradeEffectFormatter.Format(upgrade);
+        string cost = BuildCostText(upgrade);
+
+        var tooltip = new List<string>();
+        if (!string.IsNullOrWhiteSpace(upgrade.description)) tooltip.Add(upgrade.description);
+        tooltip.Add($"Effects: {effects}");
+        tooltip.Add($"Cost: {cost}");
+        if (!string.IsNullOrWhiteSpace(requirements)) tooltip.Add(requirements);
+        tooltip.Add(string.IsNullOrWhiteSpace(evaluation.Reason) || state == ImprovementOptionState.Installed
+            ? LabelFor(state)
+            : $"{LabelFor(state)}: {evaluation.Reason}");
+
+        BindOption(upgrade.icon, upgrade.upgradeName, upgrade.description, effects, cost, state,
+            state == ImprovementOptionState.Installed ? string.Empty : evaluation.Reason,
+            string.Join("\n\n", tooltip), selected);
+    }
+
+    /// <summary>Binds any option. <paramref name="selected"/> is only wired when the state is Available.</summary>
+    public void BindOption(Sprite optionIcon, string title, string description, string effects, string cost,
+        ImprovementOptionState state, string reason, string tooltip, Action selected)
+    {
+        if (nameText == null || selectButton == null)
+        {
+            Debug.LogError("[ImprovementUpgradeOptionRow] The row prefab is missing its Name text or Button reference.", this);
+            return;
+        }
+
+        bool interactable = state == ImprovementOptionState.Available;
+        tooltipTitle = title;
+        tooltipBody = tooltip;
 
         if (icon != null)
         {
-            icon.sprite = upgrade.icon;
-            icon.enabled = upgrade.icon != null;
+            icon.sprite = optionIcon;
+            icon.enabled = optionIcon != null;
         }
-        if (nameText != null) nameText.text = upgrade.upgradeName;
-        if (descriptionText != null) descriptionText.text = upgrade.description;
-        if (effectsText != null) effectsText.text = BuildEffectsText(upgrade);
-        if (costText != null) costText.text = BuildCostText(upgrade);
+        nameText.text = title;
+        if (descriptionText != null) descriptionText.text = description;
+        if (effectsText != null) effectsText.text = effects;
+        if (costText != null)
+            costText.text = string.IsNullOrWhiteSpace(reason) ? cost : $"{cost}  -  {reason}";
         if (statusText != null)
         {
-            statusText.text = evaluation.Reason;
-            statusText.gameObject.SetActive(!string.IsNullOrWhiteSpace(evaluation.Reason));
+            statusText.text = LabelFor(state);
+            statusText.color = state == ImprovementOptionState.Installed ? installedStatusColor
+                : interactable ? availableStatusColor : blockedStatusColor;
         }
-        if (selectButton != null)
-        {
-            selectButton.onClick.RemoveAllListeners();
-            selectButton.interactable = evaluation.IsInteractable;
-            if (evaluation.IsInteractable && selected != null)
-                selectButton.onClick.AddListener(() => selected());
-        }
+
+        selectButton.onClick.RemoveAllListeners();
+        selectButton.interactable = interactable;
+        if (interactable && selected != null)
+            selectButton.onClick.AddListener(() => selected());
+
         if (stateGraphic != null)
         {
-            stateGraphic.color = evaluation.Availability == ImprovementUpgradeAvailability.Installed
+            stateGraphic.color = state == ImprovementOptionState.Installed
                 ? installedColor
-                : evaluation.IsInteractable ? availableColor : unavailableColor;
+                : interactable ? availableColor : unavailableColor;
         }
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        if (boundUpgrade == null || TooltipSystem.Instance == null) return;
-        string details = boundUpgrade.description;
-        string effects = BuildEffectsText(boundUpgrade);
-        string cost = BuildCostText(boundUpgrade);
-        if (!string.IsNullOrWhiteSpace(boundEvaluation.Reason))
-            details += $"\n\n{boundEvaluation.Reason}";
-        details += $"\n\nEffects: {effects}\nCost: {cost}";
-        TooltipSystem.Instance.ShowSimpleTooltip(boundUpgrade.upgradeName, details);
+        if (string.IsNullOrEmpty(tooltipBody) || TooltipSystem.Instance == null) return;
+        TooltipSystem.Instance.ShowSimpleTooltip(tooltipTitle, tooltipBody);
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -137,17 +150,17 @@ public class ImprovementUpgradeOptionRow : MonoBehaviour, IPointerEnterHandler, 
         TooltipSystem.Instance?.RequestHideTooltip();
     }
 
-    private static string BuildCostText(ImprovementUpgradeData upgrade)
+    private void OnDisable()
+    {
+        TooltipSystem.Instance?.RequestHideTooltip();
+    }
+
+    public static string BuildCostText(ImprovementUpgradeData upgrade)
     {
         var parts = new List<string>();
         if (upgrade.goldCost > 0) parts.Add($"{upgrade.goldCost} Gold");
         string resources = ResourceCost.FormatCosts(upgrade.resourceCosts, upgrade.hasSubstituteCosts);
         if (!string.IsNullOrEmpty(resources)) parts.Add(resources);
         return parts.Count == 0 ? "No cost" : string.Join(" • ", parts);
-    }
-
-    private static string BuildEffectsText(ImprovementUpgradeData upgrade)
-    {
-        return ImprovementUpgradeEffectFormatter.Format(upgrade);
     }
 }

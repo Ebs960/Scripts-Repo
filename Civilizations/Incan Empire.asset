@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Incan Empire
   m_EditorClassIdentifier:
   civName: Incan Empire
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 446f7528016edbf43b4e082bb76d6d73, type: 3}
   factionSelectionArtwork: {fileID: 21300000, guid: 218fb3ea7a6eff247a79a24fbee1173e, type: 3}
   victoryIllustration: {fileID: 21300000, guid: 762a1075e05fe3840af613a8f1435bdc, type: 3}
   defeatIllustration: {fileID: 21300000, guid: f2fa621e4ebd5204da7c14aaafedd159, type: 3}

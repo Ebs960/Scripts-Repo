@@ -8,8 +8,9 @@ using UnityEngine.UI;
 /// <summary>
 /// Shared Options presentation used by both the Main Menu and the in-game Pause Menu.
 ///
-/// It attaches to the existing (legacy) Options panel GameObject and shows the Options Menu prefab on its own
-/// screen-space canvas. The layout, artwork and controls are saved in that prefab; this class fills in the
+/// It attaches to the host Options panel GameObject. If that host is itself an instance of the Options Menu
+/// prefab it is used directly; otherwise (legacy panel) the prefab is shown on its own screen-space canvas.
+/// The layout, artwork and controls are saved in that prefab; this class fills in the
 /// values from <see cref="GameOptionsSettings"/> and handles the controls. Legacy controls under the panel
 /// stay wired but are made non-interactable while the overlay is visible. The BACK button calls the host's
 /// existing back handler.
@@ -28,6 +29,7 @@ public sealed class FirstDraftOptionsMenu : MonoBehaviour
     private Action goBack;
     private string contextLabel = "";
     private GameObject overlayRoot;
+    private bool hostIsView;
     private OptionsMenuView view;
     private RectTransform content;
     private ScrollRect scroll;
@@ -80,7 +82,7 @@ public sealed class FirstDraftOptionsMenu : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (overlayRoot != null) Destroy(overlayRoot);
+        if (overlayRoot != null && !hostIsView) Destroy(overlayRoot);
     }
 
     // ------------------------------------------------------------------ show / hide
@@ -104,7 +106,7 @@ public sealed class FirstDraftOptionsMenu : MonoBehaviour
         visible = false;
         if (confirmationActive) RevertDisplay();
         RestoreLegacyControls();
-        if (overlayRoot != null) overlayRoot.SetActive(false);
+        if (overlayRoot != null && !hostIsView) overlayRoot.SetActive(false);
         GameOptionsSettings.Flush();
     }
 
@@ -132,6 +134,7 @@ public sealed class FirstDraftOptionsMenu : MonoBehaviour
     private void SuppressLegacyControls()
     {
         suppressedLegacy.Clear();
+        if (hostIsView) return;
         foreach (var selectable in GetComponentsInChildren<Selectable>(true))
         {
             if (selectable == null || !selectable.interactable) continue;
@@ -210,16 +213,28 @@ public sealed class FirstDraftOptionsMenu : MonoBehaviour
     private void EnsureBuilt()
     {
         if (overlayRoot != null) return;
-        var prefab = Resources.Load<GameObject>(PrefabPath);
-        if (prefab == null || prefab.GetComponent<OptionsMenuView>() == null)
-        {
-            Debug.LogError($"Missing or misconfigured options prefab at Resources/{PrefabPath}.");
-            return;
-        }
 
-        overlayRoot = Instantiate(prefab);
-        overlayRoot.name = "Options Overlay Canvas";
-        view = overlayRoot.GetComponent<OptionsMenuView>();
+        // The host may already be an instance of the Options Menu prefab placed in the scene; use it directly
+        // instead of stacking a second copy on top of it.
+        view = GetComponent<OptionsMenuView>();
+        hostIsView = view != null;
+        if (hostIsView)
+        {
+            overlayRoot = gameObject;
+        }
+        else
+        {
+            var prefab = Resources.Load<GameObject>(PrefabPath);
+            if (prefab == null || prefab.GetComponent<OptionsMenuView>() == null)
+            {
+                Debug.LogError($"Missing or misconfigured options prefab at Resources/{PrefabPath}.");
+                return;
+            }
+
+            overlayRoot = Instantiate(prefab);
+            overlayRoot.name = "Options Overlay Canvas";
+            view = overlayRoot.GetComponent<OptionsMenuView>();
+        }
         content = view.content;
         scroll = view.scroll;
         contextText = view.contextText;
@@ -241,7 +256,7 @@ public sealed class FirstDraftOptionsMenu : MonoBehaviour
         BindAudio();
         BindGameplay();
         BindInterface();
-        overlayRoot.SetActive(false);
+        if (!hostIsView) overlayRoot.SetActive(false);
     }
 
     private void SelectTab(int index)
