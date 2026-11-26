@@ -4791,6 +4791,7 @@ RectTransform:
   - {fileID: 7861535105129943093}
   - {fileID: 1808760821438257346}
   - {fileID: 920001}
+  - {fileID: 782500002}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -13747,3 +13748,25 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!1001 &782500001
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 6149186941724200208}
+    m_Modifications:
+    - target: {fileID: 782400001, guid: 74690af60e6845f4b3941656c3b888d6, type: 3}
+      propertyPath: m_Name
+      value: Crisis Tracker
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 74690af60e6845f4b3941656c3b888d6, type: 3}
+--- !u!224 &782500002 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 782400002, guid: 74690af60e6845f4b3941656c3b888d6, type: 3}
+  m_PrefabInstance: {fileID: 782500001}
+  m_PrefabAsset: {fileID: 0}

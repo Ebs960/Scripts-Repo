@@ -4,13 +4,17 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+/// <summary>
+/// HUD tracker for the active crisis and the player's mission, plus its details window.
+/// The layout lives in the Crisis Tracker prefab; this component only binds game data to it.
+/// The component stays enabled so it keeps hearing crisis events; only its two child roots are shown and hidden.
+/// </summary>
 public class CrisisMissionTrackerUI : MonoBehaviour
 {
-    private sealed class HoverTarget : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
+    private sealed class HoverTarget : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         public System.Func<string> TitleGetter;
         public System.Func<string> BodyGetter;
-        public System.Action Clicked;
 
         public void OnPointerEnter(PointerEventData eventData)
         {
@@ -23,64 +27,62 @@ public class CrisisMissionTrackerUI : MonoBehaviour
             if (TooltipSystem.Instance != null)
                 TooltipSystem.Instance.RequestHideTooltip();
         }
-
-        public void OnPointerClick(PointerEventData eventData)
-        {
-            Clicked?.Invoke();
-        }
     }
 
-    private sealed class MissionEntryView
-    {
-        public GameObject root;
-        public Image icon;
-        public TextMeshProUGUI titleText;
-        public TextMeshProUGUI objectiveText;
-        public TextMeshProUGUI progressText;
-        public Image progressFill;
-        public HoverTarget hoverTarget;
-    }
+    [Header("Tracker")]
+    [SerializeField] private GameObject trackerRoot;
+    [SerializeField] private Button trackerButton;
+    [SerializeField] private Image crisisIconImage;
+    [SerializeField] private TextMeshProUGUI crisisNameText;
+    [SerializeField] private TextMeshProUGUI crisisPhaseText;
+    [SerializeField] private TextMeshProUGUI crisisTurnsText;
+    [SerializeField] private TextMeshProUGUI missionTitleText;
+    [SerializeField] private TextMeshProUGUI missionObjectiveText;
+    [SerializeField] private RectTransform progressFill;
+    [SerializeField] private TextMeshProUGUI progressText;
+    [SerializeField] private TextMeshProUGUI footerText;
+    [SerializeField] private GameObject crisisHoverZone;
+    [SerializeField] private GameObject missionHoverZone;
 
-    private RectTransform rootRect;
-    private Image backgroundImage;
-    private Button crisisButton;
-    private Image crisisIconImage;
-    private TextMeshProUGUI crisisNameText;
-    private TextMeshProUGUI crisisTurnsText;
-    private TextMeshProUGUI crisisPhaseText;
-    private RectTransform missionListRect;
-    private GameObject emptyStateObject;
-    private TextMeshProUGUI emptyStateText;
-
-    private GameObject detailBackdrop;
-    private GameObject detailPanel;
-    private TextMeshProUGUI detailTitleText;
-    private TextMeshProUGUI detailBodyText;
-    private RectTransform detailObjectivesRect;
-
-    private readonly System.Collections.Generic.List<MissionEntryView> missionEntries = new System.Collections.Generic.List<MissionEntryView>();
+    [Header("Details Window")]
+    [SerializeField] private GameObject detailRoot;
+    [SerializeField] private Button detailBackdropButton;
+    [SerializeField] private Button detailCloseButton;
+    [SerializeField] private Button negotiateButton;
+    [SerializeField] private TextMeshProUGUI detailTitleText;
+    [SerializeField] private TextMeshProUGUI detailBodyText;
+    [SerializeField] private RectTransform objectiveListRoot;
+    [SerializeField] private MissionObjectiveRowUI objectiveRowPrefab;
 
     private CrisisManager subscribedCrisisManager;
     private TurnManager subscribedTurnManager;
     private Civilization playerCiv;
-    private bool uiBuilt;
-
-    private static readonly Color PanelColor = new Color(0.08f, 0.1f, 0.14f, 0.94f);
-    private static readonly Color HeaderColor = new Color(0.15f, 0.18f, 0.24f, 1f);
-    private static readonly Color EntryColor = new Color(0.12f, 0.14f, 0.2f, 0.98f);
-    private static readonly Color BarBackgroundColor = new Color(1f, 1f, 1f, 0.12f);
-    private static readonly Color BarFillColor = new Color(0.84f, 0.69f, 0.29f, 1f);
-    private static readonly Color DimTextColor = new Color(0.78f, 0.82f, 0.9f, 1f);
 
     private void Awake()
     {
-        EnsureUiBuilt();
-        RefreshAll();
+        if (trackerButton != null) trackerButton.onClick.AddListener(ShowDetails);
+        if (detailBackdropButton != null) detailBackdropButton.onClick.AddListener(HideDetails);
+        if (detailCloseButton != null) detailCloseButton.onClick.AddListener(HideDetails);
+        if (negotiateButton != null) negotiateButton.onClick.AddListener(HandleNegotiateClicked);
+
+        AddHover(crisisHoverZone, BuildCrisisTooltipTitle, BuildCrisisTooltipBody);
+        AddHover(missionHoverZone, BuildMissionTooltipTitle, BuildActiveMissionTooltipBody);
+
+        if (trackerRoot != null) trackerRoot.SetActive(false);
+        HideDetails();
+    }
+
+    private static void AddHover(GameObject zone, System.Func<string> title, System.Func<string> body)
+    {
+        if (zone == null) return;
+        var hover = zone.GetComponent<HoverTarget>();
+        if (hover == null) hover = zone.AddComponent<HoverTarget>();
+        hover.TitleGetter = title;
+        hover.BodyGetter = body;
     }
 
     private void OnEnable()
     {
-        EnsureUiBuilt();
         TrySubscribe();
         RefreshAll();
     }
@@ -94,13 +96,19 @@ public class CrisisMissionTrackerUI : MonoBehaviour
 
     private void Update()
     {
-        TrySubscribe();
+        bool changed = TrySubscribe();
         if (playerCiv == null)
+        {
             playerCiv = ResolvePlayerCivilization();
+            changed |= playerCiv != null;
+        }
+        if (changed) RefreshAll();
     }
 
-    private void TrySubscribe()
+    /// <summary>Returns true when a manager was newly subscribed.</summary>
+    private bool TrySubscribe()
     {
+        bool changed = false;
         if (subscribedCrisisManager == null && CrisisManager.Instance != null)
         {
             subscribedCrisisManager = CrisisManager.Instance;
@@ -113,14 +121,16 @@ public class CrisisMissionTrackerUI : MonoBehaviour
             subscribedCrisisManager.OnObjectiveCompleted += HandleObjectiveCompleted;
             subscribedCrisisManager.OnMissionCompleted += HandleMissionCompleted;
             subscribedCrisisManager.OnMissionFailed += HandleMissionFailed;
-            Debug.Log("[CrisisMissionTrackerUI] Subscribed to CrisisManager events");
+            changed = true;
         }
 
         if (subscribedTurnManager == null && TurnManager.Instance != null)
         {
             subscribedTurnManager = TurnManager.Instance;
             subscribedTurnManager.OnTurnChanged += HandleTurnChanged;
+            changed = true;
         }
+        return changed;
     }
 
     private void Unsubscribe()
@@ -136,14 +146,12 @@ public class CrisisMissionTrackerUI : MonoBehaviour
             subscribedCrisisManager.OnObjectiveCompleted -= HandleObjectiveCompleted;
             subscribedCrisisManager.OnMissionCompleted -= HandleMissionCompleted;
             subscribedCrisisManager.OnMissionFailed -= HandleMissionFailed;
-            subscribedCrisisManager = null;
         }
+        subscribedCrisisManager = null;
 
         if (subscribedTurnManager != null)
-        {
             subscribedTurnManager.OnTurnChanged -= HandleTurnChanged;
-            subscribedTurnManager = null;
-        }
+        subscribedTurnManager = null;
     }
 
     private void HandleTrackerDirty(CrisisData crisis)
@@ -158,32 +166,28 @@ public class CrisisMissionTrackerUI : MonoBehaviour
 
     private void HandleMissionChanged(Civilization civ, MissionData mission)
     {
-        Debug.Log($"[CrisisMissionTrackerUI] HandleMissionChanged civ={civ?.civData?.civName ?? "null"} mission={mission?.missionName ?? "null"} isPlayer={IsPlayerCivilization(civ)}");
         if (!IsPlayerCivilization(civ)) return;
         RefreshAll();
     }
 
     private void HandleObjectiveCompleted(Civilization civ, MissionData mission, int objectiveIndex)
     {
-        Debug.Log($"[CrisisMissionTrackerUI] HandleObjectiveCompleted civ={civ?.civData?.civName ?? "null"} mission={mission?.missionName ?? "null"} index={objectiveIndex} isPlayer={IsPlayerCivilization(civ)}");
         if (!IsPlayerCivilization(civ)) return;
         RefreshAll();
     }
 
     private void HandleMissionCompleted(Civilization civ, MissionData mission, CrisisManager.MissionState state)
     {
-        Debug.Log($"[CrisisMissionTrackerUI] HandleMissionCompleted civ={civ?.civData?.civName ?? "null"} mission={mission?.missionName ?? "null"} isPlayer={IsPlayerCivilization(civ)} completedObjectives={state?.CompletedObjectiveCount}");
         if (!IsPlayerCivilization(civ)) return;
+        HideDetails();
         RefreshAll();
-        HideMissionDetails();
     }
 
     private void HandleMissionFailed(Civilization civ, MissionData mission, string reason)
     {
-        Debug.Log($"[CrisisMissionTrackerUI] HandleMissionFailed civ={civ?.civData?.civName ?? "null"} mission={mission?.missionName ?? "null"} isPlayer={IsPlayerCivilization(civ)} reason={reason}");
         if (!IsPlayerCivilization(civ)) return;
+        HideDetails();
         RefreshAll();
-        HideMissionDetails();
     }
 
     private void HandleTurnChanged(Civilization civ, int round)
@@ -192,394 +196,210 @@ public class CrisisMissionTrackerUI : MonoBehaviour
         RefreshAll();
     }
 
-    private void EnsureUiBuilt()
+    private bool IsDetailVisible => detailRoot != null && detailRoot.activeSelf;
+
+    private CrisisManager.MissionState GetPlayerMission()
     {
-        if (uiBuilt) return;
-        uiBuilt = true;
-
-        rootRect = gameObject.GetComponent<RectTransform>();
-        backgroundImage = gameObject.GetComponent<Image>();
-        if (backgroundImage == null)
-            backgroundImage = gameObject.AddComponent<Image>();
-        backgroundImage.color = PanelColor;
-
-        var layout = gameObject.GetComponent<VerticalLayoutGroup>();
-        if (layout == null)
-            layout = gameObject.AddComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(12, 12, 12, 12);
-        layout.spacing = 8;
-        layout.childControlHeight = true;
-        layout.childControlWidth = true;
-        layout.childForceExpandHeight = false;
-        layout.childForceExpandWidth = true;
-
-        var fitter = gameObject.GetComponent<ContentSizeFitter>();
-        if (fitter == null)
-            fitter = gameObject.AddComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        BuildCrisisHeader();
-        BuildMissionList();
-        BuildMissionDetailPanel();
-    }
-
-    private void BuildCrisisHeader()
-    {
-        var headerObject = CreatePanelObject("CrisisHeader", transform, HeaderColor);
-        var headerRect = headerObject.GetComponent<RectTransform>();
-        headerRect.sizeDelta = new Vector2(0f, 58f);
-
-        crisisButton = headerObject.AddComponent<Button>();
-        var headerLayout = headerObject.AddComponent<HorizontalLayoutGroup>();
-        headerLayout.padding = new RectOffset(10, 10, 8, 8);
-        headerLayout.spacing = 10;
-        headerLayout.childAlignment = TextAnchor.MiddleLeft;
-        headerLayout.childControlHeight = true;
-        headerLayout.childControlWidth = false;
-        headerLayout.childForceExpandHeight = false;
-        headerLayout.childForceExpandWidth = false;
-
-        crisisIconImage = CreateImage("CrisisIcon", headerObject.transform, 38f, 38f);
-
-        var textColumn = new GameObject("TextColumn", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
-        textColumn.transform.SetParent(headerObject.transform, false);
-        var textColumnLayout = textColumn.GetComponent<VerticalLayoutGroup>();
-        textColumnLayout.spacing = 2;
-        textColumnLayout.childAlignment = TextAnchor.MiddleLeft;
-        textColumnLayout.childControlHeight = true;
-        textColumnLayout.childControlWidth = true;
-        textColumnLayout.childForceExpandHeight = false;
-        textColumnLayout.childForceExpandWidth = true;
-        textColumn.GetComponent<LayoutElement>().flexibleWidth = 1f;
-
-        crisisNameText = CreateText("CrisisName", textColumn.transform, 20f, FontStyles.Bold, TextAlignmentOptions.Left);
-        crisisPhaseText = CreateText("CrisisPhase", textColumn.transform, 14f, FontStyles.Normal, TextAlignmentOptions.Left);
-        crisisPhaseText.color = DimTextColor;
-
-        crisisTurnsText = CreateText("CrisisTurns", headerObject.transform, 16f, FontStyles.Bold, TextAlignmentOptions.Right);
-        crisisTurnsText.color = Color.white;
-        crisisTurnsText.rectTransform.sizeDelta = new Vector2(92f, 38f);
-
-        var hoverTarget = headerObject.AddComponent<HoverTarget>();
-        hoverTarget.TitleGetter = BuildCrisisTooltipTitle;
-        hoverTarget.BodyGetter = BuildCrisisTooltipBody;
-    }
-
-    private void BuildMissionList()
-    {
-        var listObject = new GameObject("MissionList", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-        listObject.transform.SetParent(transform, false);
-        missionListRect = listObject.GetComponent<RectTransform>();
-        var layout = listObject.GetComponent<VerticalLayoutGroup>();
-        layout.spacing = 8;
-        layout.childAlignment = TextAnchor.UpperCenter;
-        layout.childControlHeight = true;
-        layout.childControlWidth = true;
-        layout.childForceExpandHeight = false;
-        layout.childForceExpandWidth = true;
-        listObject.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        emptyStateObject = CreatePanelObject("EmptyState", listObject.transform, new Color(1f, 1f, 1f, 0.06f));
-        var emptyLayout = emptyStateObject.AddComponent<LayoutElement>();
-        emptyLayout.preferredHeight = 44f;
-        emptyStateText = CreateText("EmptyStateText", emptyStateObject.transform, 14f, FontStyles.Normal, TextAlignmentOptions.Center);
-        emptyStateText.text = "No active mission";
-        emptyStateText.color = DimTextColor;
-    }
-
-    private void BuildMissionDetailPanel()
-    {
-        var canvas = GetComponentInParent<Canvas>();
-        if (canvas == null) return;
-
-        detailBackdrop = new GameObject("MissionDetailBackdrop", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-        detailBackdrop.transform.SetParent(canvas.transform, false);
-        var backdropRect = detailBackdrop.GetComponent<RectTransform>();
-        backdropRect.anchorMin = Vector2.zero;
-        backdropRect.anchorMax = Vector2.one;
-        backdropRect.offsetMin = Vector2.zero;
-        backdropRect.offsetMax = Vector2.zero;
-        detailBackdrop.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.7f);
-        detailBackdrop.GetComponent<Button>().onClick.AddListener(HideMissionDetails);
-
-        detailPanel = CreatePanelObject("MissionDetailPanel", detailBackdrop.transform, new Color(0.09f, 0.11f, 0.16f, 0.98f));
-        var panelRect = detailPanel.GetComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
-        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-        panelRect.pivot = new Vector2(0.5f, 0.5f);
-        panelRect.sizeDelta = new Vector2(560f, 520f);
-
-        var panelLayout = detailPanel.AddComponent<VerticalLayoutGroup>();
-        panelLayout.padding = new RectOffset(20, 20, 20, 20);
-        panelLayout.spacing = 10;
-        panelLayout.childControlHeight = true;
-        panelLayout.childControlWidth = true;
-        panelLayout.childForceExpandHeight = false;
-        panelLayout.childForceExpandWidth = true;
-
-        detailTitleText = CreateText("DetailTitle", detailPanel.transform, 26f, FontStyles.Bold, TextAlignmentOptions.Left);
-        detailBodyText = CreateText("DetailBody", detailPanel.transform, 16f, FontStyles.Normal, TextAlignmentOptions.TopLeft);
-        detailBodyText.color = DimTextColor;
-
-        var scrollObject = new GameObject("DetailScroll", typeof(RectTransform), typeof(Image), typeof(Mask), typeof(ScrollRect), typeof(LayoutElement));
-        scrollObject.transform.SetParent(detailPanel.transform, false);
-        scrollObject.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.05f);
-        scrollObject.GetComponent<Mask>().showMaskGraphic = false;
-        scrollObject.GetComponent<LayoutElement>().flexibleHeight = 1f;
-        var scrollRect = scrollObject.GetComponent<ScrollRect>();
-        scrollRect.horizontal = false;
-
-        var contentObject = new GameObject("DetailObjectives", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-        contentObject.transform.SetParent(scrollObject.transform, false);
-        detailObjectivesRect = contentObject.GetComponent<RectTransform>();
-        detailObjectivesRect.anchorMin = new Vector2(0f, 1f);
-        detailObjectivesRect.anchorMax = new Vector2(1f, 1f);
-        detailObjectivesRect.pivot = new Vector2(0.5f, 1f);
-        detailObjectivesRect.offsetMin = new Vector2(14f, 14f);
-        detailObjectivesRect.offsetMax = new Vector2(-14f, -14f);
-        var objectivesLayout = contentObject.GetComponent<VerticalLayoutGroup>();
-        objectivesLayout.spacing = 8;
-        objectivesLayout.childControlHeight = true;
-        objectivesLayout.childControlWidth = true;
-        objectivesLayout.childForceExpandHeight = false;
-        objectivesLayout.childForceExpandWidth = true;
-        contentObject.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        scrollRect.content = detailObjectivesRect;
-        scrollRect.viewport = scrollObject.GetComponent<RectTransform>();
-
-        var closeButton = CreateButton("CloseDetailButton", detailPanel.transform, "Close");
-        closeButton.onClick.AddListener(HideMissionDetails);
-
-        detailBackdrop.SetActive(false);
+        if (subscribedCrisisManager == null || playerCiv == null) return null;
+        var state = subscribedCrisisManager.GetActiveMission(playerCiv);
+        return state != null && state.mission != null ? state : null;
     }
 
     private void RefreshAll()
     {
         playerCiv = ResolvePlayerCivilization();
-        if (playerCiv == null || subscribedCrisisManager == null || subscribedCrisisManager.ActiveCrisis == null)
+        bool show = playerCiv != null && subscribedCrisisManager != null && subscribedCrisisManager.ActiveCrisis != null;
+        if (trackerRoot != null) trackerRoot.SetActive(show);
+        if (!show)
         {
-            gameObject.SetActive(false);
-            HideMissionDetails();
+            HideDetails();
             return;
         }
 
-        gameObject.SetActive(true);
         RefreshCrisisHeader();
-        RefreshMissionEntries();
+        RefreshMission();
+        if (IsDetailVisible) PopulateDetails();
     }
 
     private void RefreshCrisisHeader()
     {
         var crisis = subscribedCrisisManager.ActiveCrisis;
-        if (crisis == null) return;
+        var phase = subscribedCrisisManager.CurrentPhase;
 
-        crisisIconImage.sprite = crisis.icon;
-        crisisIconImage.gameObject.SetActive(crisis.icon != null);
-        crisisNameText.text = string.IsNullOrWhiteSpace(crisis.crisisName) ? "Crisis" : crisis.crisisName;
-        crisisPhaseText.text = FormatPhaseLabel(subscribedCrisisManager.CurrentPhase);
+        if (crisisNameText != null)
+            crisisNameText.text = string.IsNullOrWhiteSpace(crisis.crisisName) ? "Crisis" : crisis.crisisName;
+        if (crisisPhaseText != null)
+            crisisPhaseText.text = FormatPhaseLabel(phase);
 
-        int turnsRemaining = subscribedCrisisManager.GetDisplayTurnsRemaining();
-        if (subscribedCrisisManager.CurrentPhase == CrisisData.CrisisPhase.OminousWarning || subscribedCrisisManager.CurrentPhase == CrisisData.CrisisPhase.ObviousWarning)
-            crisisTurnsText.text = turnsRemaining >= 0 ? $"{turnsRemaining} to go" : "Incoming";
-        else
-            crisisTurnsText.text = turnsRemaining >= 0 ? $"{turnsRemaining} left" : "Ongoing";
+        if (crisisTurnsText != null)
+        {
+            int turnsRemaining = subscribedCrisisManager.GetDisplayTurnsRemaining();
+            bool warning = phase == CrisisData.CrisisPhase.OminousWarning || phase == CrisisData.CrisisPhase.ObviousWarning;
+            if (warning)
+                crisisTurnsText.text = turnsRemaining >= 0 ? $"{turnsRemaining} to go" : "Incoming";
+            else
+                crisisTurnsText.text = turnsRemaining >= 0 ? $"{turnsRemaining} left" : "Ongoing";
+        }
     }
 
-    private void RefreshMissionEntries()
+    private void RefreshMission()
     {
-        var state = subscribedCrisisManager.GetActiveMission(playerCiv);
-        if (state == null || state.mission == null)
+        var crisis = subscribedCrisisManager.ActiveCrisis;
+        var state = GetPlayerMission();
+
+        if (crisisIconImage != null)
         {
-            ClearMissionEntries();
-            emptyStateObject.SetActive(true);
-            return;
+            Sprite sprite = crisis.icon;
+            if (sprite == null && state != null) sprite = state.mission.icon != null ? state.mission.icon : state.mission.splashImage;
+            if (sprite == null) sprite = crisis.crisisStartSplash;
+            crisisIconImage.sprite = sprite;
+            crisisIconImage.gameObject.SetActive(sprite != null);
+            var fitter = crisisIconImage.GetComponent<AspectRatioFitter>();
+            if (fitter != null && sprite != null && sprite.rect.height > 0f)
+                fitter.aspectRatio = sprite.rect.width / sprite.rect.height;
         }
 
-        emptyStateObject.SetActive(false);
-        EnsureMissionEntryCount(1);
-        RefreshMissionEntry(missionEntries[0], state);
-        for (int i = 1; i < missionEntries.Count; i++)
-            missionEntries[i].root.SetActive(false);
-    }
-
-    private void ClearMissionEntries()
-    {
-        for (int i = 0; i < missionEntries.Count; i++)
-            missionEntries[i].root.SetActive(false);
-    }
-
-    private void EnsureMissionEntryCount(int count)
-    {
-        while (missionEntries.Count < count)
-            missionEntries.Add(CreateMissionEntry());
-    }
-
-    private MissionEntryView CreateMissionEntry()
-    {
-        var entry = new MissionEntryView();
-        entry.root = CreatePanelObject("MissionEntry", missionListRect, EntryColor);
-        entry.root.AddComponent<Button>();
-        var vertical = entry.root.AddComponent<VerticalLayoutGroup>();
-        vertical.padding = new RectOffset(10, 10, 10, 10);
-        vertical.spacing = 8;
-        vertical.childControlHeight = true;
-        vertical.childControlWidth = true;
-        vertical.childForceExpandHeight = false;
-        vertical.childForceExpandWidth = true;
-
-        var topRow = new GameObject("TopRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
-        topRow.transform.SetParent(entry.root.transform, false);
-        var topLayout = topRow.GetComponent<HorizontalLayoutGroup>();
-        topLayout.spacing = 10;
-        topLayout.childAlignment = TextAnchor.MiddleLeft;
-        topLayout.childControlHeight = true;
-        topLayout.childControlWidth = false;
-        topLayout.childForceExpandHeight = false;
-        topLayout.childForceExpandWidth = false;
-
-        entry.icon = CreateImage("MissionIcon", topRow.transform, 34f, 34f);
-
-        var textColumn = new GameObject("MissionTextColumn", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
-        textColumn.transform.SetParent(topRow.transform, false);
-        textColumn.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        var textLayout = textColumn.GetComponent<VerticalLayoutGroup>();
-        textLayout.spacing = 2;
-        textLayout.childAlignment = TextAnchor.MiddleLeft;
-        textLayout.childControlHeight = true;
-        textLayout.childControlWidth = true;
-        textLayout.childForceExpandHeight = false;
-        textLayout.childForceExpandWidth = true;
-
-        entry.titleText = CreateText("MissionTitle", textColumn.transform, 18f, FontStyles.Bold, TextAlignmentOptions.Left);
-        entry.objectiveText = CreateText("MissionObjective", textColumn.transform, 14f, FontStyles.Normal, TextAlignmentOptions.Left);
-        entry.objectiveText.color = DimTextColor;
-
-        entry.progressText = CreateText("MissionProgress", topRow.transform, 16f, FontStyles.Bold, TextAlignmentOptions.Right);
-        entry.progressText.rectTransform.sizeDelta = new Vector2(92f, 34f);
-
-        var barBackground = CreatePanelObject("ProgressBar", entry.root.transform, BarBackgroundColor);
-        var barLayout = barBackground.AddComponent<LayoutElement>();
-        barLayout.preferredHeight = 8f;
-        var barRect = barBackground.GetComponent<RectTransform>();
-        barRect.sizeDelta = new Vector2(0f, 8f);
-
-        entry.progressFill = CreateImage("Fill", barBackground.transform, 0f, 0f);
-        var fillRect = entry.progressFill.rectTransform;
-        fillRect.anchorMin = new Vector2(0f, 0f);
-        fillRect.anchorMax = new Vector2(0f, 1f);
-        fillRect.pivot = new Vector2(0f, 0.5f);
-        fillRect.offsetMin = Vector2.zero;
-        fillRect.offsetMax = Vector2.zero;
-        entry.progressFill.color = BarFillColor;
-
-        entry.hoverTarget = entry.root.AddComponent<HoverTarget>();
-        entry.root.SetActive(false);
-        return entry;
-    }
-
-    private void RefreshMissionEntry(MissionEntryView entry, CrisisManager.MissionState state)
-    {
-        entry.root.SetActive(true);
-        entry.icon.sprite = state.mission.icon != null ? state.mission.icon : state.mission.splashImage;
-        entry.icon.gameObject.SetActive(entry.icon.sprite != null);
-        entry.titleText.text = string.IsNullOrWhiteSpace(state.mission.missionName) ? "Mission" : state.mission.missionName;
+        if (state == null)
+        {
+            if (missionTitleText != null) missionTitleText.text = "No active mission";
+            if (missionObjectiveText != null) missionObjectiveText.text = string.Empty;
+            if (progressText != null) progressText.text = string.Empty;
+            SetFill(progressFill, 0f);
+            if (footerText != null) footerText.text = "Click for crisis details";
+            return;
+        }
 
         var objective = state.CurrentObjective;
         int current = subscribedCrisisManager.GetCurrentObjectiveProgress(state);
         int target = Mathf.Max(1, subscribedCrisisManager.GetCurrentObjectiveTarget(state));
         bool isSurviveObjective = objective != null && objective.type == MissionData.ObjectiveType.SurviveTurns;
-        int remaining = Mathf.Max(0, target - current);
 
-        entry.objectiveText.text = MissionNarrativeFormatter.Resolve(BuildObjectiveSummary(objective, target),state.mission,subscribedCrisisManager,ResolvePlayerCivilization(),state);
-        entry.progressText.text = isSurviveObjective ? $"{remaining} left" : $"{Mathf.Min(current, target)}/{target}";
-
-        float fill = subscribedCrisisManager.GetCurrentObjectiveProgress01(state);
-        entry.progressFill.rectTransform.anchorMax = new Vector2(fill, 1f);
-
-        entry.hoverTarget.TitleGetter = () => state.mission != null ? state.mission.missionName : "Mission";
-        entry.hoverTarget.BodyGetter = () => BuildMissionTooltipBody(state);
-        entry.hoverTarget.Clicked = () => ShowMissionDetails(state);
+        if (missionTitleText != null)
+            missionTitleText.text = string.IsNullOrWhiteSpace(state.mission.missionName) ? "Mission" : state.mission.missionName;
+        if (missionObjectiveText != null)
+            missionObjectiveText.text = MissionNarrativeFormatter.Resolve(BuildObjectiveSummary(objective, target), state.mission, subscribedCrisisManager, playerCiv, state);
+        if (progressText != null)
+            progressText.text = isSurviveObjective ? $"{Mathf.Max(0, target - current)} left" : $"{Mathf.Min(current, target)}/{target}";
+        SetFill(progressFill, subscribedCrisisManager.GetCurrentObjectiveProgress01(state));
+        if (footerText != null) footerText.text = "Click for mission details";
     }
 
-    private void ShowMissionDetails(CrisisManager.MissionState state)
+    private static void SetFill(RectTransform fill, float amount)
     {
-        if (state?.mission == null || detailBackdrop == null) return;
+        if (fill == null) return;
+        fill.anchorMin = new Vector2(0f, 0f);
+        fill.anchorMax = new Vector2(Mathf.Clamp01(amount), 1f);
+        fill.offsetMin = Vector2.zero;
+        fill.offsetMax = Vector2.zero;
+    }
 
-        detailTitleText.text = state.mission.missionName;
+    /// <summary>Opens the details window for the active crisis and the player's mission.</summary>
+    public void ShowDetails()
+    {
+        if (detailRoot == null || subscribedCrisisManager == null || subscribedCrisisManager.ActiveCrisis == null) return;
+        if (TooltipSystem.Instance != null)
+            TooltipSystem.Instance.RequestHideTooltip();
+        PopulateDetails();
+        detailRoot.SetActive(true);
+    }
 
-        var bodyBuilder = new StringBuilder();
-        if (!string.IsNullOrWhiteSpace(state.mission.description))
-            bodyBuilder.AppendLine(MissionNarrativeFormatter.Resolve(state.mission.description.Trim(),state.mission,subscribedCrisisManager,ResolvePlayerCivilization(),state));
-        if (!string.IsNullOrWhiteSpace(state.mission.flavorText))
+    public void HideDetails()
+    {
+        if (detailRoot != null)
+            detailRoot.SetActive(false);
+    }
+
+    private void PopulateDetails()
+    {
+        var crisis = subscribedCrisisManager.ActiveCrisis;
+        var state = GetPlayerMission();
+
+        if (detailTitleText != null)
+            detailTitleText.text = state != null ? state.mission.missionName : crisis.crisisName;
+
+        if (detailBodyText != null)
         {
-            if (bodyBuilder.Length > 0) bodyBuilder.AppendLine();
-            bodyBuilder.AppendLine(MissionNarrativeFormatter.Resolve(state.mission.flavorText.Trim(),state.mission,subscribedCrisisManager,ResolvePlayerCivilization(),state));
-        }
-        detailBodyText.text = bodyBuilder.ToString().Trim();
-
-        foreach (Transform child in detailObjectivesRect)
-            Destroy(child.gameObject);
-
-        for (int i = 0; i < state.mission.objectives.Count; i++)
-        {
-            var objective = state.mission.objectives[i];
-            if (objective == null) continue;
-
-            var item = CreatePanelObject("ObjectiveItem", detailObjectivesRect, new Color(1f, 1f, 1f, 0.05f));
-            var itemLayout = item.AddComponent<VerticalLayoutGroup>();
-            itemLayout.padding = new RectOffset(10, 10, 10, 10);
-            itemLayout.spacing = 6;
-            itemLayout.childControlHeight = true;
-            itemLayout.childControlWidth = true;
-            itemLayout.childForceExpandHeight = false;
-            itemLayout.childForceExpandWidth = true;
-
-            var header = CreateText("Header", item.transform, 16f, FontStyles.Bold, TextAlignmentOptions.Left);
-            header.text = BuildObjectiveHeader(objective, i, state.currentObjectiveIndex, state.objectiveCompleted != null && i < state.objectiveCompleted.Length && state.objectiveCompleted[i]);
-
-            var description = CreateText("Description", item.transform, 14f, FontStyles.Normal, TextAlignmentOptions.Left);
-            description.color = DimTextColor;
-            description.text = MissionNarrativeFormatter.Resolve(!string.IsNullOrWhiteSpace(objective.description) ? objective.description : BuildObjectiveSummary(objective, objective.targetValue),state.mission,subscribedCrisisManager,ResolvePlayerCivilization(),state);
-
-            int progress = state.objectiveProgress != null && i < state.objectiveProgress.Length ? state.objectiveProgress[i] : 0;
-            int target = Mathf.Max(1, state.resolvedTargets != null && i < state.resolvedTargets.Length ? state.resolvedTargets[i] : objective.targetValue);
-
-            var progressLabel = CreateText("Progress", item.transform, 14f, FontStyles.Bold, TextAlignmentOptions.Left);
-            if (objective.type == MissionData.ObjectiveType.SurviveTurns)
-                progressLabel.text = $"Progress: {Mathf.Max(0, target - progress)} turns remaining";
-            else
-                progressLabel.text = $"Progress: {Mathf.Min(progress, target)}/{target}";
-
-            var barBackground = CreatePanelObject("Bar", item.transform, BarBackgroundColor);
-            barBackground.AddComponent<LayoutElement>().preferredHeight = 8f;
-            var fill = CreateImage("Fill", barBackground.transform, 0f, 0f);
-            fill.color = BarFillColor;
-            var fillRect = fill.rectTransform;
-            fillRect.anchorMin = new Vector2(0f, 0f);
-            fillRect.anchorMax = new Vector2(Mathf.Clamp01((float)progress / target), 1f);
-            fillRect.pivot = new Vector2(0f, 0.5f);
-            fillRect.offsetMin = Vector2.zero;
-            fillRect.offsetMax = Vector2.zero;
-        }
-
-        var civ=ResolvePlayerCivilization();
-        if (subscribedCrisisManager != null && subscribedCrisisManager.CanNegotiateAlienSettlement(civ))
-        {
-            var negotiate=CreateButton("OpenNegotiationsButton",detailObjectivesRect,"Open Negotiations");
-            negotiate.onClick.AddListener(()=>
+            if (state == null)
             {
-                if (subscribedCrisisManager.TryNegotiateAlienSettlement(civ)) RefreshAll();
-                HideMissionDetails();
-            });
+                detailBodyText.text = BuildCrisisTooltipBody();
+            }
+            else
+            {
+                var bodyBuilder = new StringBuilder();
+                if (!string.IsNullOrWhiteSpace(state.mission.description))
+                    bodyBuilder.AppendLine(MissionNarrativeFormatter.Resolve(state.mission.description.Trim(), state.mission, subscribedCrisisManager, playerCiv, state));
+                if (!string.IsNullOrWhiteSpace(state.mission.flavorText))
+                {
+                    if (bodyBuilder.Length > 0) bodyBuilder.AppendLine();
+                    bodyBuilder.AppendLine(MissionNarrativeFormatter.Resolve(state.mission.flavorText.Trim(), state.mission, subscribedCrisisManager, playerCiv, state));
+                }
+                detailBodyText.text = bodyBuilder.ToString().Trim();
+            }
         }
 
-        detailBackdrop.SetActive(true);
+        if (objectiveListRoot != null)
+        {
+            for (int i = objectiveListRoot.childCount - 1; i >= 0; i--)
+            {
+                var child = objectiveListRoot.GetChild(i).gameObject;
+                child.SetActive(false);
+                Destroy(child);
+            }
+
+            if (state != null && objectiveRowPrefab != null && state.mission.objectives != null)
+            {
+                for (int i = 0; i < state.mission.objectives.Count; i++)
+                {
+                    var objective = state.mission.objectives[i];
+                    if (objective == null) continue;
+
+                    bool completed = state.objectiveCompleted != null && i < state.objectiveCompleted.Length && state.objectiveCompleted[i];
+                    bool isCurrent = !completed && i == state.currentObjectiveIndex;
+                    int progress = state.objectiveProgress != null && i < state.objectiveProgress.Length ? state.objectiveProgress[i] : 0;
+                    int target = Mathf.Max(1, state.resolvedTargets != null && i < state.resolvedTargets.Length ? state.resolvedTargets[i] : objective.targetValue);
+                    string progressLabel = objective.type == MissionData.ObjectiveType.SurviveTurns
+                        ? $"{Mathf.Max(0, target - progress)} turns remaining"
+                        : $"{Mathf.Min(progress, target)}/{target}";
+                    string description = MissionNarrativeFormatter.Resolve(
+                        !string.IsNullOrWhiteSpace(objective.description) ? objective.description : BuildObjectiveSummary(objective, objective.targetValue),
+                        state.mission, subscribedCrisisManager, playerCiv, state);
+
+                    var row = Instantiate(objectiveRowPrefab, objectiveListRoot, false);
+                    row.Bind(
+                        i + 1,
+                        BuildObjectiveHeader(objective, i, state.currentObjectiveIndex, completed),
+                        description,
+                        progressLabel,
+                        completed ? 1f : (float)progress / target,
+                        completed,
+                        isCurrent);
+                }
+            }
+        }
+
+        if (negotiateButton != null)
+            negotiateButton.gameObject.SetActive(subscribedCrisisManager.CanNegotiateAlienSettlement(playerCiv));
     }
 
-    private void HideMissionDetails()
+    private void HandleNegotiateClicked()
     {
-        if (detailBackdrop != null)
-            detailBackdrop.SetActive(false);
+        if (subscribedCrisisManager == null) return;
+        var civ = ResolvePlayerCivilization();
+        bool negotiated = subscribedCrisisManager.TryNegotiateAlienSettlement(civ);
+        HideDetails();
+        if (negotiated) RefreshAll();
+    }
+
+    private string BuildMissionTooltipTitle()
+    {
+        var state = GetPlayerMission();
+        return state != null ? state.mission.missionName : "No active mission";
+    }
+
+    private string BuildActiveMissionTooltipBody()
+    {
+        var state = GetPlayerMission();
+        return state != null ? BuildMissionTooltipBody(state) : "No mission is being pursued in this crisis.";
     }
 
     private Civilization ResolvePlayerCivilization()
@@ -761,57 +581,5 @@ public class CrisisMissionTrackerUI : MonoBehaviour
             default:
                 return worldOverride.type.ToString();
         }
-    }
-
-    private GameObject CreatePanelObject(string name, Transform parent, Color color)
-    {
-        var panel = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        panel.transform.SetParent(parent, false);
-        panel.GetComponent<Image>().color = color;
-        return panel;
-    }
-
-    private Image CreateImage(string name, Transform parent, float width, float height)
-    {
-        var imageObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement));
-        imageObject.transform.SetParent(parent, false);
-        var layout = imageObject.GetComponent<LayoutElement>();
-        if (width > 0f) layout.preferredWidth = width;
-        if (height > 0f) layout.preferredHeight = height;
-        var image = imageObject.GetComponent<Image>();
-        image.preserveAspect = true;
-        image.color = Color.white;
-        return image;
-    }
-
-    private TextMeshProUGUI CreateText(string name, Transform parent, float fontSize, FontStyles fontStyle, TextAlignmentOptions alignment)
-    {
-        var textObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
-        textObject.transform.SetParent(parent, false);
-        var text = textObject.GetComponent<TextMeshProUGUI>();
-        text.font = TMP_Settings.defaultFontAsset;
-        text.fontSize = fontSize;
-        text.fontStyle = fontStyle;
-        text.alignment = alignment;
-        text.textWrappingMode = TextWrappingModes.Normal;
-        text.color = Color.white;
-        return text;
-    }
-
-    private Button CreateButton(string name, Transform parent, string label)
-    {
-        var buttonObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement));
-        buttonObject.transform.SetParent(parent, false);
-        buttonObject.GetComponent<Image>().color = HeaderColor;
-        buttonObject.GetComponent<LayoutElement>().preferredHeight = 40f;
-
-        var button = buttonObject.GetComponent<Button>();
-        var text = CreateText("Label", buttonObject.transform, 15f, FontStyles.Bold, TextAlignmentOptions.Center);
-        text.text = label;
-        text.rectTransform.anchorMin = Vector2.zero;
-        text.rectTransform.anchorMax = Vector2.one;
-        text.rectTransform.offsetMin = Vector2.zero;
-        text.rectTransform.offsetMax = Vector2.zero;
-        return button;
     }
 }

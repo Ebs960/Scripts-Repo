@@ -100,6 +100,9 @@ public class MissionSelectionPopupUI : MonoBehaviour
         {
             slot.splashImage.sprite = data.splash;
             slot.splashImage.gameObject.SetActive(data.splash != null);
+            var fitter = slot.splashImage.GetComponent<AspectRatioFitter>();
+            if (fitter != null && data.splash != null && data.splash.rect.height > 0f)
+                fitter.aspectRatio = data.splash.rect.width / data.splash.rect.height;
         }
 
         // Do not override per-option choose button text here; set it manually on the prefab.

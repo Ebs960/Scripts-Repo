@@ -65,6 +65,7 @@ MonoBehaviour:
   spaceMapUI: {fileID: 0}
   missionNarrativePopupPrefab: {fileID: 0}
   missionSelectionPopupPrefab: {fileID: 0}
+  crisisMissionTrackerPrefab: {fileID: 782400121, guid: 74690af60e6845f4b3941656c3b888d6, type: 3}
   uiClickClip: {fileID: 8300000, guid: 269c352e6d5cd9841a5489e931292248, type: 3}
   uiClickVolume: 1
   notificationDuration: 3

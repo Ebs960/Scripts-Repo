@@ -11,6 +11,8 @@ public class MissionNarrativePopupUI : MonoBehaviour
     [SerializeField] private Image splashImage;
     [SerializeField] private TextMeshProUGUI bodyText;
     [SerializeField] private Button okButton;
+    [Tooltip("Optional short category label, e.g. WARNING or MISSION.")]
+    [SerializeField] private TextMeshProUGUI tagText;
 
     [Header("Optional Reward Section")]
     [SerializeField] private GameObject rewardSection;
@@ -37,9 +39,13 @@ public class MissionNarrativePopupUI : MonoBehaviour
         string rewardBody,
         Sprite rewardSprite,
         Action onClosed,
-        string buttonLabel = "OK")
+        string buttonLabel = "OK",
+        string tag = null)
     {
         closeCallback = onClosed;
+
+        if (tagText != null)
+            tagText.text = string.IsNullOrWhiteSpace(tag) ? string.Empty : tag;
 
         if (titleText != null)
             titleText.text = string.IsNullOrWhiteSpace(title) ? string.Empty : title;
@@ -51,6 +57,9 @@ public class MissionNarrativePopupUI : MonoBehaviour
         {
             splashImage.sprite = splash;
             splashImage.gameObject.SetActive(splash != null);
+            var fitter = splashImage.GetComponent<AspectRatioFitter>();
+            if (fitter != null && splash != null && splash.rect.height > 0f)
+                fitter.aspectRatio = splash.rect.width / splash.rect.height;
         }
 
         // Intentionally do not override the OK button's text here so designers

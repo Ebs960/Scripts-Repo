@@ -174,10 +174,11 @@ public class HudCrisisMissionDropdown : MonoBehaviour
     /// </summary>
     private void OpenCrisisMissionPanel()
     {
+        if (trackerUI == null)
+            trackerUI = UnityEngine.Object.FindAnyObjectByType<CrisisMissionTrackerUI>(FindObjectsInactive.Include);
         if (trackerUI != null)
         {
-            trackerUI.gameObject.SetActive(true);
-            trackerUI.transform.SetAsLastSibling();
+            trackerUI.ShowDetails();
             return;
         }
 

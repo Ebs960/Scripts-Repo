@@ -25,6 +25,7 @@ public class UIManager : MonoBehaviour
         public string rewardTitle;
         public string rewardBody;
         public Sprite rewardImage;
+        public string tag;
         public bool allowClose = true;
         public Action onConfirm;
         public CrisisData crisis;
@@ -65,6 +66,8 @@ public class UIManager : MonoBehaviour
     [Header("Mission and Crisis UI")]
     public MissionNarrativePopupUI missionNarrativePopupPrefab;
     public MissionSelectionPopupUI missionSelectionPopupPrefab;
+    [Tooltip("Used only when the HUD does not already contain a crisis tracker.")]
+    [SerializeField] private CrisisMissionTrackerUI crisisMissionTrackerPrefab;
 
     [Header("UI Audio")]
     [Tooltip("Click sound played for all UI Buttons.")]
@@ -117,6 +120,7 @@ public class UIManager : MonoBehaviour
     private TextMeshProUGUI selectionCloseText;
     private TMP_FontAsset defaultFont;
     private CrisisMissionTrackerUI crisisMissionTrackerUI;
+    private bool crisisTrackerResolved;
     private LegacyTrackerUI legacyTrackerUI;
     private bool startupMissionCrisisViewsHidden;
 
@@ -551,24 +555,18 @@ public class UIManager : MonoBehaviour
 
     private void EnsureCrisisMissionTrackerUi()
     {
-        if (crisisMissionTrackerUI != null) return;
+        if (crisisMissionTrackerUI != null || crisisTrackerResolved) return;
         if (gameplayHudRoot == null) return;
+        crisisTrackerResolved = true;
 
-        var parentRect = gameplayHudRoot.GetComponent<RectTransform>();
-        if (parentRect == null)
-            parentRect = gameplayHudRoot.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
-        if (parentRect == null) return;
+        // The tracker is authored inside the HUD prefab; the prefab reference only covers a HUD without one.
+        crisisMissionTrackerUI = gameplayHudRoot.GetComponentInChildren<CrisisMissionTrackerUI>(true);
+        if (crisisMissionTrackerUI != null) return;
 
-        var trackerObject = new GameObject("CrisisMissionTracker", typeof(RectTransform), typeof(CanvasRenderer), typeof(CrisisMissionTrackerUI));
-        var trackerRect = trackerObject.GetComponent<RectTransform>();
-        trackerRect.SetParent(parentRect, false);
-        trackerRect.anchorMin = new Vector2(1f, 1f);
-        trackerRect.anchorMax = new Vector2(1f, 1f);
-        trackerRect.pivot = new Vector2(1f, 1f);
-        trackerRect.anchoredPosition = new Vector2(-16f, -96f);
-        trackerRect.sizeDelta = new Vector2(360f, 0f);
-
-        crisisMissionTrackerUI = trackerObject.GetComponent<CrisisMissionTrackerUI>();
+        if (crisisMissionTrackerPrefab != null)
+            crisisMissionTrackerUI = Instantiate(crisisMissionTrackerPrefab, gameplayHudRoot.transform, false);
+        else
+            Debug.LogWarning("[UIManager] No crisis tracker in the HUD and no crisisMissionTrackerPrefab assigned; the crisis tracker will not be shown.", this);
     }
 
     private void EnsureLegacyTrackerUi()
@@ -1178,12 +1176,12 @@ public class UIManager : MonoBehaviour
 
     private void HandleCrisisOminousWarning(CrisisData crisis)
     {
-        QueueNarrative(crisis?.crisisName, crisis?.ominousWarningText, crisis?.ominousWarningSplash);
+        QueueNarrative(crisis?.crisisName, crisis?.ominousWarningText, crisis?.ominousWarningSplash, tag: "WARNING");
     }
 
     private void HandleCrisisObviousWarning(CrisisData crisis)
     {
-        QueueNarrative(crisis?.crisisName, crisis?.obviousWarningText, crisis?.obviousWarningSplash);
+        QueueNarrative(crisis?.crisisName, crisis?.obviousWarningText, crisis?.obviousWarningSplash, tag: "WARNING");
     }
 
     private void HandleCrisisStarted(CrisisData crisis)
@@ -1196,7 +1194,7 @@ public class UIManager : MonoBehaviour
         else
             LogMissionSelectionBlocked("HandleCrisisStarted", crisis, missions);
 
-        QueueNarrative(crisis?.crisisName, crisis?.crisisStartText, crisis?.crisisStartSplash);
+        QueueNarrative(crisis?.crisisName, crisis?.crisisStartText, crisis?.crisisStartSplash, tag: "CRISIS");
     }
 
     private void HandleCrisisPhaseChanged(CrisisData crisis, CrisisData.CrisisPhase phase)
@@ -1206,13 +1204,13 @@ public class UIManager : MonoBehaviour
         switch (phase)
         {
             case CrisisData.CrisisPhase.Escalation:
-                QueueNarrative(crisis.crisisName, crisis.escalationText, crisis.escalationSplash);
+                QueueNarrative(crisis.crisisName, crisis.escalationText, crisis.escalationSplash, tag: "ESCALATION");
                 break;
             case CrisisData.CrisisPhase.Climax:
-                QueueNarrative(crisis.crisisName, crisis.climaxText, crisis.climaxSplash);
+                QueueNarrative(crisis.crisisName, crisis.climaxText, crisis.climaxSplash, tag: "CLIMAX");
                 break;
             case CrisisData.CrisisPhase.Resolution:
-                QueueNarrative(crisis.crisisName, crisis.resolutionText, crisis.resolutionSplash);
+                QueueNarrative(crisis.crisisName, crisis.resolutionText, crisis.resolutionSplash, tag: "RESOLUTION");
                 break;
         }
     }
@@ -1239,7 +1237,7 @@ public class UIManager : MonoBehaviour
         if (!IsPlayerCivilization(civ) || mission == null) return;
 
         pendingSelectionCrisis = null;
-        QueueNarrative(mission.missionName, ResolveMissionStartBody(mission, civ), mission.splashImage);
+        QueueNarrative(mission.missionName, ResolveMissionStartBody(mission, civ), mission.splashImage, tag: "MISSION");
     }
 
     private void HandleMissionCompleted(Civilization civ, MissionData mission, CrisisManager.MissionState state)
@@ -1259,7 +1257,8 @@ public class UIManager : MonoBehaviour
             mission.victorySplashImage != null ? mission.victorySplashImage : mission.splashImage,
             rewardTitle,
             rewardBody,
-            rewardImage);
+            rewardImage,
+            "COMPLETE");
     }
 
     private void HandleMissionFailed(Civilization civ, MissionData mission, string reason)
@@ -1274,7 +1273,7 @@ public class UIManager : MonoBehaviour
         if (!string.IsNullOrWhiteSpace(mission.failureFlavorText) && !string.Equals(body, mission.failureFlavorText, StringComparison.Ordinal))
             body = mission.failureFlavorText + "\n\n" + body;
 
-        QueueNarrative($"Mission Failed: {mission.missionName}", body, mission.failureSplashImage != null ? mission.failureSplashImage : mission.splashImage);
+        QueueNarrative($"Mission Failed: {mission.missionName}", body, mission.failureSplashImage != null ? mission.failureSplashImage : mission.splashImage, tag: "FAILED");
     }
 
     private void HandleMissionCrisisTurnChanged(Civilization civ, int round)
@@ -1309,7 +1308,8 @@ public class UIManager : MonoBehaviour
         Sprite image,
         string rewardTitle = null,
         string rewardBody = null,
-        Sprite rewardImage = null)
+        Sprite rewardImage = null,
+        string tag = null)
     {
         if (string.IsNullOrWhiteSpace(title) && string.IsNullOrWhiteSpace(body) && image == null) return;
 
@@ -1322,6 +1322,7 @@ public class UIManager : MonoBehaviour
             rewardTitle = rewardTitle,
             rewardBody = rewardBody,
             rewardImage = rewardImage,
+            tag = tag,
         });
     }
 
@@ -1626,7 +1627,8 @@ public class UIManager : MonoBehaviour
                 request.rewardTitle,
                 request.rewardBody,
                 request.rewardImage,
-                CloseCurrentMissionCrisisModal);
+                CloseCurrentMissionCrisisModal,
+                tag: request.tag);
             return true;
         }
 
@@ -2078,13 +2080,17 @@ public class UIManager : MonoBehaviour
 
         var sb = new StringBuilder();
 
+        string resolvedDescription = string.Empty;
         if (!string.IsNullOrWhiteSpace(mission.description))
-            sb.AppendLine(MissionNarrativeFormatter.Resolve(mission.description.Trim(),mission,subscribedCrisisManager,GetPlayerCivilization()));
+        {
+            resolvedDescription = MissionNarrativeFormatter.Resolve(mission.description.Trim(),mission,subscribedCrisisManager,GetPlayerCivilization());
+            sb.AppendLine(resolvedDescription);
+        }
 
         if (mission.objectives != null && mission.objectives.Count > 0)
         {
-            if (sb.Length > 0) sb.AppendLine();
-            sb.AppendLine("Objectives:");
+            // Objectives the description already states word for word are not listed a second time.
+            var objectiveLines = new List<string>();
             int count = Mathf.Min(3, mission.objectives.Count);
             for (int i = 0; i < count; i++)
             {
@@ -2094,7 +2100,16 @@ public class UIManager : MonoBehaviour
                 string label = !string.IsNullOrWhiteSpace(objective.description)
                     ? MissionNarrativeFormatter.Resolve(objective.description.Trim(),mission,subscribedCrisisManager,GetPlayerCivilization())
                     : objective.type.ToString();
-                sb.Append("• ").AppendLine(label);
+                if (resolvedDescription.IndexOf(label, StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                objectiveLines.Add(label);
+            }
+
+            if (objectiveLines.Count > 0)
+            {
+                if (sb.Length > 0) sb.AppendLine();
+                sb.AppendLine("Objectives:");
+                foreach (string line in objectiveLines)
+                    sb.Append("• ").AppendLine(line);
             }
         }
 
