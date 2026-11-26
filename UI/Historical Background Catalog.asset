@@ -12,5 +12,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5923673ddc7b4a5384eca44af8d9c0a6, type: 3}
   m_Name: Historical Background Catalog
   m_EditorClassIdentifier: 
-  backgrounds: []
-  fallbackSprite: {fileID: 0}
+  backgrounds:
+  - {fileID: 21300000, guid: 22d9fabb397d83b4aa2d0fd368b06bdf, type: 3}
+  - {fileID: 21300000, guid: f114b06d0a8d1af4f80bea3e81a9861e, type: 3}
+  - {fileID: 21300000, guid: c4c00fe88c0aef54a8c9d14f8c402fcc, type: 3}
+  - {fileID: 21300000, guid: 674710e0380fd4c4a91377e5779cb99f, type: 3}
+  - {fileID: 21300000, guid: 065a03b498a8121408b18b31151d0b47, type: 3}
+  - {fileID: 21300000, guid: eb1a2b3de758a0643883a8aa8eebf748, type: 3}
+  - {fileID: 21300000, guid: 196315dc46714c0498d31629b85a55b6, type: 3}
+  - {fileID: 21300000, guid: ab1476ed5f9e85e40a3c5b541a556fa1, type: 3}
+  - {fileID: 21300000, guid: fc2021fca9d1e8a43b5ab69c7ef0a2e0, type: 3}
+  - {fileID: 21300000, guid: 6a31709ba2943a44db5c8f3e7ecf7ddd, type: 3}
+  - {fileID: 21300000, guid: d1b6572d1fddcfd49adc2051fc77377c, type: 3}
+  - {fileID: 21300000, guid: dbb385c60b23ba64bb897aa7fb2e46f5, type: 3}
+  - {fileID: 21300000, guid: bccdf30e6e45d6e469d5847ed4fae57d, type: 3}
+  - {fileID: 21300000, guid: 5f04e37aeeb421344bb3f72b490fb0c9, type: 3}
+  - {fileID: 21300000, guid: 6e7bdc49cf732e546882b1752db2932e, type: 3}
+  - {fileID: 21300000, guid: 897df5b571f0faa4db120cae47c1d4f9, type: 3}
+  - {fileID: 21300000, guid: 13629b5af84592e4fb999b8f14928140, type: 3}
+  - {fileID: 21300000, guid: 760107b23aac0d546a7738ced3e23a29, type: 3}
+  - {fileID: 21300000, guid: 6b584bf54ee2a3e448a1dc46405d7577, type: 3}
+  - {fileID: 21300000, guid: 6e160bd379b8d6044ac1611b683b3626, type: 3}
+  - {fileID: 21300000, guid: b6c5a653f518af04ab63963304d82d4d, type: 3}
+  - {fileID: 21300000, guid: 3a2e274da5ab10f4e829c65c5ae6c936, type: 3}
+  - {fileID: 21300000, guid: 7b20a83257774c840a02833251b25e6f, type: 3}
+  - {fileID: 21300000, guid: 4cad727d7d9c02e4f9623e20e28d9966, type: 3}
+  - {fileID: 21300000, guid: 313bd66dc3d42c8438a2ac59527ac49d, type: 3}
+  fallbackSprite: {fileID: 21300000, guid: 22d9fabb397d83b4aa2d0fd368b06bdf, type: 3}

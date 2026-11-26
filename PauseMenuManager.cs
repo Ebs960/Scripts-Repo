@@ -29,6 +29,7 @@ public class PauseMenuManager : MonoBehaviour
     public GameObject optionsPanel;
     public Button optionsBackButton;
     [SerializeField] private MenuUiSkin menuUiSkin;
+    [SerializeField] private PauseMenuPresentation pausePresentation;
 
     [Header("Audio Settings")]
     public Slider musicVolumeSlider;
@@ -60,7 +61,7 @@ public class PauseMenuManager : MonoBehaviour
     private List<SaveSlotButton> saveSlotButtons = new List<SaveSlotButton>();
     private int selectedSaveSlot = -1;
     private int lastAutosaveTurn = -1;
-    private PauseMenuPresentation pausePresentation;
+
     private bool exitRequestPending;
     // Removed autosaveNotificationCoroutine - no longer needed with UIManager notifications
 
@@ -541,6 +542,14 @@ public class PauseMenuManager : MonoBehaviour
             musicEnabledToggle.SetIsOnWithoutNotify(GameOptionsSettings.GameMusicEnabled);
     }
 
+    private void ShowPausePanel()
+    {
+        if (pausePresentation == null)
+            pausePresentation = GetComponentInChildren<PauseMenuPresentation>(true);
+        if (pausePresentation != null)
+            pausePresentation.Show(CanSaveCurrentCampaign());
+    }
+
     private void EnablePauseToggle()
     {
         canTogglePause = true;
@@ -582,9 +591,7 @@ pauseMenuPanel.SetActive(true);
             Debug.LogError("[PauseMenuManager] Cannot show pause menu - no UIManager and no pauseMenuPanel!");
         }
 
-        if (pausePresentation == null)
-            pausePresentation = PauseMenuPresentation.Create(transform, this, menuUiSkin);
-        pausePresentation.Show(CanSaveCurrentCampaign());
+        ShowPausePanel();
 
         // Update GameManager pause state
         if (GameManager.Instance != null)
@@ -669,39 +676,6 @@ pauseMenuPanel.SetActive(false);
     }
 
     /// <summary>
-    /// Show save/load UI elements when save/load is accessed
-    /// </summary>
-    private void ShowSaveLoadUI()
-    {
-// Show the main save/load panel if it exists
-        if (saveLoadPanel != null)
-        {
-            saveLoadPanel.SetActive(true);
-}
-        
-        // Show individual save/load components as fallback
-        if (saveSlotContainer != null && saveSlotContainer.gameObject != null)
-        {
-            saveSlotContainer.gameObject.SetActive(true);
-        }
-        
-        if (createNewSaveButton != null && createNewSaveButton.gameObject != null)
-        {
-            createNewSaveButton.gameObject.SetActive(true);
-        }
-        
-        if (deleteSaveButton != null && deleteSaveButton.gameObject != null)
-        {
-            deleteSaveButton.gameObject.SetActive(true);
-        }
-        
-        if (saveStatusText != null && saveStatusText.gameObject != null)
-        {
-            saveStatusText.gameObject.SetActive(true);
-        }
-    }
-
-    /// <summary>
     /// Return to main pause menu from save/load UI
     /// </summary>
     public void ReturnToPauseMenu()
@@ -709,9 +683,7 @@ pauseMenuPanel.SetActive(false);
         HideSaveLoadUI();
         if (isPaused)
         {
-            if (pausePresentation == null)
-                pausePresentation = PauseMenuPresentation.Create(transform, this, menuUiSkin);
-            pausePresentation.Show(CanSaveCurrentCampaign());
+            ShowPausePanel();
         }
         // The main pause menu should already be active, so we don't need to show it again
     }
@@ -884,9 +856,7 @@ pauseMenuPanel.SetActive(false);
         {
             pauseMenuPanel.SetActive(true);
         }
-        if (pausePresentation == null)
-            pausePresentation = PauseMenuPresentation.Create(transform, this, menuUiSkin);
-        pausePresentation.Show(CanSaveCurrentCampaign());
+        ShowPausePanel();
     }
 
     public void ExitToMainMenu()
@@ -974,7 +944,6 @@ pauseMenuPanel.SetActive(false);
         }
 
         pausePresentation?.Hide();
-        ShowSaveLoadUI();
         SaveLoadMenuUI.Show(SaveLoadMenuUI.BrowserMode.Save, maxSaveSlots, menuUiSkin, this,
             CreateSaveData, null, ReturnToPauseMenu);
     }
@@ -982,7 +951,6 @@ pauseMenuPanel.SetActive(false);
     public void ShowLoadMenu()
     {
         pausePresentation?.Hide();
-        ShowSaveLoadUI();
         SaveLoadMenuUI.Show(SaveLoadMenuUI.BrowserMode.Load, maxSaveSlots, menuUiSkin, this,
             null, LoadSelectedSave, ReturnToPauseMenu);
     }

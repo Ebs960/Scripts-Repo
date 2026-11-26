@@ -486,12 +486,12 @@ public class UIManager : MonoBehaviour
 
     private void DisplayNotification(string message)
     {
-        var tmpText = notificationPanel.GetComponentInChildren<TextMeshProUGUI>();
+        var tmpText = notificationPanel.GetComponentInChildren<TextMeshProUGUI>(true);
         if (tmpText != null)
             tmpText.text = message;
         else
         {
-            var uiText = notificationPanel.GetComponentInChildren<Text>();
+            var uiText = notificationPanel.GetComponentInChildren<Text>(true);
             if (uiText != null)
                 uiText.text = message;
         }

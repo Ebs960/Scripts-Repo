@@ -15,6 +15,7 @@ public class CultureUI : MonoBehaviour
     [SerializeField] private GameObject cultureButtonPrefab;
     [Header("Shared Presentation")]
     [SerializeField] private TreePanelView panelView;
+    [SerializeField] private Image panoramaImage;
     [SerializeField] private TreeNavigation navigation;
     [SerializeField] private bool enableNavigation = true;
     [SerializeField, Min(0)] private float edgePadding = 80f;
@@ -158,7 +159,11 @@ public class CultureUI : MonoBehaviour
         {
             foreach (Transform child in container)
             {
-                if (child != null) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
+                if (child != null && (panoramaImage == null || child != panoramaImage.rectTransform))
+                {
+                    child.gameObject.SetActive(false);
+                    Destroy(child.gameObject);
+                }
             }
         }
         cultureButtons.Clear();
@@ -182,7 +187,8 @@ public class CultureUI : MonoBehaviour
 
     private void CreateCultureTreeBackground()
     {
-        if (backgroundData != null) TreePanorama.Render(cultureContent, backgroundData.GetPlacements(), backgroundData.showEraMarkers);
+        if (backgroundData != null)
+            TreePanorama.Render(cultureContent, backgroundData.GetPlacements(), backgroundData.showEraMarkers, panoramaImage);
     }
 
     private void CreateCultureNodesWithGridLayout()

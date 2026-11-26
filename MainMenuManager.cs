@@ -50,7 +50,7 @@ public class MainMenuManager : MonoBehaviour
     [Header("Leader Selection")]
     public Transform leaderButtonContainer;
     public Button leaderButtonPrefab;
-    [Tooltip("Panel background image for the whole leader selection panel.")]
+    [Tooltip("Leader artwork image. Used as a panel background only in the legacy layout.")]
     public Image leaderSelectionBackgroundImage;
     public TextMeshProUGUI selectedLeaderName;
     public TextMeshProUGUI selectedLeaderDescription;
@@ -62,7 +62,7 @@ public class MainMenuManager : MonoBehaviour
     public struct LeaderSelectionEntry
     {
         public LeaderData leaderData;
-        [Tooltip("Optional background sprite to apply to the whole leader selection panel when this leader is selected.")]
+        [Tooltip("Optional illustration shown when this leader is selected.")]
         public Sprite backgroundSprite;
     }
 
@@ -70,7 +70,7 @@ public class MainMenuManager : MonoBehaviour
     public List<LeaderSelectionEntry> leaderSelectionEntries = new List<LeaderSelectionEntry>();
 
     [Header("Leader Panel Background Overrides")]
-    [Tooltip("Optional feature toggle. When enabled, each leader entry can override the whole leader selection panel background.")]
+    [Tooltip("Use the assigned illustration for each selected leader.")]
     public bool enableLeaderEntryBackgroundOverrides = false;
 
     [Header("Main Menu")]
@@ -168,6 +168,7 @@ public class MainMenuManager : MonoBehaviour
     private readonly Dictionary<CivData, Button> generatedCivButtons = new Dictionary<CivData, Button>();
     private readonly Dictionary<Button, UnityEngine.Events.UnityAction> civSelectionCallbacks = new Dictionary<Button, UnityEngine.Events.UnityAction>();
     private FactionSelectionPresentation factionSelectionPresentation;
+    private FactionSelectionPresentation leaderSelectionPresentation;
     private Sprite defaultLeaderSelectionBackground;
     private bool leaderSelectionBackgroundInitialized;
     private Color selectedButtonColor = new Color(.13f, .20f, .30f, 1f);
@@ -1487,12 +1488,21 @@ public class MainMenuManager : MonoBehaviour
 
     void PopulateLeaderList()
     {
+        if (leaderSelectionPresentation == null)
+        {
+            leaderSelectionPresentation = leaderSelectionPanel.GetComponent<FactionSelectionPresentation>();
+            leaderSelectionPresentation?.InitializeLeader(this);
+        }
         ApplyLeaderEntryBackground(null);
 
         // Clear existing buttons
         foreach (var button in leaderButtons)
         {
-            if (button != null) Destroy(button.gameObject);
+            if (button != null)
+            {
+                button.gameObject.SetActive(false);
+                Destroy(button.gameObject);
+            }
         }
         leaderButtons.Clear();
 
@@ -1512,28 +1522,36 @@ public class MainMenuManager : MonoBehaviour
         // Create buttons for each leader
         foreach (var leaderData in selectedCivilization.availableLeaders)
         {
-            Button button = Instantiate(leaderButtonPrefab, leaderButtonContainer);
-            var buttonLabel = button.GetComponentInChildren<TextMeshProUGUI>();
-            if (buttonLabel != null)
-                buttonLabel.text = leaderData.leaderName;
+            if (leaderData == null) continue;
+            Button button = leaderButtonPrefab != null
+                ? Instantiate(leaderButtonPrefab, leaderButtonContainer)
+                : leaderSelectionPresentation?.CreateCivilizationButton();
+            if (button == null)
+            {
+                Debug.LogError("[Main Menu] No leader button prefab is assigned.", this);
+                break;
+            }
+            if (leaderSelectionPresentation != null)
+                leaderSelectionPresentation.ConfigureLeaderButton(button, leaderData.leaderName);
+            else
+            {
+                var buttonLabel = button.GetComponentInChildren<TextMeshProUGUI>();
+                if (buttonLabel != null)
+                    buttonLabel.text = leaderData.leaderName;
+            }
             button.onClick.AddListener(() => OnLeaderButtonClicked(button, leaderData));
             leaderButtons.Add(button);
         }
+        leaderSelectionPresentation?.ResetScroll();
     }
 
     private void ApplyLeaderEntryBackground(LeaderData leaderData)
     {
-        if (!enableLeaderEntryBackgroundOverrides || leaderSelectionBackgroundImage == null)
+        if (leaderSelectionBackgroundImage == null)
             return;
 
-        if (!leaderSelectionBackgroundInitialized)
-        {
-            defaultLeaderSelectionBackground = leaderSelectionBackgroundImage.sprite;
-            leaderSelectionBackgroundInitialized = true;
-        }
-
         Sprite artwork = null;
-        if (leaderData != null && leaderSelectionEntries != null)
+        if (enableLeaderEntryBackgroundOverrides && leaderData != null && leaderSelectionEntries != null)
         {
             foreach (var entry in leaderSelectionEntries)
             {
@@ -1543,6 +1561,17 @@ public class MainMenuManager : MonoBehaviour
             }
         }
 
+        if (leaderSelectionPresentation != null)
+        {
+            leaderSelectionPresentation.ShowLeaderArtwork(artwork, leaderData != null);
+            return;
+        }
+        if (!enableLeaderEntryBackgroundOverrides) return;
+        if (!leaderSelectionBackgroundInitialized)
+        {
+            defaultLeaderSelectionBackground = leaderSelectionBackgroundImage.sprite;
+            leaderSelectionBackgroundInitialized = true;
+        }
         leaderSelectionBackgroundImage.sprite = artwork != null ? artwork : defaultLeaderSelectionBackground;
     }
 
@@ -1557,6 +1586,7 @@ public class MainMenuManager : MonoBehaviour
         selectedLeader = leaderData;
         if (selectLeaderButton != null) selectLeaderButton.interactable = true;
         ApplyLeaderEntryBackground(leaderData);
+        leaderSelectionPresentation?.ResetDetailsScroll();
 
         // Update display
         if (selectedLeaderName != null)

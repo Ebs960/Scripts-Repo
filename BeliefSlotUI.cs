@@ -41,7 +41,11 @@ public class BeliefSlotUI : MonoBehaviour, IDropHandler
     public void SetAssigned(BeliefData belief)
     {
         if (label != null) label.text = belief != null ? belief.beliefName : "(empty)";
-        if (iconImage != null) iconImage.sprite = belief != null ? belief.icon : null;
+        if (iconImage != null)
+        {
+            iconImage.sprite = belief != null ? belief.icon : null;
+            iconImage.enabled = iconImage.sprite != null;
+        }
         if (effectSummary != null)
             effectSummary.text = belief != null ? BuildSummary(belief) : "";
         if (clearButton != null) clearButton.gameObject.SetActive(belief != null);

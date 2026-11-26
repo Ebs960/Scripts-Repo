@@ -15,6 +15,7 @@ public class HudTopBar : MonoBehaviour
 {
     [Header("Info Display")]
     [SerializeField] private TextMeshProUGUI civNameText;
+    [SerializeField] private RectTransform campaignBar;
     [SerializeField] private TextMeshProUGUI roundText;
     [SerializeField] private TextMeshProUGUI seasonText;
     [SerializeField] private TextMeshProUGUI worldViewText;
@@ -106,11 +107,22 @@ public class HudTopBar : MonoBehaviour
 
     private void OnEnable()
     {
+        FitCampaignBar();
         SubscribeTurnEvents();
         SubscribeWorldViewEvents();
         UpdateTurnChangePanelForCurrentTurn();
         RefreshSeasonDisplay();
         RefreshWorldViewDisplay();
+    }
+
+    private void OnRectTransformDimensionsChange() => FitCampaignBar();
+
+    private void FitCampaignBar()
+    {
+        if (campaignBar == null || !(transform is RectTransform canvasRect)) return;
+        if (canvasRect.rect.width <= 0f) return;
+        float scale = Mathf.Clamp01((canvasRect.rect.width - 16f) / campaignBar.sizeDelta.x);
+        campaignBar.localScale = new Vector3(scale, scale, 1f);
     }
 
     private void OnDisable()

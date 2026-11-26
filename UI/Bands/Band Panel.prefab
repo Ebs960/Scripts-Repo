@@ -447,7 +447,7 @@ MonoBehaviour:
 MonoBehaviour:
   m_GameObject: {fileID: 1032}
   m_Enabled: 1
-  m_Script: {fileID: 11500000, guid: 0b5d2b4f2a63a754c97f3553429af2e8, type: 3}
+  m_Script: {fileID: 11500000, guid: 3312d7739989d2b4e91e6319e9a96d76, type: 3}
   m_Padding: {x: 0, y: 0, z: 0, w: 0}
   m_Softness: {x: 0, y: 0}
 --- !u!1 &1037
@@ -1282,7 +1282,7 @@ CanvasRenderer:
 MonoBehaviour:
   m_GameObject: {fileID: 1098}
   m_Enabled: 1
-  m_Script: {fileID: 11500000, guid: 7b195bd19c1e0e24d8d9a6a90748a4e8, type: 3}
+  m_Script: {fileID: 11500000, guid: 8a8695521f0d02e499659fee002a26c2, type: 3}
   m_Padding: {m_Left: 0, m_Right: 0, m_Top: 0, m_Bottom: 0}
   m_ChildAlignment: 0
   m_StartCorner: 0
@@ -2734,7 +2734,7 @@ CanvasRenderer:
 MonoBehaviour:
   m_GameObject: {fileID: 1216}
   m_Enabled: 1
-  m_Script: {fileID: 11500000, guid: 7b195bd19c1e0e24d8d9a6a90748a4e8, type: 3}
+  m_Script: {fileID: 11500000, guid: 8a8695521f0d02e499659fee002a26c2, type: 3}
   m_Padding: {m_Left: 0, m_Right: 0, m_Top: 0, m_Bottom: 0}
   m_ChildAlignment: 0
   m_StartCorner: 0

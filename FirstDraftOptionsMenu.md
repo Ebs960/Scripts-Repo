@@ -1,11 +1,12 @@
 # First-Draft Options Menu
 
-Both the Main Menu and the in-game Pause Menu open the same code-built Options overlay through
+Both the Main Menu and the in-game Pause Menu open the same Options overlay through
 `FirstDraftOptionsMenu.Open(optionsPanel, backHandler, context)`. The overlay lives on its own
 screen-space canvas (1920x1080, scale-with-screen-size, sorting order 900) so the legacy Options
 canvases keep their serialized scaling. Legacy sliders/toggles/buttons stay serialized and wired but
-are made non-interactable while the overlay is visible, and restored when it closes. Widgets are
-built once per host; reopening only refreshes values from `GameOptionsSettings`.
+are made non-interactable while the overlay is visible, and restored when it closes. The layout,
+artwork, and controls are saved in `UI/Resources/MenuUI/Options Menu.prefab`; the code instantiates
+it once per host and reopening only refreshes values from `GameOptionsSettings`.
 
 ## Layout
 

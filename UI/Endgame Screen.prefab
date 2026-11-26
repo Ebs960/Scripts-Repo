@@ -132,7 +132,7 @@ MonoBehaviour:
   playerCivilization: {fileID: 910163}
   playerLeader: {fileID: 910183}
   mainMenuButton: {fileID: 910204}
-  dominationIcon: {fileID: 21300000, guid: 252c05f8500426d43868decb575b6e98, type: 3}
+  dominationIcon: {fileID: 21300000, guid: 677d7cfdd6d64be28332670878fa71e6, type: 3}
   scienceIcon: {fileID: 21300000, guid: 695f2d74b5e15cc4293ec90411820a6e, type: 3}
   cultureIcon: {fileID: 21300000, guid: fa36a61f2fdf7e94e8786d6690e62e3d, type: 3}
   victoryColor: {r: 0.84, g: 0.71, b: 0.44, a: 1}
@@ -579,7 +579,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 252c05f8500426d43868decb575b6e98, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 677d7cfdd6d64be28332670878fa71e6, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1

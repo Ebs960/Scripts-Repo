@@ -67,7 +67,7 @@ With `displayWidth = 0`, width is calculated from `displayHeight` and the sprite
 
 Age lookups divide a multi-age segment into equal chronological slots for grid fallback and optional age navigation. This never relocates nodes loaded from JSON. Use ascending, non-overlapping age ranges that cover the intended timeline; missing historical ranges have no independent image or reserved chronological slot.
 
-The renderer creates `BackgroundContainer` behind nodes and lines. Images and era labels have raycasts disabled. Backgrounds, labels, lines and nodes are all inside the same scroll content, so they pan/zoom together.
+The campaign prefabs save a `Tree Panorama` Image under the scroll content. A one-segment rebuild reuses it and applies the configured placement, without creating a second background. The renderer still creates `BackgroundContainer` for builder previews and multi-segment fallback. Backgrounds and era labels do not receive raycasts; they pan and zoom with the nodes.
 
 ## Active Campaign Murals
 
@@ -77,7 +77,7 @@ Saved nodes retain their authored positions. Age-based fallback and optional age
 
 ## Inspector and Prefab Setup
 
-The existing runtime panels and node prefabs are reused. The old static headings are listed as legacy objects to hide on Show. Header/progress/popup objects are created when absent, not serialized as duplicate hierarchies. Both controller sprite sets are already assigned; preserve existing serialized references and scene-instance overrides. No builder-prefab changes or JSON migration are needed.
+The campaign prefabs save the shell, header, progress bar, close button, and panorama. Their controllers bind the authored `TreePanelView`; the old static headings and details start hidden. The floating hover popup is still created lazily on the root Canvas, and research nodes and progress values are populated at runtime. No builder-prefab changes or JSON migration are needed.
 
 For each runtime panel:
 

@@ -37,7 +37,11 @@ public class BeliefButtonUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
                 ? belief.faithCost > 0 ? $"{belief.beliefName} ({belief.faithCost} Faith)" : belief.beliefName
                 : "-";
         }
-        if (iconImage != null) iconImage.sprite = belief != null ? belief.icon : null;
+        if (iconImage != null)
+        {
+            iconImage.sprite = belief != null ? belief.icon : null;
+            iconImage.enabled = iconImage.sprite != null;
+        }
     }
 
     public void OnBeginDrag(PointerEventData eventData)
@@ -58,8 +62,9 @@ public class BeliefButtonUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     public void OnDrag(PointerEventData eventData)
     {
         if (!isDragging || rect == null) return;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle((RectTransform)transform.parent, eventData.position, eventData.pressEventCamera, out var localPoint);
-        rect.anchoredPosition = localPoint;
+        // World position keeps the row under the pointer whatever its anchors or the drag layer's size.
+        if (RectTransformUtility.ScreenPointToWorldPointInRectangle((RectTransform)transform.parent, eventData.position, eventData.pressEventCamera, out var worldPoint))
+            rect.position = worldPoint;
     }
 
     public void OnEndDrag(PointerEventData eventData)

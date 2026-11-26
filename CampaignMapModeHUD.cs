@@ -11,23 +11,49 @@ public class CampaignMapModeHUD : MonoBehaviour
     [SerializeField] private TMP_Text hoverText;
     [SerializeField, Min(1)] private int maximumLegendEntries = 8;
     private CampaignMapModeController controller;
+    [SerializeField] private GameObject legendPanel;
 
     private static readonly string[] Labels =
     { "Terrain", "Political", "Government", "Religion", "Continents", "Administration", "Diplomacy" };
 
     private void OnEnable()
     {
-        controller = CampaignMapModeController.Instance ?? FindAnyObjectByType<CampaignMapModeController>();
+        InitializeDropdown();
+        BindController();
+    }
+
+    public void Configure(TMP_Dropdown dropdown, TMP_Text legend, GameObject panel)
+    {
+        modeDropdown = dropdown;
+        legendText = legend;
+        legendPanel = panel;
+        legendPanel.SetActive(false);
+        InitializeDropdown();
+        RefreshLegend();
+    }
+
+    private void InitializeDropdown()
+    {
         if (modeDropdown != null)
         {
+            modeDropdown.onValueChanged.RemoveListener(OnModeSelected);
             modeDropdown.ClearOptions(); modeDropdown.AddOptions(new List<string>(Labels));
             modeDropdown.SetValueWithoutNotify(controller != null ? (int)controller.CurrentMode : 0);
             modeDropdown.onValueChanged.AddListener(OnModeSelected);
         }
+    }
+
+    private void Start() => BindController();
+
+    private void BindController()
+    {
+        if (controller != null) return;
+        controller = CampaignMapModeController.Instance ?? FindAnyObjectByType<CampaignMapModeController>();
         if (controller != null)
         {
             controller.MapModeChanged += OnModeChanged; controller.LegendChanged += RefreshLegend;
-            controller.HoverInfoChanged += SetHover; RefreshLegend();
+            controller.HoverInfoChanged += SetHover;
+            OnModeChanged(controller.CurrentMode);
         }
     }
 
@@ -36,6 +62,7 @@ public class CampaignMapModeHUD : MonoBehaviour
         if (modeDropdown != null) modeDropdown.onValueChanged.RemoveListener(OnModeSelected);
         if (controller != null)
         { controller.MapModeChanged -= OnModeChanged; controller.LegendChanged -= RefreshLegend; controller.HoverInfoChanged -= SetHover; }
+        controller = null;
     }
 
     private void OnModeSelected(int index) => controller?.SetMode((CampaignMapMode)Mathf.Clamp(index, 0, Labels.Length - 1));
@@ -44,6 +71,8 @@ public class CampaignMapModeHUD : MonoBehaviour
     private void RefreshLegend()
     {
         if (legendText == null || controller == null) return;
+        if (legendPanel != null)
+            legendPanel.SetActive(controller.CurrentMode != CampaignMapMode.Normal && controller.Legend.Count > 0);
         var title = controller.CurrentMode == CampaignMapMode.Diplomacy
             ? $"DIPLOMACY — Relative to {controller.ReferenceCivilization?.civData?.civName ?? "Player"}"
             : DisplayName(controller.CurrentMode).ToUpperInvariant();

@@ -80,9 +80,33 @@ public static class TreePanorama
         return 300;
     }
 
-    public static RectTransform Render(RectTransform content, IList<TreePanoramaPlacement> placements, bool showEraMarkers = false)
+    public static RectTransform Render(RectTransform content, IList<TreePanoramaPlacement> placements, bool showEraMarkers = false, Image savedImage = null)
     {
         if (content == null) return null;
+        bool useSavedImage = savedImage != null && placements.Count == 1;
+        if (savedImage != null)
+        {
+            savedImage.gameObject.SetActive(useSavedImage);
+            if (useSavedImage)
+            {
+                var placement = placements[0];
+                var rect = savedImage.rectTransform;
+                rect.SetAsFirstSibling();
+                rect.anchorMin = rect.anchorMax = new Vector2(0, 1);
+                rect.anchoredPosition = new Vector2(placement.rect.x, 0);
+                rect.sizeDelta = placement.rect.size;
+                savedImage.sprite = placement.sprite;
+            }
+        }
+        RectTransform container = useSavedImage
+            ? savedImage.rectTransform : RenderSegments(content, placements);
+        if (showEraMarkers && placements.Count > 0 && TMP_Settings.defaultFontAsset != null)
+            RenderMarkers(content, placements);
+        return container;
+    }
+
+    private static RectTransform RenderSegments(RectTransform content, IList<TreePanoramaPlacement> placements)
+    {
         var container = new GameObject("BackgroundContainer", typeof(RectTransform)).GetComponent<RectTransform>();
         container.SetParent(content, false);
         container.anchorMin = container.anchorMax = container.pivot = new Vector2(0, 1);
@@ -102,8 +126,11 @@ public static class TreePanorama
             image.preserveAspect = true;
             image.raycastTarget = false;
         }
-        if (showEraMarkers && placements.Count > 0 && TMP_Settings.defaultFontAsset != null)
-        {
+        return container;
+    }
+
+    private static void RenderMarkers(RectTransform content, IList<TreePanoramaPlacement> placements)
+    {
             var markers = new GameObject("EraMarkers", typeof(RectTransform)).GetComponent<RectTransform>();
             markers.SetParent(content, false);
             markers.anchorMin = markers.anchorMax = markers.pivot = new Vector2(0, 1);
@@ -125,7 +152,5 @@ public static class TreePanorama
                 label.text = placement.startAge == placement.endAge ? placement.startAge.ToString() : placement.startAge + " - " + placement.endAge;
                 label.raycastTarget = false;
             }
-        }
-        return container;
     }
 }

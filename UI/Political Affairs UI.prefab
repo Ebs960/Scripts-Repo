@@ -1082,7 +1082,6 @@ GameObject:
   - component: {fileID: 5579963360158108154}
   - component: {fileID: 5826265238358551054}
   - component: {fileID: 5058932729719014694}
-  - component: {fileID: 2397749747927964557}
   m_Layer: 5
   m_Name: Political Affairs UI
   m_TagString: Untagged
@@ -1173,26 +1172,6 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
---- !u!114 &2397749747927964557
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1060405190259138664}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 160dff976f2e08c458ec4fa82a0f6486, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PoliticalAffairsPanelUI
-  panelRoot: {fileID: 1060405190259138664}
-  titleText: {fileID: 8949174963502204745}
-  subtitleText: {fileID: 5553891304878841760}
-  closeButton: {fileID: 5648475168563629764}
-  contentRoot: {fileID: 1627681559980413983}
-  entryPrefab: {fileID: 2975033316595543686, guid: 6e8e155abe500ae4b99fe326847d3724, type: 3}
-  buttonContainer: {fileID: 1627681559980413983}
-  optionButtonPrefab: {fileID: 6898772594875447140, guid: a17930464460aff4fbac474b9f4d2dea, type: 3}
 --- !u!1 &1161045725963083530
 GameObject:
   m_ObjectHideFlags: 0

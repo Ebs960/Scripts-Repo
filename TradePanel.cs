@@ -43,6 +43,25 @@ public class TradePanel : MonoBehaviour
     public TextMeshProUGUI totalTradeFoodText;
     [Tooltip("Text showing total production from trade routes")]
     public TextMeshProUGUI totalTradeProductionText;
+
+    [Header("Navigation")]
+    public Button closeButton;
+
+    [Header("Route Status")]
+    [Tooltip("Shows used and total civilization-wide trade route capacity")]
+    public TextMeshProUGUI routeCapacityText;
+    public TextMeshProUGUI activeRouteCountText;
+    public TextMeshProUGUI suspendedRouteCountText;
+    public TextMeshProUGUI raidedRouteCountText;
+    public TextMeshProUGUI atRiskRouteCountText;
+    [Tooltip("Shown instead of the list when the civilization has no trade routes")]
+    public GameObject noRoutesMessage;
+    public Sprite activeRouteIcon;
+    public Sprite suspendedRouteIcon;
+    public Sprite raidedRouteIcon;
+    public Sprite warningRouteIcon;
+    [Tooltip("Routes at or above this raid chance are flagged as at risk")]
+    [Range(0f, 1f)] public float highRaidRiskThreshold = 0.25f;
     
     // Current data
     private Civilization playerCiv;
@@ -68,12 +87,14 @@ public class TradePanel : MonoBehaviour
         }
         if (originPlanetDropdown != null) originPlanetDropdown.gameObject.SetActive(false);
         if (destinationPlanetDropdown != null) destinationPlanetDropdown.gameObject.SetActive(false);
+        if (closeButton != null) closeButton.onClick.AddListener(Hide);
         
-        // Hide panel initially
         if (tradePanel == null)
             tradePanel = this.gameObject;
-            
-        tradePanel.SetActive(false);
+
+        // Start runs on first activation, which is normally the first Show call; only hide when nothing asked to open.
+        if (playerCiv == null)
+            tradePanel.SetActive(false);
     }
     
     /// <summary>
@@ -171,6 +192,8 @@ public class TradePanel : MonoBehaviour
     /// </summary>
     private void UpdateActiveTradeRoutes()
     {
+        int active = 0, suspended = 0, raided = 0, atRisk = 0;
+
         // Clear existing trade route items
         if (tradeRouteListContent != null)
         {
@@ -184,11 +207,39 @@ public class TradePanel : MonoBehaviour
             {
                 foreach (TradeRoute route in TradeNetworkManager.Instance.GetRoutesForCivilization(playerCiv))
                 {
+                    if (route == null) continue;
+                    if (route.suspended) suspended++;
+                    else
+                    {
+                        active++;
+                        if (route.wasRaidedThisTurn) raided++;
+                        else if (IsRouteAtRisk(route)) atRisk++;
+                    }
+
+                    if (tradeRouteItemPrefab == null) continue;
                     GameObject item = Instantiate(tradeRouteItemPrefab, tradeRouteListContent);
                     UpdateTradeRouteItem(item, route);
                 }
             }
         }
+
+        if (activeRouteCountText != null) activeRouteCountText.text = active.ToString();
+        if (suspendedRouteCountText != null) suspendedRouteCountText.text = suspended.ToString();
+        if (raidedRouteCountText != null) raidedRouteCountText.text = raided.ToString();
+        if (atRiskRouteCountText != null) atRiskRouteCountText.text = atRisk.ToString();
+        if (noRoutesMessage != null) noRoutesMessage.SetActive(active + suspended == 0);
+        if (routeCapacityText != null)
+        {
+            var manager = TradeNetworkManager.Instance;
+            routeCapacityText.text = manager != null
+                ? $"Routes: {manager.GetUsedCivilizationTradeRouteCapacity(playerCiv)} / {manager.GetCivilizationTradeRouteCapacity(playerCiv)}"
+                : "Routes: 0 / 0";
+        }
+    }
+
+    private bool IsRouteAtRisk(TradeRoute route)
+    {
+        return route != null && !route.suspended && route.raidChance >= highRaidRiskThreshold;
     }
     
     
@@ -202,12 +253,26 @@ public class TradePanel : MonoBehaviour
         var destText = item.transform.Find("DestinationText")?.GetComponent<TextMeshProUGUI>();
         var benefitsText = item.transform.Find("BenefitsText")?.GetComponent<TextMeshProUGUI>();
         var cancelButton = item.transform.Find("CancelButton")?.GetComponent<Button>();
+        var statusIcon = item.transform.Find("StatusIcon")?.GetComponent<Image>();
         
         string routeName = TradeNetworkManager.Instance != null ? TradeNetworkManager.Instance.GetRouteDisplayName(route) : $"Route {route.routeId}";
         if (sourceText != null)
             sourceText.text = routeName;
+
+        string status;
+        Sprite icon;
+        if (route.suspended) { status = $"Suspended: {route.suspensionReason}"; icon = suspendedRouteIcon; }
+        else if (route.wasRaidedThisTurn) { status = "Raided this turn"; icon = raidedRouteIcon; }
+        else if (IsRouteAtRisk(route)) { status = "Active - high raid risk"; icon = warningRouteIcon; }
+        else { status = "Active"; icon = activeRouteIcon; }
+
         if (destText != null)
-            destText.text = route.suspended ? $"Suspended: {route.suspensionReason}" : "Active";
+            destText.text = status;
+        if (statusIcon != null)
+        {
+            statusIcon.sprite = icon;
+            statusIcon.enabled = icon != null;
+        }
         if (benefitsText != null)
             benefitsText.text = $"+{route.goldPerTurn}g, Raid {Mathf.RoundToInt(route.raidChance * 100f)}%, Range {GetCityTradeRangeLabel(route)}";
         
@@ -217,10 +282,20 @@ public class TradePanel : MonoBehaviour
             cancelButton.onClick.RemoveAllListeners();
             cancelButton.interactable = true;
             cancelButton.onClick.AddListener(() => {
-                if (TradeNetworkManager.Instance != null && TradeNetworkManager.Instance.activeRoutes.Remove(route))
-                    UpdateUIState();
+                bool asked = ConfirmationDialogService.ShowConfirmation(
+                    "CANCEL TRADE ROUTE",
+                    $"End the trade route {routeName}? Its income stops immediately.",
+                    () => CancelRoute(route),
+                    confirmLabel: "END ROUTE", cancelLabel: "KEEP", destructive: true, owner: this);
+                if (!asked) CancelRoute(route);
             });
         }
+    }
+
+    private void CancelRoute(TradeRoute route)
+    {
+        if (TradeNetworkManager.Instance != null && TradeNetworkManager.Instance.activeRoutes.Remove(route))
+            UpdateUIState();
     }
     
     /// <summary>

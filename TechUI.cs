@@ -14,6 +14,7 @@ public class TechUI : MonoBehaviour
     [SerializeField] private GameObject techButtonPrefab; // Prefab for tech buttons
     [Header("Shared Presentation")]
     [SerializeField] private TreePanelView panelView;
+    [SerializeField] private Image panoramaImage;
     [SerializeField] private TreeNavigation navigation;
     [SerializeField] private bool enableNavigation = true;
     [SerializeField, Min(0)] private float edgePadding = 80f;
@@ -163,7 +164,11 @@ public class TechUI : MonoBehaviour
         {
             foreach (Transform child in techContent)
             {
-                if (child != null) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
+                if (child != null && (panoramaImage == null || child != panoramaImage.rectTransform))
+                {
+                    child.gameObject.SetActive(false);
+                    Destroy(child.gameObject);
+                }
             }
         }
         techButtons.Clear();
@@ -195,7 +200,8 @@ public class TechUI : MonoBehaviour
 
     private void CreateTechTreeBackground()
     {
-        if (backgroundData != null) TreePanorama.Render(techContent, backgroundData.GetPlacements(), backgroundData.showEraMarkers);
+        if (backgroundData != null)
+            TreePanorama.Render(techContent, backgroundData.GetPlacements(), backgroundData.showEraMarkers, panoramaImage);
     }
 
     private void CreateTechNodesWithGridLayout()

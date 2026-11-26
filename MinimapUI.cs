@@ -23,6 +23,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     public TMP_Dropdown layerDropdown;
     [Tooltip("Optional container for the minimap – used for scaling")]
     public RectTransform minimapContainer;
+    [SerializeField] private RectTransform styledPanel;
+    [SerializeField] private CanvasGroup styledPanelGroup;
+    [SerializeField] private Button styledZoomIn;
+    [SerializeField] private Button styledZoomOut;
+    [SerializeField] private Button resetZoomButton;
+    [SerializeField] private TMP_Dropdown mapModeDropdown;
     [Tooltip("Clickable zoom-in region (RectTransform). This replaces legacy Button wiring.")]
     public RectTransform zoomInHitArea;
     [Tooltip("Clickable zoom-out region (RectTransform). This replaces legacy Button wiring.")]
@@ -475,6 +481,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
 
     void Awake()
     {
+        ConfigureCampaignMapPanel();
         // Flush all static caches on scene load. These survive scene transitions because
         // they are static, but the Unity objects they reference (Texture2D, RenderTexture,
         // ComputeBuffer) get destroyed when the scene unloads. Accessing a destroyed
@@ -502,6 +509,14 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     /// </summary>
     private void HideUIElements()
     {
+        if (styledPanelGroup != null)
+        {
+            if (mapModeDropdown != null) mapModeDropdown.Hide();
+            if (layerDropdown != null) layerDropdown.Hide();
+            styledPanelGroup.alpha = 0f;
+            styledPanelGroup.interactable = false;
+            styledPanelGroup.blocksRaycasts = false;
+        }
         // Instead of deactivating GameObjects, make them invisible but keep them active
         // This ensures the MinimapUI component remains discoverable by GameManager
         if (minimapImage != null) 
@@ -548,6 +563,12 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     /// </summary>
     private void ShowUIElements()
     {
+        if (styledPanelGroup != null)
+        {
+            styledPanelGroup.alpha = 1f;
+            styledPanelGroup.interactable = true;
+            styledPanelGroup.blocksRaycasts = true;
+        }
         // Restore visibility and interaction for UI elements
         if (minimapImage != null) 
         {
@@ -595,6 +616,22 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
             }
         }
     }
+
+    private void ConfigureCampaignMapPanel()
+    {
+        if (styledZoomIn != null) styledZoomIn.onClick.AddListener(ZoomIn);
+        if (styledZoomOut != null) styledZoomOut.onClick.AddListener(ZoomOut);
+        if (resetZoomButton != null) resetZoomButton.onClick.AddListener(ResetZoom);
+        FitCampaignMapPanel();
+    }
+
+    private void FitCampaignMapPanel()
+    {
+        if (styledPanel == null || !(transform is RectTransform canvasRect) || canvasRect.rect.width <= 0f) return;
+        float scale = Mathf.Clamp(Mathf.Min(canvasRect.rect.width / 1366f, canvasRect.rect.height / 768f), .55f, 1f);
+        styledPanel.localScale = new Vector3(scale, scale, 1f);
+    }
+
 
     private bool CanDisplayUIElements()
     {
@@ -716,6 +753,7 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     // Keep flags fresh if layout / anchors / scaling changes
     protected void OnRectTransformDimensionsChange()
     {
+        FitCampaignMapPanel();
         if (isActiveAndEnabled) RefreshMirrorFlags();
     }
 
@@ -1499,13 +1537,13 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     {
         if (!CanDisplayUIElements()) return false;
 
-        if (IsPointerInsideRect(eventData, zoomInHitArea))
+        if (styledZoomIn == null && IsPointerInsideRect(eventData, zoomInHitArea))
         {
             ZoomIn();
             return true;
         }
 
-        if (IsPointerInsideRect(eventData, zoomOutHitArea))
+        if (styledZoomOut == null && IsPointerInsideRect(eventData, zoomOutHitArea))
         {
             ZoomOut();
             return true;
@@ -1583,6 +1621,8 @@ public class MinimapUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, 
     /// </summary>
     private void UpdateZoomButtonStates()
     {
+        if (styledZoomIn != null) styledZoomIn.interactable = _currentZoom < maxZoom;
+        if (styledZoomOut != null) styledZoomOut.interactable = _currentZoom > minZoom;
         if (zoomInHitArea != null)
         {
             bool canZoomIn = _currentZoom < maxZoom;

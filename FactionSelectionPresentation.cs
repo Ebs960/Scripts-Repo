@@ -14,10 +14,12 @@ public sealed class FactionSelectionPresentation : MonoBehaviour
     private RectTransform heroViewport;
     private RectTransform header;
     private RectTransform footer;
-    private ScrollRect rosterScroll;
-    private ScrollRect detailsScroll;
+    [SerializeField] private ScrollRect rosterScroll;
+    [SerializeField] private ScrollRect detailsScroll;
+    [SerializeField] private ScrollRect bonusesScroll;
     private AspectRatioFitter artworkFitter;
     private TextMeshProUGUI artworkPlaceholder;
+    private bool usesPaintedShell;
     private Vector2 lastSize;
     private GameObject lastFocusedRow;
 
@@ -26,6 +28,47 @@ public sealed class FactionSelectionPresentation : MonoBehaviour
         if (menu != null) return;
         menu = manager;
         var panel = (RectTransform)menu.civSelectionPanel.transform;
+        if (rosterScroll != null)
+        {
+            BindSavedLayout(panel, false);
+            return;
+        }
+        InitializePlainShell(panel);
+    }
+
+    public void ConfigureLeaderButton(Button button, string name)
+    {
+        var image = button.GetComponent<Image>() ?? button.gameObject.AddComponent<Image>();
+        image.sprite = null;
+        image.overrideSprite = null;
+        image.color = Color.white;
+        button.targetGraphic = image;
+        button.transition = Selectable.Transition.ColorTint;
+        var colors = button.colors;
+        colors.normalColor = new Color(.075f, .12f, .18f);
+        colors.highlightedColor = new Color(.20f, .23f, .26f);
+        colors.selectedColor = colors.highlightedColor;
+        colors.pressedColor = new Color(.13f, .18f, .23f);
+        colors.disabledColor = new Color(.32f, .27f, .17f);
+        colors.colorMultiplier = 1f;
+        button.colors = colors;
+
+        var layout = button.GetComponent<LayoutElement>() ?? button.gameObject.AddComponent<LayoutElement>();
+        layout.ignoreLayout = false;
+        layout.minHeight = layout.preferredHeight = 64f;
+        var label = button.GetComponentInChildren<TextMeshProUGUI>(true) ?? CreateText("LeaderName", button.transform, name);
+        Move(label.rectTransform, button.transform);
+        label.text = name;
+        ConfigureText(label, 24f);
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        label.enableAutoSizing = true;
+        label.fontSizeMin = 16f;
+        label.fontSizeMax = 24f;
+        SetRect(label.rectTransform, Vector2.zero, Vector2.one, new Vector2(16f, 4f), new Vector2(-12f, -4f));
+    }
+
+    private void InitializePlainShell(RectTransform panel)
+    {
         SetRect(panel, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
         var background = CreateImage("FactionSelectionShell", panel, new Color(.025f, .04f, .065f, 1f));
         background.raycastTarget = true;
@@ -99,6 +142,31 @@ public sealed class FactionSelectionPresentation : MonoBehaviour
         ShowArtwork(null, false);
     }
 
+    public void InitializeLeader(MainMenuManager manager)
+    {
+        if (menu != null) return;
+        menu = manager;
+        BindSavedLayout((RectTransform)menu.leaderSelectionPanel.transform, true);
+    }
+
+    private void BindSavedLayout(RectTransform panel, bool leader)
+    {
+        usesPaintedShell = true;
+        root = panel;
+        roster = rosterScroll.content;
+        if (leader)
+        {
+            menu.leaderButtonContainer = roster;
+            ShowLeaderArtwork(null, false);
+        }
+        else
+        {
+            menu.civButtonContainer = roster;
+            ShowArtwork(null, false);
+        }
+    }
+
+
     public Button CreateCivilizationButton()
     {
         var image = CreateImage("CivilizationButton", roster, Color.white);
@@ -150,14 +218,26 @@ public sealed class FactionSelectionPresentation : MonoBehaviour
 
     public void ShowArtwork(Sprite artwork, bool hasSelection)
     {
-        menu.selectedCivArtwork.sprite = null;
-        menu.selectedCivArtwork.overrideSprite = null;
-        menu.selectedCivArtwork.enabled = artwork != null;
-        artworkPlaceholder.gameObject.SetActive(artwork == null);
-        artworkPlaceholder.text = hasSelection ? "Artwork not yet assigned" : "Choose a civilization";
-        if (artwork == null) return;
-        artworkFitter.aspectRatio = artwork.rect.width / artwork.rect.height;
-        menu.selectedCivArtwork.sprite = artwork;
+        if (artworkFitter != null && artwork != null)
+            artworkFitter.aspectRatio = artwork.rect.width / artwork.rect.height;
+        ShowArtwork(menu.selectedCivArtwork, artwork, hasSelection ? "Artwork not yet assigned" : "Choose a civilization");
+    }
+
+    public void ShowLeaderArtwork(Sprite artwork, bool hasSelection)
+    {
+        ShowArtwork(menu.leaderSelectionBackgroundImage, artwork, hasSelection ? "Artwork not yet assigned" : "Choose a leader");
+    }
+
+    private void ShowArtwork(Image image, Sprite artwork, string placeholder)
+    {
+        image.overrideSprite = null;
+        image.sprite = artwork;
+        image.enabled = artwork != null;
+        if (artworkPlaceholder != null)
+        {
+            artworkPlaceholder.gameObject.SetActive(artwork == null);
+            artworkPlaceholder.text = placeholder;
+        }
     }
 
     public void ResetScroll()
@@ -172,12 +252,17 @@ public sealed class FactionSelectionPresentation : MonoBehaviour
     {
         detailsScroll.StopMovement();
         detailsScroll.verticalNormalizedPosition = 1f;
+        if (bonusesScroll != null)
+        {
+            bonusesScroll.StopMovement();
+            bonusesScroll.verticalNormalizedPosition = 1f;
+        }
     }
 
     private void LateUpdate()
     {
         if (root == null) return;
-        if (lastSize != root.rect.size) ApplyLayout();
+        if (!usesPaintedShell && lastSize != root.rect.size) ApplyLayout();
         var focused = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
         if (focused == lastFocusedRow) return;
         lastFocusedRow = focused;
@@ -243,8 +328,13 @@ public sealed class FactionSelectionPresentation : MonoBehaviour
 
     private void AddDetailText(TextMeshProUGUI text)
     {
+        AddDetailText(text, detailsScroll);
+    }
+
+    private static void AddDetailText(TextMeshProUGUI text, ScrollRect scroll)
+    {
         if (text == null) return;
-        Move(text.rectTransform, detailsScroll.content);
+        Move(text.rectTransform, scroll.content);
         ConfigureText(text, 24f);
         text.enableAutoSizing = false;
     }

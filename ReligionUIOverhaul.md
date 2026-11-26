@@ -16,10 +16,10 @@ Created script:
 
 Other assets:
 
-- [UI/Religion UI.prefab](UI/Religion%20UI.prefab): correct `religionFoundingPanel` to the actual Religion Founding Panel, rather than Religion Info. Existing object IDs, slots, sprites, and borders are retained.
+- [UI/Religion UI.prefab](UI/Religion%20UI.prefab): correct `religionFoundingPanel` to the actual Religion Founding Panel, rather than Religion Info. Existing object IDs and slots are retained. The layout and artwork were later replaced by the saved layout described under "Saved Navy-And-Gold Layout".
 - This guide and its metadata. No gameplay data assets or save schemas were changed.
 
-The Game and SampleScene scenes instantiate this prefab without overriding its founding-panel binding. Neither scene needed editing. Existing UIManager show/hide methods, the religion database, religion/pantheon/belief assets, and ReligionPoliticsService remain intact.
+The Game and SampleScene scenes instantiate this prefab without overriding its founding-panel binding. The later layout pass removed four stale layout overrides from the Game scene's instance (belief list scrollbars and content size). Existing UIManager show/hide methods, the religion database, religion/pantheon/belief assets, and ReligionPoliticsService remain intact.
 
 ## Behavior
 
@@ -61,7 +61,23 @@ Keep these bindings on distinct text objects; do not bind a dedicated details fi
 
 Missing dropdown caption/item images are created using existing asset sprites; configured images are left alone. Legacy cost/name labels use bounded autosizing and ellipsis, while full details remain available separately. If the description has no ancestor ScrollRect, initialization wraps the existing text in a transparent, masked, vertical ScrollRect within its original bounds and adds a ContentSizeFitter. An existing ScrollRect is respected. The generated main Close control is hidden while the belief panel's own Close control is active.
 
-These are functional presentation components, not new artwork. The current font assets, shell, timeless belief borders, and all existing sprites remain in use. The main shell, existing pantheon/religion regions, five slots, drag layer, and Apply/Cancel controls can be skinned independently. No parchment, wood, or replacement border style was introduced.
+These are functional presentation components. The runtime fallbacks above (generated Close control, generated dropdown icons, generated scroll wrapper, generated category headings) only apply to a prefab that lacks the saved objects; the current prefab provides all of them.
+
+## Saved Navy-And-Gold Layout
+
+The whole screen is saved in [UI/Religion UI.prefab](UI/Religion%20UI.prefab) and is visible in Edit Mode. Nothing in the layout is built at runtime except the belief library rows and their category headings, which are instantiated from saved templates.
+
+- The canvas scales with screen size (1920x1080 reference, match 0.5). `Religion Layout` and `Belief Layout` use an AspectRatioFitter, and every control is placed with fractional anchors, so controls track the shell art at any aspect ratio.
+- Main screen: `Main Religion Shell Panel` art; header with title, Faith icon, Faith totals and the Close button (`closeButton`); left column with Pantheons, Upgrade a Spirit and Found a Religion; right column with the `Religion Identity Card`, a saved scroll view for the description, and Manage Beliefs.
+- `religionRequirementsText` is bound to the saved text under Found a Religion. `beliefCostText` is bound to the belief editor footer. `actionFeedbackText` is left unbound, so feedback uses notifications; the notification canvas sorts at 1050 so it draws above this full-screen panel.
+- Belief editor (`Beliefs Panel`, saved inactive; enable it to inspect): `Belief Management Panel` art, library scroll view on the left, five `Pantheon List Card` slots on the right, Apply and Cancel over the art's footer buttons.
+- `beliefHeaderTemplate` is the inactive `Category Header Template` beside the library list. Keep it outside the list container, because the list is cleared on every rebuild.
+- [UI/Belief Button UI.prefab](UI/Belief%20Button%20UI.prefab) is the library row: `Belief Library Row` art, icon cell, label, and a LayoutElement that sets the row height.
+- Icon images (dropdown option icons, slot icons, the religion icon) are saved disabled and are enabled by code only when they have a sprite, so empty cells never show a white square.
+- Dragging a belief positions the row in world space, so it stays under the pointer inside the full-screen drag layer.
+- Control artwork has transparent padding. Each control keeps an invisible hit Image and shows its sprite on an `Art` child fitted to the measured visible bounds.
+
+This layout was validated offline only: structure and reference checks, a full source compile, and a rendered approximation. It has not been opened in Unity or exercised in Play Mode.
 
 `ReligionOptions` exposes read-only founding presentation rows, including asset/name/icon, cost, requirements, founded status, and authoritative availability. `CityReligions` exposes city, name, actual majority religion, Holy Site status, and a state-religion match flag. Effect formatting is shared outside the controller; existing public ReligionUI formatter methods forward to it for compatibility.
 

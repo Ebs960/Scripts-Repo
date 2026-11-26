@@ -77,6 +77,8 @@ public class ReligionUI : MonoBehaviour
     public Transform beliefListContainer;
     [Tooltip("Prefab for a belief button. Expected to have a BeliefButtonUI component.")]
     public GameObject beliefButtonPrefab;
+    [Tooltip("Optional saved heading used for each belief category in the list. Keep it outside the list container.")]
+    public TMP_Text beliefHeaderTemplate;
     [Tooltip("Optional canvas transform to reparent dragged items to while dragging")]
     public RectTransform dragLayer;
 
@@ -480,9 +482,19 @@ public class ReligionUI : MonoBehaviour
         foreach (BeliefCategory cat in System.Enum.GetValues(typeof(BeliefCategory)))
         {
             // Header
-            var headerGO = new GameObject("Header_" + cat.ToString(), typeof(RectTransform));
-            headerGO.transform.SetParent(beliefListContainer, false);
-            var headerText = headerGO.AddComponent<TextMeshProUGUI>();
+            TMP_Text headerText;
+            if (beliefHeaderTemplate != null)
+            {
+                headerText = Instantiate(beliefHeaderTemplate, beliefListContainer);
+                headerText.name = "Header_" + cat;
+                headerText.gameObject.SetActive(true);
+            }
+            else
+            {
+                var headerGO = new GameObject("Header_" + cat.ToString(), typeof(RectTransform));
+                headerGO.transform.SetParent(beliefListContainer, false);
+                headerText = headerGO.AddComponent<TextMeshProUGUI>();
+            }
             headerText.text = cat.ToString();
 
             // Buttons for this category
