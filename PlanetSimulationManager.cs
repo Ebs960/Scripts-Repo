@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// Simulation fidelity tier for a planet, used to scale down per-frame/per-turn work
@@ -81,6 +82,7 @@ public static class PlanetSimulationManager
         if (!presenceInitialized) { RebuildPresenceCache(); return; }
         CivilizationCityCountByPlanet.TryGetValue(planetIndex, out int count);
         CivilizationCityCountByPlanet[planetIndex] = count + 1;
+        RefreshPlanetPresence(planetIndex);
     }
 
     public static void NotifyCityRemoved(int planetIndex)
@@ -88,6 +90,7 @@ public static class PlanetSimulationManager
         if (!presenceInitialized) { RebuildPresenceCache(); return; }
         CivilizationCityCountByPlanet.TryGetValue(planetIndex, out int count);
         CivilizationCityCountByPlanet[planetIndex] = System.Math.Max(0, count - 1);
+        RefreshPlanetPresence(planetIndex);
     }
 
     /// <summary>Reconstructs the derived O(1) presence cache after load/world regeneration.</summary>
@@ -107,7 +110,23 @@ public static class PlanetSimulationManager
                 CivilizationCityCountByPlanet[city.planetIndex] = count + 1;
             }
         }
+        var planets = GameManager.Instance?.GetPlanetData();
+        if (planets != null)
+            foreach (int planetIndex in planets.Keys) RefreshPlanetPresence(planetIndex);
         presenceInitialized = true;
+    }
+
+    internal static void RefreshPlanetPresence(int planetIndex)
+    {
+        var planets = GameManager.Instance?.GetPlanetData();
+        var civs = CivilizationManager.Instance?.GetAllCivs();
+        if (planets == null || civs == null || !planets.TryGetValue(planetIndex, out var planet) || planet == null) return;
+
+        var settlers = civs.Where(civ => civ != null && civ.civData != null &&
+            civ.cities != null && civ.cities.Any(city => city != null && city.planetIndex == planetIndex));
+        planet.civilizations = settlers.Select(civ => civ.civData).Distinct().ToList();
+        planet.civilizationNames = planet.civilizations.Select(civ => civ.civName).Distinct().ToList();
+        planet.isColonized = planet.civilizations.Count > 0;
     }
 
     private static void EnsurePresenceCache() { if (!presenceInitialized) RebuildPresenceCache(); }

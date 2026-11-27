@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-public enum SpaceMapSelectionKind { None, Planet, Fleet, Ship, Sector }
+public enum SpaceMapSelectionKind { None, Planet, Fleet, Ship, Sector, Improvement }
 
 /// <summary>
 /// Read-only lookups and display text for space map selections. It owns no state and
@@ -154,11 +154,11 @@ public static class SpaceMapSelectionInfo
         var tile = SpaceWorldManager.Instance != null ? SpaceWorldManager.Instance.Grid?.GetTile(tileIndex) : null;
         if (tile == null) return tileIndex >= 0 ? $"Sector {tileIndex}" : "Unknown sector";
         var planet = FindPlanetByBodyId(tile.planetId);
-        if (planet != null) return planet.planetName;
+        if (planet != null) return IsPlanetDiscovered(planet) ? planet.planetName : "Unexplored body";
         if (tile.isPlanetOrbitSector)
         {
             var orbited = FindPlanetByBodyId(tile.associatedPlanetId);
-            if (orbited != null) return $"Sector {tileIndex}, orbit of {orbited.planetName}";
+            if (IsPlanetDiscovered(orbited)) return $"Sector {tileIndex}, orbit of {orbited.planetName}";
         }
         return $"Sector {tileIndex}";
     }
@@ -203,7 +203,7 @@ public static class SpaceMapSelectionInfo
         if (unit == null) return "Unknown";
         if (unit.currentSpaceTileIndex >= 0) return SectorName(unit.currentSpaceTileIndex);
         var planet = FindPlanetByIndex(unit.spaceLocation.planetIndex >= 0 ? unit.spaceLocation.planetIndex : unit.planetIndex);
-        string planetName = planet != null ? planet.planetName : "planet";
+        string planetName = IsPlanetDiscovered(planet) ? planet.planetName : "unexplored body";
         switch (unit.spaceLocation.locationType)
         {
             case SpaceLocationType.PlanetOrbit: return $"Orbit of {planetName}";

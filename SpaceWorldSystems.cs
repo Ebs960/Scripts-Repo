@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 [Serializable]
@@ -21,21 +22,137 @@ public class SpaceWorldManager : MonoBehaviour
     public static SpaceWorldManager Instance { get; private set; }
     public SpaceWorldState CurrentSystem { get; private set; }
     public SpaceEntityIndex Entities { get; } = new SpaceEntityIndex();
+    [SerializeField] private SpaceImprovementData[] improvementCatalog = Array.Empty<SpaceImprovementData>();
+    public SpaceConstructionManager Construction { get; private set; }
     public SpaceHexGrid Grid => CurrentSystem != null ? CurrentSystem.grid : null;
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        Construction = FindAnyObjectByType<SpaceConstructionManager>(FindObjectsInactive.Include);
+        if (Construction == null) Construction = gameObject.AddComponent<SpaceConstructionManager>();
+        foreach (var data in improvementCatalog ?? Array.Empty<SpaceImprovementData>()) SpaceImprovementRegistry.Register(data);
+        foreach (var data in Resources.LoadAll<SpaceImprovementData>("")) SpaceImprovementRegistry.Register(data);
         if (CurrentSystem == null) CreateSystem(0, 12, 5f);
     }
     private void OnDestroy() { if (Instance == this) Instance = null; }
     public void CreateSystem(int starSystemId, int radius = 12, float tileSize = 5f)
     {
-        CurrentSystem = new SpaceWorldState { starSystemId = starSystemId, grid = new SpaceHexGrid(radius, tileSize) };
-        Entities.Rebuild(CurrentSystem);
+        LoadSystem(new SpaceWorldState { starSystemId = starSystemId, grid = new SpaceHexGrid(radius, tileSize) });
     }
-    public void LoadSystem(SpaceWorldState state) { CurrentSystem = state ?? new SpaceWorldState { grid = new SpaceHexGrid() }; Entities.Rebuild(CurrentSystem); }
+    public void LoadSystem(SpaceWorldState state)
+    {
+        CurrentSystem = state ?? new SpaceWorldState { grid = new SpaceHexGrid() };
+        Entities.Rebuild(CurrentSystem);
+        SpaceShipMovementController.Instance?.SetGrid(Grid);
+        if (SpaceCombatManager.Instance != null) SpaceCombatManager.Instance.spaceGrid = Grid;
+        var fleetDeployment = FindAnyObjectByType<FleetDeploymentManager>(FindObjectsInactive.Include);
+        if (fleetDeployment != null) fleetDeployment.spaceGrid = Grid;
+    }
     public SpaceWorldState SaveSystem() => CurrentSystem;
+
+    [Serializable]
+    public sealed class InfrastructureSave
+    {
+        public int systemId;
+        public int radius;
+        public float tileSize;
+        public List<SpaceHexTile> tiles;
+        public List<SpaceFeatureInstance> features;
+        public List<SpaceImprovementInstance> improvements;
+        public List<SpaceConstructionOrder> orders;
+        public List<int> civilizationRuntimeIds;
+        public int nextFeatureId;
+        public int nextImprovementId;
+        public int nextOrderId;
+    }
+
+    public InfrastructureSave CaptureInfrastructure()
+    {
+        var state = CurrentSystem;
+        if (state?.grid == null) return null;
+        foreach (var feature in state.features) feature?.BeforeSerialize();
+        return new InfrastructureSave
+        {
+            systemId = state.starSystemId,
+            radius = state.grid.radius,
+            tileSize = state.grid.tileSize,
+            tiles = state.grid.tiles,
+            features = state.features,
+            improvements = state.improvements,
+            orders = state.constructionOrders,
+            civilizationRuntimeIds = CivilizationManager.Instance?.GetAllCivs()
+                ?.Select(civ => civ != null ? civ.gameObject.GetRuntimeId() : -1).ToList(),
+            nextFeatureId = state.nextFeatureId,
+            nextImprovementId = state.nextImprovementId,
+            nextOrderId = state.nextConstructionOrderId
+        };
+    }
+
+    public void RestoreInfrastructure(InfrastructureSave save)
+    {
+        if (save == null)
+        {
+            CreateSystem(CurrentSystem?.starSystemId ?? 0, Grid?.radius ?? 12, Grid?.tileSize ?? 5f);
+            return;
+        }
+
+        // Restore from a copy so reopening the same save never remaps or mutates the input twice.
+        save = JsonUtility.FromJson<InfrastructureSave>(JsonUtility.ToJson(save));
+        var grid = new SpaceHexGrid(save.radius, save.tileSize);
+        var civilizations = CivilizationManager.Instance?.GetAllCivs();
+        int RemapOwner(int oldId)
+        {
+            if (oldId == -1 || civilizations == null) return -1;
+            int index = save.civilizationRuntimeIds?.IndexOf(oldId) ?? -1;
+            return index >= 0 && index < civilizations.Count && civilizations[index] != null
+                ? civilizations[index].gameObject.GetRuntimeId() : -1;
+        }
+
+        foreach (var tile in save.tiles ?? new List<SpaceHexTile>())
+        {
+            if (tile == null || !grid.TryGetIndex(tile.q, tile.r, out int index) || index != tile.tileIndex) continue;
+            tile.controllingCivilizationId = RemapOwner(tile.controllingCivilizationId);
+            tile.spacecraftIds = new List<int>();
+            tile.improvementInstanceIds = new List<int>();
+            grid.tiles[index] = tile;
+        }
+
+        var state = new SpaceWorldState
+        {
+            starSystemId = save.systemId,
+            grid = grid,
+            features = save.features ?? new List<SpaceFeatureInstance>(),
+            improvements = save.improvements ?? new List<SpaceImprovementInstance>(),
+            constructionOrders = save.orders ?? new List<SpaceConstructionOrder>(),
+            nextFeatureId = Mathf.Max(1, save.nextFeatureId),
+            nextImprovementId = Mathf.Max(1, save.nextImprovementId),
+            nextConstructionOrderId = Mathf.Max(1, save.nextOrderId)
+        };
+        foreach (var improvement in state.improvements)
+        {
+            if (improvement == null) continue;
+            state.nextImprovementId = Mathf.Max(state.nextImprovementId, improvement.instanceId + 1);
+            improvement.ownerCivilizationId = RemapOwner(improvement.ownerCivilizationId);
+            grid.GetTile(improvement.spaceTileIndex)?.improvementInstanceIds.Add(improvement.instanceId);
+        }
+        foreach (var order in state.constructionOrders)
+        {
+            if (order == null) continue;
+            state.nextConstructionOrderId = Mathf.Max(state.nextConstructionOrderId, order.orderId + 1);
+            order.ownerCivilizationId = RemapOwner(order.ownerCivilizationId);
+            order.contributingUnitIds = new List<int>();
+        }
+        foreach (var feature in state.features)
+        {
+            if (feature == null) continue;
+            state.nextFeatureId = Mathf.Max(state.nextFeatureId, feature.instanceId + 1);
+            feature.civilizationDiscoverySaveIds = feature.civilizationDiscoverySaveIds?.Select(RemapOwner).Where(id => id != -1).ToList();
+            feature.AfterDeserialize();
+        }
+
+        LoadSystem(state);
+    }
 }
 
 public class SpaceShipView : MonoBehaviour

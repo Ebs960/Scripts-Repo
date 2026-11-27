@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
@@ -98,6 +100,9 @@ public class SpaceMapUI : MonoBehaviour
     private MinimapUI minimapUI;
     private bool buttonsWired;
     private bool spaceMapModeActive;
+    public bool IsVisible => spaceMapModeActive;
+    private int selectedImprovementId = -1;
+    private string constructionMessage;
     private float ignoreCloseInputUntil;
     private float nextRefreshTime;
 
@@ -152,6 +157,7 @@ public class SpaceMapUI : MonoBehaviour
         if (planet == null) { ShowNoSelection(); return; }
         ClearSelectionState();
         selectedPlanet = planet;
+        if (SpaceMapSelectionInfo.IsPlanetDiscovered(planet)) PlanetSimulationManager.RefreshPlanetPresence(planet.planetIndex);
         SetActivePanel(SpaceMapSelectionKind.Planet);
         RefreshPlanetPanel();
     }
@@ -189,6 +195,15 @@ public class SpaceMapUI : MonoBehaviour
         RefreshInfrastructurePanel();
     }
 
+    public void SelectImprovement(SpaceImprovementInstance improvement)
+    {
+        ClearSelectionState();
+        selectedSectorTile = improvement.spaceTileIndex;
+        selectedImprovementId = improvement.instanceId;
+        SetActivePanel(SpaceMapSelectionKind.Improvement);
+        RefreshInfrastructurePanel();
+    }
+
     public void ShowNoSelection()
     {
         ClearSelectionState();
@@ -197,6 +212,8 @@ public class SpaceMapUI : MonoBehaviour
 
     private void ClearSelectionState()
     {
+        selectedImprovementId = -1;
+        constructionMessage = null;
         selectedPlanet = null;
         selectedShip = null;
         selectedShipFleetId = -1;
@@ -211,7 +228,7 @@ public class SpaceMapUI : MonoBehaviour
         if (planetInfoPanel != null) planetInfoPanel.SetActive(kind == SpaceMapSelectionKind.Planet);
         if (fleetPanel != null) fleetPanel.SetActive(kind == SpaceMapSelectionKind.Fleet);
         if (shipPanel != null) shipPanel.SetActive(kind == SpaceMapSelectionKind.Ship);
-        if (infrastructurePanel != null) infrastructurePanel.SetActive(kind == SpaceMapSelectionKind.Sector);
+        if (infrastructurePanel != null) infrastructurePanel.SetActive(kind == SpaceMapSelectionKind.Sector || kind == SpaceMapSelectionKind.Improvement);
     }
 
     // Re-reads live data and drops selections whose entity no longer exists.
@@ -228,7 +245,8 @@ public class SpaceMapUI : MonoBehaviour
                 if (!SpaceMapSelectionInfo.IsAlive(selectedShip)) DropLostSelection(SpaceMapSelectionInfo.FindFleet(selectedShipFleetId));
                 else RefreshShipPanel();
                 break;
-            case SpaceMapSelectionKind.Sector: RefreshInfrastructurePanel(); break;
+            case SpaceMapSelectionKind.Sector:
+            case SpaceMapSelectionKind.Improvement: RefreshInfrastructurePanel(); break;
         }
     }
 
@@ -248,14 +266,14 @@ public class SpaceMapUI : MonoBehaviour
         if (planet == null) return;
         bool known = SpaceMapSelectionInfo.IsPlanetDiscovered(planet);
 
-        if (planetNameText != null) planetNameText.text = planet.planetName;
+        if (planetNameText != null) planetNameText.text = known ? planet.planetName : "Unexplored body";
         if (planetTypeText != null)
-            planetTypeText.text = $"{SpaceMapSelectionInfo.Nicify(planet.celestialBodyType)}, {SpaceMapSelectionInfo.Nicify(planet.planetType)}";
+            planetTypeText.text = known ? $"{SpaceMapSelectionInfo.Nicify(planet.celestialBodyType)}, {SpaceMapSelectionInfo.Nicify(planet.planetType)}" : "Type unknown";
         if (planetStatusText != null)
         {
-            string exploration = planet.isHomeWorld ? "Homeworld" : planet.isExplored ? "Explored" : "Unexplored";
+            string exploration = planet.isHomeWorld ? "Homeworld" : known ? "Explored" : "Unexplored";
             string colonization = !known ? "Unknown" : planet.isColonized ? "Colonized" : "Not colonized";
-            planetStatusText.text = SpaceMapSelectionInfo.Label("Size", SpaceMapSelectionInfo.Nicify(planet.planetSize)) + "\n"
+            planetStatusText.text = SpaceMapSelectionInfo.Label("Size", known ? SpaceMapSelectionInfo.Nicify(planet.planetSize) : "Unknown") + "\n"
                 + SpaceMapSelectionInfo.Label("Exploration", exploration) + "\n"
                 + SpaceMapSelectionInfo.Label("Colonization", colonization);
         }
@@ -268,17 +286,21 @@ public class SpaceMapUI : MonoBehaviour
             planetEnvironmentText.text = SpaceMapSelectionInfo.Label("Atmosphere", atmosphere) + "\n"
                 + SpaceMapSelectionInfo.Label("Temperature", temperature);
         }
-        if (planetMoonsText != null) planetMoonsText.text = BuildMoonText(planet);
+        if (planetMoonsText != null) planetMoonsText.text = known ? BuildMoonText(planet) : SpaceMapSelectionInfo.Label("Moons", "Unknown");
         if (planetCivilizationsText != null)
         {
             string civilizations = !known ? "Unknown"
-                : planet.civilizationNames != null && planet.civilizationNames.Count > 0 ? string.Join("\n", planet.civilizationNames) : "None known";
+                : string.Join("\n", (planet.civilizationNames ?? new List<string>())
+                    .Concat((planet.civilizations ?? new List<CivData>()).Where(civ => civ != null).Select(civ => civ.civName))
+                    .Where(name => !string.IsNullOrWhiteSpace(name)).Distinct());
+            if (string.IsNullOrEmpty(civilizations)) civilizations = "None known";
             planetCivilizationsText.text = $"<color={SpaceMapSelectionInfo.LabelColor}>Known Civilizations</color>\n{civilizations}";
         }
         if (distanceText != null)
         {
             int anchorTile = spaceMapWorldController != null ? spaceMapWorldController.GetPlanetAnchorTile(planet.planetIndex) : -1;
             distanceText.text = anchorTile >= 0 ? $"System location: sector {anchorTile}" : "System location unavailable";
+            if (known && planet.orbitalPeriod > 0) distanceText.text += $"\nOrbital period: {planet.orbitalPeriod:0.#} days";
         }
         if (planetPreviewImage != null)
         {
@@ -295,10 +317,13 @@ public class SpaceMapUI : MonoBehaviour
         if (planet.celestialBodyType == GameManager.CelestialBodyType.Moon)
         {
             var parent = SpaceMapSelectionInfo.FindPlanetByBodyId(planet.parentBodyId);
-            return header + (parent != null ? $"Moon of {parent.planetName}" : "This body is a moon");
+            return header + (SpaceMapSelectionInfo.IsPlanetDiscovered(parent) ? $"Moon of {parent.planetName}" : "This body is a moon");
         }
-        int count = planet.childMoonIds != null ? planet.childMoonIds.Count : 0;
-        if (planet.moonNames != null && planet.moonNames.Count > 0) return header + string.Join("\n", planet.moonNames);
+        int count = Mathf.Max(planet.childMoonIds?.Count ?? 0, planet.moonNames?.Count ?? 0);
+        var moons = (planet.childMoonIds ?? new List<int>()).Select(SpaceMapSelectionInfo.FindPlanetByBodyId)
+            .Where(SpaceMapSelectionInfo.IsPlanetDiscovered).Select(moon => moon.planetName).ToArray();
+        if (moons.Length > 0) return header + string.Join("\n", moons) +
+            (count > moons.Length ? $"\n{count - moons.Length} unexplored" : string.Empty);
         return header + (count > 0 ? $"{count} moon{(count == 1 ? string.Empty : "s")}" : "None");
     }
 
@@ -490,55 +515,126 @@ public class SpaceMapUI : MonoBehaviour
         var world = SpaceWorldManager.Instance;
         var state = world != null ? world.CurrentSystem : null;
         var tile = state != null && state.grid != null ? state.grid.GetTile(selectedSectorTile) : null;
-        if (tile == null) { DropLostSelection(null); return; }
+        if (tile == null || (activeKind == SpaceMapSelectionKind.Improvement &&
+            !world.Entities.TryGetImprovement(selectedImprovementId, out _)))
+        {
+            DropLostSelection(null);
+            return;
+        }
 
         if (sectorTitleText != null) sectorTitleText.text = SpaceMapSelectionInfo.SectorName(tile.tileIndex);
 
+        int cardCount = 0;
         int structureCount = 0;
-        if (state.improvements != null && structureCardTemplate != null && structureListContent != null)
+        int orderCount = 0;
+        if (structureCardTemplate != null && structureListContent != null)
         {
-            foreach (var improvement in state.improvements)
+            var player = SpaceMapSelectionInfo.PlayerCivilization;
+            int owner = player != null ? player.gameObject.GetRuntimeId() : -1;
+            var manager = world.Construction;
+            var structures = state.improvements.Where(i => i != null && i.spaceTileIndex == tile.tileIndex)
+                .OrderByDescending(i => i.instanceId == selectedImprovementId);
+            foreach (var improvement in structures)
             {
-                if (improvement == null || improvement.spaceTileIndex != tile.tileIndex) continue;
-                GetStructureCard(structureCount).Bind(improvement);
+                GetStructureCard(cardCount++).Bind(improvement);
                 structureCount++;
             }
-        }
-        for (int i = 0; i < structureCards.Count; i++) structureCards[i].gameObject.SetActive(i < structureCount);
-        if (structureEmptyText != null) structureEmptyText.gameObject.SetActive(structureCount == 0);
+            foreach (var order in state.constructionOrders)
+            {
+                if (order == null || order.targetTileIndex != tile.tileIndex || order.ownerCivilizationId != owner || player == null) continue;
+                var data = SpaceImprovementRegistry.GetData(order.improvementDataId);
+                string title = data != null ? ProjectName(data) : order.improvementDataId;
+                string progress = $"{order.accumulatedProduction}/{order.requiredProduction} production";
+                string status = order.completed ? "Complete" : data == null ? "Definition unavailable" : order.paused ? "Paused" : "In progress";
+                Action cancel = null;
+                if (!order.completed && manager != null)
+                    cancel = () => { manager.CancelConstruction(order); constructionMessage = null; RefreshInfrastructurePanel(); };
+                GetStructureCard(cardCount++).BindRow(title, data?.icon,
+                    $"{status} · {progress}" + (cancel != null ? "\nUpfront costs are committed" : string.Empty),
+                    cancel != null ? "Cancel" : status, cancel);
+                if (!order.completed) orderCount++;
+            }
 
-        int orderCount = 0;
+            if (manager != null && player != null)
+            {
+                foreach (var project in SpaceImprovementRegistry.All.Where(d => d != null).OrderBy(ProjectName).ToArray())
+                {
+                    bool allowed = manager.CanConstruct(player, project, tile.tileIndex, out string reason);
+                    Action build = null;
+                    if (allowed)
+                        build = () =>
+                        {
+                            manager.StartConstruction(player, project, tile.tileIndex, out _, out constructionMessage);
+                            RefreshInfrastructurePanel();
+                        };
+                    string requirements = DescribeProject(project);
+                    if (!allowed) requirements += $"\nBlocked: {reason}";
+                    GetStructureCard(cardCount++).BindRow(ProjectName(project), project.icon, requirements,
+                        allowed ? "Build" : "Blocked", build);
+                }
+            }
+        }
+        for (int i = 0; i < structureCards.Count; i++) structureCards[i].gameObject.SetActive(i < cardCount);
+        if (structureEmptyText != null)
+        {
+            structureEmptyText.gameObject.SetActive(cardCount == 0);
+            if (cardCount == 0) structureEmptyText.text = "No structures or construction projects available.";
+        }
+
         text.Clear();
         text.Append(SpaceMapSelectionInfo.Label("Sector", $"{tile.tileIndex} ({tile.q}, {tile.r})")).Append('\n');
-        text.Append(SpaceMapSelectionInfo.Label("Terrain", SpaceMapSelectionInfo.Nicify(tile.terrainType))).Append('\n');
+        var body = tile.planetId >= 0 ? SpaceMapSelectionInfo.FindPlanetByBodyId(tile.planetId) : null;
+        string terrain = body != null && !SpaceMapSelectionInfo.IsPlanetDiscovered(body)
+            ? "Unexplored body" : SpaceMapSelectionInfo.Nicify(tile.terrainType);
+        text.Append(SpaceMapSelectionInfo.Label("Terrain", terrain)).Append('\n');
         text.Append(SpaceMapSelectionInfo.Label("Movement Cost", tile.blocksMovement ? "Impassable" : tile.movementCost.ToString())).Append('\n');
-        string controller = tile.controllingCivilizationId < 0 ? "Unclaimed" : SpaceMapSelectionInfo.CivilizationName(SpaceMapSelectionInfo.ResolveCivilization(tile.controllingCivilizationId));
+        string controller = tile.controllingCivilizationId == -1 ? "Unclaimed" : SpaceMapSelectionInfo.CivilizationName(SpaceMapSelectionInfo.ResolveCivilization(tile.controllingCivilizationId));
         text.Append(SpaceMapSelectionInfo.Label("Control", controller)).Append('\n');
         if (tile.isPlanetOrbitSector)
         {
             var orbited = SpaceMapSelectionInfo.FindPlanetByBodyId(tile.associatedPlanetId);
-            text.Append(SpaceMapSelectionInfo.Label("Orbit Sector", orbited != null ? orbited.planetName : "Yes")).Append('\n');
+            text.Append(SpaceMapSelectionInfo.Label("Orbit Sector", SpaceMapSelectionInfo.IsPlanetDiscovered(orbited) ? orbited.planetName : "Yes")).Append('\n');
         }
         if (tile.resource != null && !tile.resource.hidden && !string.IsNullOrEmpty(tile.resource.resourceId))
             text.Append(SpaceMapSelectionInfo.Label("Resource", $"{SpaceMapSelectionInfo.Nicify(tile.resource.resourceId)} x{tile.resource.quantity}")).Append('\n');
         if (tile.hazard != null && (!tile.hazard.hidden || tile.hazard.detected) && !string.IsNullOrEmpty(tile.hazard.hazardId))
             text.Append(SpaceMapSelectionInfo.Label("Hazard", SpaceMapSelectionInfo.Nicify(tile.hazard.hazardId))).Append('\n');
         AppendFeatures(tile);
-        if (state.constructionOrders != null)
-        {
-            foreach (var order in state.constructionOrders)
-            {
-                if (order == null || order.completed || order.targetTileIndex != tile.tileIndex) continue;
-                var data = SpaceImprovementRegistry.GetData(order.improvementDataId);
-                string orderName = data != null && !string.IsNullOrEmpty(data.displayName) ? data.displayName : order.improvementDataId;
-                text.Append(SpaceMapSelectionInfo.Label("Construction",
-                    $"{orderName} {order.accumulatedProduction}/{order.requiredProduction}{(order.paused ? ", paused" : string.Empty)}")).Append('\n');
-                orderCount++;
-            }
-        }
+        if (!string.IsNullOrEmpty(constructionMessage)) text.AppendLine(constructionMessage);
         if (sectorInfoText != null) sectorInfoText.text = text.ToString().TrimEnd('\n');
         if (sectorSummaryText != null)
             sectorSummaryText.text = $"{structureCount} structure{(structureCount == 1 ? string.Empty : "s")}, {orderCount} construction order{(orderCount == 1 ? string.Empty : "s")} in this sector";
+    }
+
+    private static string ProjectName(SpaceImprovementData data) =>
+        string.IsNullOrEmpty(data.displayName) ? data.improvementId : data.displayName;
+
+    private static string DescribeProject(SpaceImprovementData data)
+    {
+        var details = new List<string> { $"{Mathf.Max(1, data.constructionCost)} production" };
+        if (data.goldCost > 0) details.Add($"{data.goldCost} gold");
+        details.AddRange(SpaceConstructionManager.GetResourceCosts(data).Select(cost => $"{cost.amount} {cost.resource.resourceName}"));
+        var techs = (data.requiredTechs ?? Array.Empty<TechData>()).Where(tech => tech != null).Select(tech => tech.techName).ToArray();
+        if (techs.Length > 0) details.Add($"Tech: {string.Join(", ", techs)}");
+        var rules = data.placementRules;
+        if (!string.IsNullOrEmpty(data.requiredResourceType)) details.Add($"Deposit: {SpaceMapSelectionInfo.Nicify(data.requiredResourceType)}");
+        else if (rules?.requiresResourceDeposit == true) details.Add("Resource deposit required");
+        if (rules != null)
+        {
+            if (rules.allowedTerrainTypes?.Length > 0)
+                details.Add($"Terrain: {string.Join(", ", rules.allowedTerrainTypes.Select(terrain => SpaceMapSelectionInfo.Nicify(terrain)))}");
+            if (rules.requiresOrbitSector) details.Add("Orbit sector");
+            if (rules.requiresDeepSpace) details.Add("Deep space");
+            if (rules.requiresFriendlyControl) details.Add("Friendly control");
+            if (rules.minimumDistanceFromPlanet > 0) details.Add($"At least {rules.minimumDistanceFromPlanet} hexes from a body");
+            if (rules.maximumDistanceFromPlanet >= 0) details.Add($"Within {rules.maximumDistanceFromPlanet} hexes of a body");
+            if (rules.minimumDistanceFromSameImprovement > 0) details.Add($"Spacing: {rules.minimumDistanceFromSameImprovement} hexes");
+            if (rules.maximumPerPlanet >= 0) details.Add($"Limit {rules.maximumPerPlanet} per planet");
+            if (rules.maximumPerCivilization >= 0) details.Add($"Limit {rules.maximumPerCivilization} per civilization");
+            if (!rules.mayShareTileWithNaturalFeature) details.Add("Clear of natural features");
+            if (!rules.mayShareTileWithAnotherImprovement) details.Add("Requires an empty structure slot");
+        }
+        return string.Join(" · ", details);
     }
 
     private void AppendFeatures(SpaceHexTile tile)

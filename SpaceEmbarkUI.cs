@@ -22,7 +22,7 @@ public class SpaceEmbarkUI : MonoBehaviour
     [Tooltip("Text showing selected unit info")]
     public TextMeshProUGUI selectedUnitText;
     
-    [Tooltip("Text showing travel time and distance")]
+    [Tooltip("Text showing route and movement status")]
     public TextMeshProUGUI travelInfoText;
     
     [Tooltip("Panel containing this embark UI (for show/hide)")]
@@ -32,280 +32,120 @@ public class SpaceEmbarkUI : MonoBehaviour
     [Tooltip("Only show planets that are explored/colonized")]
     public bool onlyShowKnownPlanets = true;
 
-    // Current state
+    private readonly List<int> destinations = new List<int>();
     private GameObject selectedUnit;
     private int currentPlanetIndex;
+    private float nextRefresh;
 
-    void Start()
+    private void Awake()
     {
-        // Setup button listeners
-        if (embarkButton != null)
-            embarkButton.onClick.AddListener(OnEmbarkButtonClicked);
-        
-        if (cancelButton != null)
-            cancelButton.onClick.AddListener(OnCancelButtonClicked);
-        
-        if (destinationDropdown != null)
-            destinationDropdown.onValueChanged.AddListener(OnDestinationChanged);
-
-        // Hide UI initially
+        if (embarkButton != null) embarkButton.onClick.AddListener(OnEmbarkButtonClicked);
+        if (cancelButton != null) cancelButton.onClick.AddListener(HideEmbarkUI);
+        if (destinationDropdown != null) destinationDropdown.onValueChanged.AddListener(OnDestinationChanged);
         HideEmbarkUI();
     }
 
-    /// <summary>
-    /// Show the embark UI for the selected unit (spaceships only)
-    /// </summary>
     public void ShowEmbarkUI(GameObject unit, int fromPlanetIndex)
     {
-        if (unit == null)
-        {
-            Debug.LogWarning("[SpaceEmbarkUI] Cannot show embark UI - unit is null");
-            return;
-        }
-
-        // Check if unit is a spaceship
-        var combatUnit = unit.GetComponent<CombatUnit>();
-    if (combatUnit == null || combatUnit.data.unitType != CombatCategory.Spaceship)
-        {
-            Debug.LogWarning($"[SpaceEmbarkUI] Only spaceships can travel through space! Unit {unit.name} is not a spaceship.");
-            
-            // Show user-friendly message
-            if (selectedUnitText != null)
-            {
-                selectedUnitText.text = $"❌ Only spaceships can travel between planets!";
-                selectedUnitText.color = Color.red;
-            }
-            
-            if (embarkPanel != null)
-                embarkPanel.SetActive(true);
-                
-            return;
-        }
-
-        selectedUnit = unit;
+        var ship = unit != null ? unit.GetComponent<CombatUnit>() : null;
+        selectedUnit = ship != null && ship.data != null && ship.data.unitType == CombatCategory.Spaceship ? unit : null;
         currentPlanetIndex = fromPlanetIndex;
-
-        // Update unit info display
         if (selectedUnitText != null)
         {
-            selectedUnitText.text = $"Selected Unit: {unit.name}";
-            selectedUnitText.color = Color.white; // Reset color for valid spaceships
+            selectedUnitText.text = selectedUnit != null ? $"Selected unit: {unit.name}" : "Select a spaceship to embark.";
+            selectedUnitText.color = selectedUnit != null ? Color.white : Color.red;
         }
 
-        // Populate destination dropdown
-        PopulateDestinationDropdown();
+        destinations.Clear();
+        var options = new List<TMP_Dropdown.OptionData>();
+        var planets = GameManager.Instance?.GetPlanetData();
+        if (selectedUnit != null && planets != null)
+        {
+            foreach (var pair in planets)
+            {
+                if (pair.Key == fromPlanetIndex || pair.Value == null) continue;
+                bool known = SpaceMapSelectionInfo.IsPlanetDiscovered(pair.Value);
+                if (onlyShowKnownPlanets && !known) continue;
+                destinations.Add(pair.Key);
+                options.Add(new TMP_Dropdown.OptionData(known ? pair.Value.planetName : $"Unexplored body {pair.Key}"));
+            }
+        }
 
-        // Show the UI panel
-        if (embarkPanel != null)
-            embarkPanel.SetActive(true);
-}
+        if (destinationDropdown != null)
+        {
+            destinationDropdown.ClearOptions();
+            destinationDropdown.AddOptions(options);
+            destinationDropdown.SetValueWithoutNotify(0);
+            destinationDropdown.RefreshShownValue();
+        }
+        if (embarkPanel != null) embarkPanel.SetActive(true);
+        OnDestinationChanged(0);
+    }
 
-    /// <summary>
-    /// Hide the embark UI
-    /// </summary>
     public void HideEmbarkUI()
     {
-        if (embarkPanel != null)
-            embarkPanel.SetActive(false);
-        
         selectedUnit = null;
-        currentPlanetIndex = -1;
+        if (embarkPanel != null) embarkPanel.SetActive(false);
     }
 
-    private void PopulateDestinationDropdown()
+    private void Update()
     {
-        if (destinationDropdown == null)
-            return;
+        if (Time.unscaledTime < nextRefresh || selectedUnit == null || destinationDropdown == null ||
+            (embarkPanel != null && !embarkPanel.activeInHierarchy)) return;
+        OnDestinationChanged(destinationDropdown.value);
+    }
 
-        destinationDropdown.ClearOptions();
-        
-        var planetData = GameManager.Instance?.GetPlanetData();
-        if (planetData == null)
+    private void OnDestinationChanged(int index)
+    {
+        nextRefresh = Time.unscaledTime + .25f;
+        if (embarkButton != null) embarkButton.interactable = false;
+        if (selectedUnit == null || destinationDropdown == null || index < 0 || index >= destinations.Count ||
+            index >= destinationDropdown.options.Count)
         {
-            Debug.LogError("[SpaceEmbarkUI] Cannot populate dropdown - planet data is null");
+            if (travelInfoText != null) travelInfoText.text = "No destinations available";
             return;
         }
 
-        var options = new List<TMP_Dropdown.OptionData>();
-
-        foreach (var kvp in planetData)
+        int destinationIndex = destinations[index];
+        var manager = SpaceRouteManager.Instance;
+        var movement = SpaceShipMovementController.Instance;
+        string name = destinationDropdown.options[index].text;
+        if (manager == null)
         {
-            int planetIndex = kvp.Key;
-            var planet = kvp.Value;
-
-            // Skip current planet
-            if (planetIndex == currentPlanetIndex)
-                continue;
-
-            // Filter by exploration status if enabled
-            if (onlyShowKnownPlanets && !planet.isExplored)
-                continue;
-
-            // Create option text with planet info
-            string optionText = $"{planet.planetName} ({planet.planetType})";
-            
-            // Add distance info if available
-            float distance = CalculateDistance(currentPlanetIndex, planetIndex);
-            if (distance > 0)
-            {
-                optionText += $" - {distance:F1} AU";
-            }
-
-            options.Add(new TMP_Dropdown.OptionData(optionText));
-        }
-
-        destinationDropdown.AddOptions(options);
-
-        // Update travel info for first option
-        if (options.Count > 0)
-        {
-            OnDestinationChanged(0);
-        }
-        else
-        {
-            if (travelInfoText != null)
-                travelInfoText.text = "No destinations available";
-            
-            if (embarkButton != null)
-                embarkButton.interactable = false;
-        }
-    }
-
-    private void OnDestinationChanged(int selectedIndex)
-    {
-        if (selectedUnit == null || destinationDropdown == null)
+            if (travelInfoText != null) travelInfoText.text = $"Destination: {name}\nRoute service unavailable";
             return;
-
-        // Get the actual planet index for the selected dropdown option
-        int destinationPlanetIndex = GetPlanetIndexFromDropdownSelection(selectedIndex);
-        if (destinationPlanetIndex == -1)
-            return;
-
-        // Calculate and display travel info
-        UpdateTravelInfo(destinationPlanetIndex);
-    }
-
-    private int GetPlanetIndexFromDropdownSelection(int dropdownIndex)
-    {
-        // This is a bit complex because we filtered the dropdown options
-        // We need to map back to the actual planet indices
-        
-        var planetData = GameManager.Instance?.GetPlanetData();
-        if (planetData == null)
-            return -1;
-
-        int filteredIndex = 0;
-        foreach (var kvp in planetData)
-        {
-            int planetIndex = kvp.Key;
-            var planet = kvp.Value;
-
-            // Skip current planet
-            if (planetIndex == currentPlanetIndex)
-                continue;
-
-            // Filter by exploration status if enabled
-            if (onlyShowKnownPlanets && !planet.isExplored)
-                continue;
-
-            if (filteredIndex == dropdownIndex)
-                return planetIndex;
-
-            filteredIndex++;
         }
 
-        return -1;
-    }
-
-    private void UpdateTravelInfo(int destinationPlanetIndex)
-    {
-        if (travelInfoText == null || selectedUnit == null)
+        bool routeAvailable = manager.TryGetRoute(selectedUnit, currentPlanetIndex, destinationIndex, out var path, out int destination);
+        var ship = selectedUnit.GetComponent<BaseUnit>();
+        bool arrived = destination >= 0 && ship.currentSpaceTileIndex == destination;
+        var queuedPath = ship.queuedSpacePath;
+        bool queued = destination >= 0 && !arrived && queuedPath != null && queuedPath.Count > 0 &&
+            queuedPath[queuedPath.Count - 1] == destination && ship.queuedSpacePathCursor + 1 < queuedPath.Count;
+        if (!routeAvailable && !queued)
+        {
+            if (travelInfoText != null) travelInfoText.text = $"Destination: {name}\nNo valid route";
             return;
+        }
 
-        // Calculate travel distance and time
-        float distance = CalculateDistance(currentPlanetIndex, destinationPlanetIndex);
-        int travelTurns = CalculateTravelTime(distance, selectedUnit);
-
-        var planetData = GameManager.Instance.GetPlanetData();
-        string destinationName = planetData.ContainsKey(destinationPlanetIndex) 
-            ? planetData[destinationPlanetIndex].planetName 
-            : $"Planet {destinationPlanetIndex}";
-
-        travelInfoText.text = $"Travel to {destinationName}:\n" +
-                             $"Distance: {distance:F1} AU\n" +
-                             $"Travel Time: {travelTurns} turns";
-
-        // Enable embark button
-        if (embarkButton != null)
-            embarkButton.interactable = true;
-    }
-
-    private float CalculateDistance(int fromPlanet, int toPlanet)
-    {
-        var planetData = GameManager.Instance?.GetPlanetData();
-        if (planetData == null || !planetData.ContainsKey(fromPlanet) || !planetData.ContainsKey(toPlanet))
-            return 0f;
-
-        Vector3 fromPos = planetData[fromPlanet].worldPosition;
-        Vector3 toPos = planetData[toPlanet].worldPosition;
-
-        return Vector3.Distance(fromPos, toPos);
-    }
-
-    private int CalculateTravelTime(float distance, GameObject unit)
-    {
-        // Use the same calculation as SpaceRouteManager
-        var spaceManager = SpaceRouteManager.Instance;
-        if (spaceManager == null)
-            return Mathf.RoundToInt(distance * 5); // Fallback: 5 turns per AU
-
-        // Access the calculation logic (you might need to make this public in SpaceRouteManager)
-        // Space travel now uses queued hex movement instead of AU countdowns.
-        return Mathf.Max(1, Mathf.RoundToInt(distance));
+        int cursor = queued ? ship.queuedSpacePathCursor : 0;
+        if (queued) path = queuedPath;
+        int hexes = path.Count - cursor - 1;
+        int cost = (movement ?? SpaceShipMovementController.Instance).GetRouteCost(ship, path, cursor);
+        string status = arrived ? "At destination approach sector" : queued ? (routeAvailable ? "Movement queued" : "Queued route blocked") : "Route available";
+        if (travelInfoText != null)
+            travelInfoText.text = $"Destination: {name}\n{status}\n{hexes} hexes remaining · {cost} movement points\nAvailable this turn: {ship.currentSpaceMovementPoints}/{ship.spaceMovementPointsPerTurn}";
+        if (embarkButton != null) embarkButton.interactable = !arrived && !queued;
     }
 
     private void OnEmbarkButtonClicked()
     {
-        if (selectedUnit == null)
-        {
-            Debug.LogWarning("[SpaceEmbarkUI] Cannot embark - no unit selected");
-            return;
-        }
-
-        if (destinationDropdown == null || destinationDropdown.options.Count == 0)
-        {
-            Debug.LogWarning("[SpaceEmbarkUI] Cannot embark - no destination selected");
-            return;
-        }
-
-        // Get destination planet index
-        int destinationIndex = GetPlanetIndexFromDropdownSelection(destinationDropdown.value);
-        if (destinationIndex == -1)
-        {
-            Debug.LogError("[SpaceEmbarkUI] Cannot embark - invalid destination");
-            return;
-        }
-
-        // Start space travel via SpaceRouteManager
-        bool success = SpaceRouteManager.Instance?.StartSpaceTravel(selectedUnit, currentPlanetIndex, destinationIndex) ?? false;
-
-        if (success)
-        {
-HideEmbarkUI();
-            
-            // You might want to show a confirmation message or update the UI
-            // ShowTravelConfirmation(selectedUnit.name, destinationIndex);
-        }
-        else
-        {
-            Debug.LogError("[SpaceEmbarkUI] Failed to start space travel");
-            // Show error message to player
-        }
-    }
-
-    private void OnCancelButtonClicked()
-    {
-        HideEmbarkUI();
+        if (selectedUnit == null || destinationDropdown == null ||
+            destinationDropdown.value < 0 || destinationDropdown.value >= destinations.Count) return;
+        int index = destinationDropdown.value;
+        bool queued = SpaceRouteManager.Instance?.StartSpaceTravel(selectedUnit, currentPlanetIndex, destinations[index]) == true;
+        OnDestinationChanged(index);
+        if (!queued && travelInfoText != null) travelInfoText.text += "\nCould not queue movement.";
     }
 
     /// <summary>
@@ -328,12 +168,12 @@ HideEmbarkUI();
     {
         // Clean up button listeners
         if (embarkButton != null)
-            embarkButton.onClick.RemoveAllListeners();
+            embarkButton.onClick.RemoveListener(OnEmbarkButtonClicked);
         
         if (cancelButton != null)
-            cancelButton.onClick.RemoveAllListeners();
+            cancelButton.onClick.RemoveListener(HideEmbarkUI);
         
         if (destinationDropdown != null)
-            destinationDropdown.onValueChanged.RemoveAllListeners();
+            destinationDropdown.onValueChanged.RemoveListener(OnDestinationChanged);
     }
 }

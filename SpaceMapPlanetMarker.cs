@@ -31,15 +31,16 @@ public class SpaceMapPlanetMarker : MonoBehaviour
         EnsureVisuals(template);
         transform.localScale = Vector3.one * Mathf.Max(0.05f, radius);
 
-        Texture minimapTexture = TryGetMinimapTexture(data);
+        bool known = SpaceMapSelectionInfo.IsPlanetDiscovered(data);
+        Texture minimapTexture = known ? TryGetMinimapTexture(data) : null;
         ApplyTexture(minimapTexture);
         // White lets the wrapped minimap texture show through untinted; the flat type color is only a fallback.
-        baseColor = minimapTexture != null ? Color.white : GetPlanetColor(data);
+        baseColor = !known ? Color.gray : minimapTexture != null ? Color.white : GetPlanetColor(data);
         ApplyTint(baseColor);
 
         if (label != null)
         {
-            label.text = data != null ? data.planetName : "Unknown";
+            label.text = known ? data.planetName : "Unexplored body";
             label.transform.localPosition = Vector3.up * 1.45f;
         }
     }
