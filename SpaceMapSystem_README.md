@@ -135,7 +135,8 @@ planet, a fleet, a single spacecraft, or a space sector, and tells `SpaceMapUI` 
   refresh. A missing or destroyed member shows as such and cannot be opened.
 - Opening a ship from the roster is inspection only: it stays in its fleet and cannot be given a
   movement order. Movement orders (click a sector twice) apply only to a player-owned ship that
-  was selected directly on the map.
+  was selected directly on the map. Spacecraft use their remaining movement points; queued paths
+  resume when their civilization starts its next turn. Packed members cannot receive ship orders.
 - Back to Fleet appears only when the ship's fleet also lists it as a member, and returns to that
   fleet with the roster scroll position kept.
 - Unexplored planets show "Unknown" for atmosphere, temperature, colonization, and

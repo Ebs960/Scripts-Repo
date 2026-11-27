@@ -3068,9 +3068,7 @@ public class Civilization : MonoBehaviour
             {
                 foreach (var u in combatUnits.ToArray())
                 {
-                    if (u == null) continue;
-                    u.ResetForNewTurn();
-                    if (u.currentSpaceTileIndex >= 0) SpaceShipMovementController.Instance?.AdvanceTurn(u);
+                    if (u != null) u.ResetForNewTurn();
                 }
             }
             if (workerUnits != null)

@@ -323,6 +323,8 @@ public class TurnManager : MonoBehaviour
             yield break;
         }
 
+        SpaceShipMovementController.ProcessCivilizationTurn(civ);
+
         // Simple automatic worker contribution: call the same public methods the UI uses.
         if (civ != null && civ.workerUnits != null)
         {

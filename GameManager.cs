@@ -2783,6 +2783,7 @@ public class GameManager : MonoBehaviour
         saveData.cities = worldSnapshot.cities;
         saveData.missionStates = worldSnapshot.missionStates;
         saveData.crisisState = worldSnapshot.crisisState;
+        saveData.spaceWorld = SpaceWorldPersistence.Capture();
 
         if (civilizationManager != null && civilizationManager.playerCiv != null)
         {
@@ -2796,7 +2797,6 @@ public class GameManager : MonoBehaviour
             saveData.cameraRotation = Camera.main.transform.eulerAngles;
         }
 
-        saveData.spaceInfrastructure = SpaceWorldManager.Instance?.CaptureInfrastructure();
         saveData.participantStates = SaveGameRegistry.CaptureAll();
         return saveData;
     }
@@ -3036,6 +3036,8 @@ public class GameManager : MonoBehaviour
                             hasActedThisTurn = unit.hasActedThisTurn,
                             spaceLocation = unit.spaceLocation,
                             currentSpaceMovementPoints = unit.currentSpaceMovementPoints,
+                            hasSpaceMovementState = true,
+                            spaceMovementPointsPerTurn = unit.spaceMovementPointsPerTurn,
                             currentSpaceTileIndex = unit.currentSpaceTileIndex,
                             queuedSpacePath = unit.queuedSpacePath != null ? new List<int>(unit.queuedSpacePath) : new List<int>(),
                             queuedSpacePathCursor = unit.queuedSpacePathCursor,
@@ -3400,26 +3402,9 @@ public class GameManager : MonoBehaviour
         PlanetSimulationManager.RebuildPresenceCache();
         TradeNetworkManager.Instance?.RebuildRegistry();
 
-        try
-        {
-            var spaceMap = FindAnyObjectByType<SpaceMapUI>(FindObjectsInactive.Include);
-            if (spaceMap != null && spaceMap.IsVisible) spaceMap.Hide();
-            if (saveData.spaceInfrastructure != null && SpaceWorldManager.Instance == null)
-                new GameObject("SpaceWorldManager").AddComponent<SpaceWorldManager>();
-            SpaceRouteManager.Instance?.ClearTravelTracking();
-            SpaceWorldManager.Instance?.RestoreInfrastructure(saveData.spaceInfrastructure);
-            if (SpaceWorldManager.Instance != null)
-            {
-                if (SpaceShipMovementController.Instance == null)
-                    new GameObject("SpaceShipMovementController").AddComponent<SpaceShipMovementController>();
-                SpaceShipMovementController.Instance.SetGrid(SpaceWorldManager.Instance.Grid);
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"Failed to restore space infrastructure: {e.Message}");
-            restoreError = "Saved space infrastructure could not be restored: " + e.Message;
-        }
+        var spaceMap = FindAnyObjectByType<SpaceMapUI>(FindObjectsInactive.Include);
+        if (spaceMap != null && spaceMap.IsVisible) spaceMap.Hide();
+        SpaceRouteManager.Instance?.ClearTravelTracking();
 
         // ===== Restore units from save data =====
         yield return null;
@@ -3448,6 +3433,10 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        if (saveData.spaceWorld != null && AdmiralManager.Instance == null &&
+            saveData.participantStates != null && saveData.participantStates.Any(s => s != null && s.key == "AdmiralManager_v1"))
+            new GameObject("AdmiralManager").AddComponent<AdmiralManager>();
+
         try
         {
             SaveGameRegistry.RestoreAll(saveData.participantStates);
@@ -3455,6 +3444,16 @@ public class GameManager : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogWarning($"Failed to restore save participants: {e.Message}");
+        }
+
+        try
+        {
+            SpaceWorldPersistence.Restore(saveData.spaceWorld);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SaveLoad] Failed to restore space world: {e.Message}");
+            restoreError = "Saved space world could not be restored: " + e.Message;
         }
 
         try
@@ -4016,11 +4015,12 @@ public class GameManager : MonoBehaviour
                 }
 
                 var ts = TileSystem.GetForPlanet(usd.planetIndex) ?? TileSystem.Instance;
-                Vector3 spawnPos = ts != null ? ts.GetTileSurfacePosition(usd.currentTileIndex) : new Vector3(usd.posX, usd.posY, usd.posZ);
+                Vector3 spawnPos = !usd.spaceLocation.IsInSolarSystemSpace && ts != null
+                    ? ts.GetTileSurfacePosition(usd.currentTileIndex) : new Vector3(usd.posX, usd.posY, usd.posZ);
 
                 var go = Instantiate(prefab, spawnPos, Quaternion.identity);
                 var pg = GetPlanetGenerator(usd.planetIndex) ?? GetCurrentPlanetGenerator();
-                if (pg != null) go.transform.SetParent(pg.transform, true);
+                if (pg != null && !usd.spaceLocation.IsInSolarSystemSpace) go.transform.SetParent(pg.transform, true);
 
                 var unit = go.GetComponent<CombatUnit>();
                 if (unit == null)
@@ -4036,6 +4036,7 @@ public class GameManager : MonoBehaviour
                 unit.currentTileIndex = usd.currentTileIndex;
                 unit.spaceLocation = usd.spaceLocation;
                 unit.currentSpaceMovementPoints = usd.currentSpaceMovementPoints;
+                if (usd.hasSpaceMovementState) unit.spaceMovementPointsPerTurn = usd.spaceMovementPointsPerTurn;
                 unit.currentSpaceTileIndex = usd.currentSpaceTileIndex;
                 unit.queuedSpacePath = usd.queuedSpacePath != null ? new List<int>(usd.queuedSpacePath) : new List<int>();
                 unit.queuedSpacePathCursor = usd.queuedSpacePathCursor;
@@ -4061,13 +4062,9 @@ public class GameManager : MonoBehaviour
                 if (!civ.combatUnits.Contains(unit))
                     civ.combatUnits.Add(unit);
                 try { unit.RegisterToRegistry(); } catch { }
-                if (!usd.spaceLocation.IsInSolarSystemSpace)
-                    unit.currentSpaceTileIndex = -1;
-                else if (unit.currentSpaceTileIndex >= 0 && !unit.isPackedInSpaceFleet)
-                    SpaceShipMovementController.Instance?.PlaceOnSpaceTile(unit, unit.currentSpaceTileIndex);
                 try
                 {
-                    if (unit.currentSpaceTileIndex < 0 && CampaignArmyService.IsRepresentative(unit))
+                    if (CampaignArmyService.IsRepresentative(unit))
                         (TileOccupancyManager.GetForPlanet(unit.planetIndex) ?? TileOccupancyManager.Instance)
                             ?.SetOccupant(unit.currentTileIndex, unit.gameObject, (TileLayer)usd.currentLayer);
                     CampaignArmyService.RefreshPresentation(unit);

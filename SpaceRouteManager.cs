@@ -25,134 +25,146 @@ public class SpaceRouteManager : MonoBehaviour
         public int destinationSpaceTileIndex;
         public string unitName;
         public string unitType;
-        public int totalHexes;
-        public int remainingHexes;
-        internal bool arrived;
-        public float Progress => totalHexes > 0 ? Mathf.Clamp01(1f - (float)remainingHexes / totalHexes) : (IsComplete ? 1f : 0f);
-        public bool IsComplete => arrived;
+        public float Progress
+        {
+            get
+            {
+                var unit = travelingUnit != null ? travelingUnit.GetComponent<BaseUnit>() : null;
+                if (unit == null) return 0f;
+                if (unit.currentSpaceTileIndex == destinationSpaceTileIndex) return 1f;
+                return unit.queuedSpacePath != null && unit.queuedSpacePath.Count > 1
+                    ? Mathf.Clamp01((float)unit.queuedSpacePathCursor / (unit.queuedSpacePath.Count - 1)) : 0f;
+            }
+        }
+        public bool IsComplete => travelingUnit != null && travelingUnit.TryGetComponent<BaseUnit>(out var unit)
+            && unit.spaceLocation.IsInSolarSystemSpace && unit.currentSpaceTileIndex == destinationSpaceTileIndex;
     }
 
-    private readonly Dictionary<int, SpaceTravelTask> active = new Dictionary<int, SpaceTravelTask>();
     private int nextTaskId = 1;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
-
+    private readonly Dictionary<int, SpaceTravelTask> activeTravels = new Dictionary<int, SpaceTravelTask>();
+    private readonly Dictionary<int, int> lastCursors = new Dictionary<int, int>();
+    private void Awake() { if (Instance != null && Instance != this) { Destroy(gameObject); return; } Instance = this; DontDestroyOnLoad(gameObject); }
     private void OnDestroy() { if (Instance == this) Instance = null; }
 
-    public bool TryGetRoute(GameObject unit, int fromPlanetIndex, int toPlanetIndex, out List<int> path, out int destination)
+    private void Update()
     {
-        path = null;
+        foreach (var task in new List<SpaceTravelTask>(activeTravels.Values))
+        {
+            var unit = task.travelingUnit != null ? task.travelingUnit.GetComponent<BaseUnit>() : null;
+            if (unit == null || unit.currentHealth <= 0 || unit.queuedSpacePath == null ||
+                unit.queuedSpacePath.Count == 0 || unit.queuedSpacePath[unit.queuedSpacePath.Count - 1] != task.destinationSpaceTileIndex)
+            {
+                Debug.LogWarning($"[SpaceRouteManager] Travel task {task.taskId} was cancelled or its spacecraft was lost.");
+                activeTravels.Remove(task.taskId); lastCursors.Remove(task.taskId);
+                continue;
+            }
+            if (!lastCursors.TryGetValue(task.taskId, out int cursor) || cursor != unit.queuedSpacePathCursor)
+            {
+                lastCursors[task.taskId] = unit.queuedSpacePathCursor;
+                OnTravelProgressed?.Invoke(task);
+            }
+            if (!task.IsComplete) continue;
+            activeTravels.Remove(task.taskId); lastCursors.Remove(task.taskId);
+            OnTravelCompleted?.Invoke(task);
+        }
+    }
+
+    internal void ClearTravelTracking()
+    {
+        activeTravels.Clear();
+        lastCursors.Clear();
+    }
+
+    public bool TryGetRoute(GameObject unit, int fromPlanetIndex, int toPlanetIndex, out List<int> route, out int destination)
+    {
+        route = null;
         destination = -1;
         var ship = unit != null ? unit.GetComponent<CombatUnit>() : null;
         if (ship == null || ship.data == null || ship.data.unitType != CombatCategory.Spaceship ||
             ship.currentHealth <= 0 || ship.isPackedInSpaceFleet) return false;
-
         var world = FindAnyObjectByType<SpaceMapWorldController>(FindObjectsInactive.Include);
         if (world == null) return false;
-        if (world.Grid == null || world.Grid != SpaceWorldManager.Instance?.Grid) world.RebuildSpaceMap();
-
-        int GetOrbitSector(int planetIndex)
-        {
-            int anchor = world.GetPlanetAnchorTile(planetIndex);
-            int body = world.Grid.GetTile(anchor)?.planetId ?? -1;
-            if (body < 0) return -1;
-            foreach (int index in world.Grid.GetNeighbors(anchor))
-            {
-                var sector = world.Grid.GetTile(index);
-                if (sector.isPlanetOrbitSector && sector.associatedPlanetId == body && !sector.blocksMovement)
-                    return index;
-            }
-            return -1;
-        }
-
-        int originPlanet = ship.planetIndex >= 0 ? ship.planetIndex : fromPlanetIndex;
-        int start = ship.currentSpaceTileIndex >= 0 ? ship.currentSpaceTileIndex : GetOrbitSector(originPlanet);
-        destination = GetOrbitSector(toPlanetIndex);
+        if (world.Grid == null || world.Grid != SpaceWorldManager.Instance?.Grid || world.GetPlanetAnchorTile(toPlanetIndex) < 0)
+            world.RebuildSpaceMap();
         var movement = SpaceShipMovementController.Instance;
-        if (start < 0 || destination < 0 || movement == null) return false;
-        path = movement.FindRoute(ship, start, destination);
-        return path.Count > 0;
+        if (movement == null) return false;
+        bool fromOrbit = ship.spaceLocation.locationType == SpaceLocationType.PlanetOrbit && ship.spaceLocation.planetIndex == fromPlanetIndex;
+        if (!fromOrbit && !ship.spaceLocation.IsInSolarSystemSpace) return false;
+        var starts = fromOrbit ? world.GetPlanetOrbitSectors(fromPlanetIndex) : new List<int> { ship.currentSpaceTileIndex };
+        var destinations = world.GetPlanetOrbitSectors(toPlanetIndex);
+        var tracked = GetTravelTaskForUnit(unit);
+        if (tracked.HasValue && tracked.Value.destinationPlanetIndex == toPlanetIndex)
+        {
+            destination = tracked.Value.destinationSpaceTileIndex;
+            return TryGetTrackedRoute(ship, destination, out route);
+        }
+        if (destinations.Contains(ship.currentSpaceTileIndex))
+        {
+            destination = ship.currentSpaceTileIndex;
+            route = new List<int> { destination };
+            return true;
+        }
+        foreach (int start in starts)
+        {
+            if (fromOrbit && !movement.CanPlaceShipOnTile(ship, start)) continue;
+            foreach (int candidate in destinations)
+            {
+                var path = movement.FindShipPathFrom(ship, start, candidate);
+                if (path.Count < 2 || (route != null && path.Count >= route.Count)) continue;
+                route = path;
+                destination = candidate;
+            }
+        }
+        return route != null;
+    }
+
+    private static bool TryGetTrackedRoute(BaseUnit ship, int destination, out List<int> route)
+    {
+        route = null;
+        if (ship.currentSpaceTileIndex == destination)
+            route = new List<int> { destination };
+        else if (ship.queuedSpacePath != null && ship.queuedSpacePath.Count > 0 &&
+            ship.queuedSpacePath[ship.queuedSpacePath.Count - 1] == destination)
+            route = ship.queuedSpacePath;
+        return route != null;
     }
 
     public bool StartSpaceTravel(GameObject unit, int fromPlanetIndex, int toPlanetIndex)
     {
-        if (!TryGetRoute(unit, fromPlanetIndex, toPlanetIndex, out var path, out int destination)) return false;
-        var ship = unit.GetComponent<CombatUnit>();
+        if (!TryGetRoute(unit, fromPlanetIndex, toPlanetIndex, out var route, out int dest) || route.Count < 2) return false;
+        var combat = unit.GetComponent<CombatUnit>();
+        BaseUnit baseUnit = combat;
         var movement = SpaceShipMovementController.Instance;
-        int originPlanet = ship.planetIndex >= 0 ? ship.planetIndex : fromPlanetIndex;
-        if (ship.currentSpaceTileIndex < 0 && !movement.PlaceOnSpaceTile(ship, path[0])) return false;
-
-        var task = new SpaceTravelTask
+        bool fromOrbit = baseUnit.spaceLocation.locationType == SpaceLocationType.PlanetOrbit;
+        int start = route[0];
+        if (fromOrbit && !movement.LeavePlanetOrbitForSpace(baseUnit, start)) return false;
+        bool ok = movement.QueueMove(baseUnit, dest);
+        if (!ok && fromOrbit && !movement.EnterPlanetOrbitFromSpace(baseUnit, fromPlanetIndex))
+            Debug.LogError($"[SpaceRouteManager] Could not restore {baseUnit.name} to its original orbit after a failed order.", baseUnit);
+        if (ok)
         {
-            taskId = nextTaskId++, travelingUnit = unit, originPlanetIndex = originPlanet,
-            destinationPlanetIndex = toPlanetIndex, originSpaceTileIndex = path[0],
-            destinationSpaceTileIndex = destination, unitName = unit.name, unitType = ship.data.unitName,
-            totalHexes = path.Count - 1, remainingHexes = path.Count - 1
-        };
-        ship.queuedSpacePath = path;
-        ship.queuedSpacePathCursor = 0;
-        active[unit.GetRuntimeId()] = task;
-        OnTravelStarted?.Invoke(task);
-        movement.MoveAlongQueuedPath(ship);
-        return true;
-    }
-
-    internal void ClearTravelTracking() => active.Clear();
-
-    internal void UpdateTravel(BaseUnit ship)
-    {
-        int unitId = ship.gameObject.GetRuntimeId();
-        if (!active.TryGetValue(unitId, out var task)) return;
-
-        if (ship.currentSpaceTileIndex == task.destinationSpaceTileIndex)
-        {
-            task.remainingHexes = 0;
-            task.arrived = true;
-            active.Remove(unitId);
-            OnTravelCompleted?.Invoke(task);
-            return;
+            var task = new SpaceTravelTask { taskId = nextTaskId++, travelingUnit = unit, originPlanetIndex = fromPlanetIndex, destinationPlanetIndex = toPlanetIndex, originSpaceTileIndex = start, destinationSpaceTileIndex = dest, unitName = unit.name, unitType = combat.data.unitName };
+            activeTravels.Add(task.taskId, task);
+            lastCursors.Add(task.taskId, -1);
+            OnTravelStarted?.Invoke(task);
         }
-
-        var path = ship.queuedSpacePath;
-        if (path == null || path.Count == 0 || path[path.Count - 1] != task.destinationSpaceTileIndex)
-        {
-            active.Remove(unitId);
-            return;
-        }
-
-        int remaining = Mathf.Max(0, path.Count - ship.queuedSpacePathCursor - 1);
-        if (remaining == task.remainingHexes) return;
-        task.remainingHexes = remaining;
-        active[unitId] = task;
-        OnTravelProgressed?.Invoke(task);
+        return ok;
     }
 
-    public List<SpaceTravelTask> GetActiveTravels()
+    public List<SpaceTravelTask> GetActiveTravels() => new List<SpaceTravelTask>(activeTravels.Values);
+    public SpaceTravelTask? GetTravelTaskForUnit(GameObject unit)
     {
-        var tasks = new List<SpaceTravelTask>();
-        foreach (var task in active.Values)
-            if (task.travelingUnit != null) tasks.Add(task);
-        return tasks;
+        foreach (var task in activeTravels.Values) if (task.travelingUnit == unit) return task;
+        return null;
     }
-
-    public SpaceTravelTask? GetTravelTaskForUnit(GameObject unit) =>
-        unit != null && active.TryGetValue(unit.GetRuntimeId(), out var task) ? task : (SpaceTravelTask?)null;
-
     public bool CancelTravel(int taskId)
     {
-        foreach (var task in GetActiveTravels())
-        {
-            if (task.taskId != taskId || !task.travelingUnit.TryGetComponent<BaseUnit>(out var ship)) continue;
-            active.Remove(task.travelingUnit.GetRuntimeId());
-            ship.queuedSpacePath?.Clear();
-            ship.queuedSpacePathCursor = 0;
-            return true;
-        }
-        return false;
+        if (!activeTravels.TryGetValue(taskId, out var task)) return false;
+        var unit = task.travelingUnit != null ? task.travelingUnit.GetComponent<BaseUnit>() : null;
+        if (unit == null || unit.queuedSpacePath == null || unit.queuedSpacePath.Count == 0 ||
+            unit.queuedSpacePath[unit.queuedSpacePath.Count - 1] != task.destinationSpaceTileIndex) return false;
+        unit.queuedSpacePath.Clear(); unit.queuedSpacePathCursor = 0;
+        activeTravels.Remove(taskId); lastCursors.Remove(taskId);
+        return true;
     }
 }

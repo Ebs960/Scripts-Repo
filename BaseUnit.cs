@@ -2463,6 +2463,8 @@ public abstract class BaseUnit : MonoBehaviour
     {
         ClearLoadedProjectileVisual();
         try { GameEventManager.Instance?.RaiseUnitLostEvent(this, null, currentTileIndex, planetIndex); } catch { }
+        SpaceShipMovementController.Instance?.RemoveDestroyedUnit(this);
+        SpaceFleetManager.Instance?.HandleUnitDestroyed(this);
 
         // DIAGNOSTIC (animal-only): if animals are dying, this stack trace will include the real caller chain.
         try

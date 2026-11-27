@@ -83,6 +83,11 @@ public static class CampaignArmyService
             if (member == null || member.gameObject == null || member.IsTransported || member.isStored)
                 continue;
 
+            if (member.isPackedInSpaceFleet)
+            {
+                if (member.gameObject.activeSelf) member.gameObject.SetActive(false);
+                continue;
+            }
             bool shouldBeVisible = i == 0;
             if (member.gameObject.activeSelf != shouldBeVisible)
                 member.gameObject.SetActive(shouldBeVisible);

@@ -18,10 +18,13 @@ public sealed class CampaignBattleParty
 
     public static CampaignBattleParty FromArmy(CombatUnit unit)
     {
-        var representative = CampaignArmyService.GetRepresentative(unit);
+        var members = unit != null && unit.isPackedInSpaceFleet
+            ? (SpaceFleetManager.TryGetPackedBattleMembers(unit, out var fleetMembers) ? fleetMembers : new List<CombatUnit>())
+            : CampaignArmyService.GetMembers(unit);
+        var representative = members.Count > 0 ? members[0] : null;
         return new CampaignBattleParty { Kind = CampaignBattlePartyKind.Army, Owner = unit?.owner,
             PlanetIndex = unit != null ? unit.planetIndex : -1, CampaignTileIndex = unit != null ? unit.currentTileIndex : -1,
-            CombatUnits = CampaignArmyService.GetMembers(unit).Where(x => x != null && !x.IsBandGarrisoned && x.storedInHerd == null).ToList(), ArmyRepresentative = representative,
+            CombatUnits = members.Where(x => x != null && !x.IsBandGarrisoned && x.storedInHerd == null).ToList(), ArmyRepresentative = representative,
             ArmyFormationId = representative != null ? representative.MilitaryFormationId : string.Empty };
     }
 
