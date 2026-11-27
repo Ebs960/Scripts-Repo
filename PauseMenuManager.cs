@@ -119,6 +119,7 @@ public class PauseMenuManager : MonoBehaviour
     {
         public int planetIndex;
         public int seed;
+        public bool explored;
     }
 
     [Serializable]
@@ -157,6 +158,9 @@ public class PauseMenuManager : MonoBehaviour
     public class CivilizationProgressSaveData
     {
         public int civIndex;
+        public bool hasEconomySnapshot;
+        public int treasuryGold;
+        public List<ResourceStockpileSaveData> resourceStockpile = new List<ResourceStockpileSaveData>();
         public List<string> researchedTechNames = new List<string>();
         public string currentTechName;
         public float currentTechProgress;
@@ -192,6 +196,13 @@ public class PauseMenuManager : MonoBehaviour
         public List<string> activeLegacyNames = new List<string>();
         public ElectionState electionState = new ElectionState();
         public List<UnitLoadoutSaveData> standardLoadouts = new List<UnitLoadoutSaveData>();
+    }
+
+    [Serializable]
+    public class ResourceStockpileSaveData
+    {
+        public string resourceAssetName;
+        public int amount;
     }
 
     [Serializable]

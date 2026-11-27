@@ -3055,6 +3055,7 @@ public class Civilization : MonoBehaviour
 
             ApplyPerTurnResourceUpkeep();
             ApplyPerTurnGoldMaintenance();
+            SpaceWorldManager.Instance?.Construction?.ProcessConstructionTurn(this);
 
             // 1.5) Governor politics: tick every governor's opinion exactly once this round.
             // Must run before cities read governor opinion for loyalty and before

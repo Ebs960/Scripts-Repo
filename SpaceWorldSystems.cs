@@ -21,21 +21,36 @@ public class SpaceWorldManager : MonoBehaviour
     public static SpaceWorldManager Instance { get; private set; }
     public SpaceWorldState CurrentSystem { get; private set; }
     public SpaceEntityIndex Entities { get; } = new SpaceEntityIndex();
+    [SerializeField] private SpaceImprovementData[] improvementCatalog = Array.Empty<SpaceImprovementData>();
+    public SpaceConstructionManager Construction { get; private set; }
     public SpaceHexGrid Grid => CurrentSystem != null ? CurrentSystem.grid : null;
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        Construction = FindAnyObjectByType<SpaceConstructionManager>(FindObjectsInactive.Include);
+        if (Construction == null) Construction = gameObject.AddComponent<SpaceConstructionManager>();
+        foreach (var data in improvementCatalog ?? Array.Empty<SpaceImprovementData>()) SpaceImprovementRegistry.Register(data);
+        foreach (var data in Resources.LoadAll<SpaceImprovementData>("")) SpaceImprovementRegistry.Register(data);
         if (CurrentSystem == null) CreateSystem(0, 12, 5f);
     }
     private void OnDestroy() { if (Instance == this) Instance = null; }
     public void CreateSystem(int starSystemId, int radius = 12, float tileSize = 5f)
     {
-        CurrentSystem = new SpaceWorldState { starSystemId = starSystemId, grid = new SpaceHexGrid(radius, tileSize) };
-        Entities.Rebuild(CurrentSystem);
+        LoadSystem(new SpaceWorldState { starSystemId = starSystemId, grid = new SpaceHexGrid(radius, tileSize) });
     }
-    public void LoadSystem(SpaceWorldState state) { CurrentSystem = state ?? new SpaceWorldState { grid = new SpaceHexGrid() }; Entities.Rebuild(CurrentSystem); }
+    public void LoadSystem(SpaceWorldState state)
+    {
+        CurrentSystem = state ?? new SpaceWorldState { grid = new SpaceHexGrid() };
+        Entities.Rebuild(CurrentSystem);
+        SpaceShipMovementController.Instance?.SetGrid(Grid);
+        if (SpaceCombatManager.Instance != null) SpaceCombatManager.Instance.spaceGrid = Grid;
+        var fleetDeployment = FindAnyObjectByType<FleetDeploymentManager>(FindObjectsInactive.Include);
+        if (fleetDeployment != null) fleetDeployment.spaceGrid = Grid;
+    }
     public SpaceWorldState SaveSystem() => CurrentSystem;
+
+
 }
 
 public class SpaceShipView : MonoBehaviour

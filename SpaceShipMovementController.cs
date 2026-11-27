@@ -346,6 +346,13 @@ public class SpaceShipMovementController : MonoBehaviour, IUnitMovementDomain
         if (map != null) map.RefreshTravelVisuals();
     }
 
+    public int GetRouteCost(BaseUnit unit, IReadOnlyList<int> path, int cursor)
+    {
+        int cost = 0;
+        for (int i = cursor + 1; i < path.Count; i++) cost += GetAbilityModifiedMovementCost(unit, Grid.GetTile(path[i]));
+        return cost;
+    }
+
     private int GetAbilityModifiedMovementCost(BaseUnit unit, SpaceHexTile tile)
     {
         int cost = Mathf.Max(1, tile != null ? tile.movementCost : 1);

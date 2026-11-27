@@ -2345,6 +2345,12 @@ public class GameManager : MonoBehaviour
         UpdateSpaceTravelProgress(0.90f, $"Arriving at {destName}...");
         yield return null;
 
+        if (planetData.TryGetValue(planetIndex, out var visitedPlanet) && generator != null)
+        {
+            visitedPlanet.isExplored = true;
+            visitedPlanet.isGenerated = generator.HasGeneratedSurface;
+        }
+
         // Ensure planet-ready listeners rebuild on planet switch.
         OnPlanetReady?.Invoke(planetIndex);
 
@@ -2742,7 +2748,8 @@ public class GameManager : MonoBehaviour
                 .Select(pair => new PauseMenuManager.PlanetSeedSaveData
                 {
                     planetIndex = pair.Key,
-                    seed = pair.Value.seed
+                    seed = pair.Value.seed,
+                    explored = planetData.TryGetValue(pair.Key, out var planet) && planet.isExplored
                 }).ToList(),
             saveName = string.IsNullOrEmpty(saveName) ? $"save_{System.DateTime.Now:yyyyMMdd_HHmmss}" : saveName,
             currentTurn = currentTurn,
@@ -2831,6 +2838,15 @@ public class GameManager : MonoBehaviour
                 var civProgress = new PauseMenuManager.CivilizationProgressSaveData
                 {
                     civIndex = civIdx,
+                    hasEconomySnapshot = true,
+                    treasuryGold = civ.gold,
+                    resourceStockpile = civ.resourceStockpile
+                        .Where(entry => entry.Key != null && entry.Value > 0)
+                        .Select(entry => new PauseMenuManager.ResourceStockpileSaveData
+                        {
+                            resourceAssetName = entry.Key.name,
+                            amount = entry.Value
+                        }).ToList(),
                     currentTechName = civ.currentTech != null ? civ.currentTech.name : null,
                     currentTechProgress = civ.currentTechProgress,
                     currentCultureName = civ.currentCulture != null ? civ.currentCulture.name : null,
@@ -3301,6 +3317,9 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        foreach (var seed in saveData.planetSeeds)
+            if (seed.explored && planetData.TryGetValue(seed.planetIndex, out var planet)) planet.isExplored = true;
+
         var allCivilizations = CivilizationManager.Instance != null
             ? CivilizationManager.Instance.GetAllCivs()
             : null;
@@ -3382,6 +3401,10 @@ public class GameManager : MonoBehaviour
         // Derived topology/presence indexes are rebuilt only after authoritative cities exist.
         PlanetSimulationManager.RebuildPresenceCache();
         TradeNetworkManager.Instance?.RebuildRegistry();
+
+        var spaceMap = FindAnyObjectByType<SpaceMapUI>(FindObjectsInactive.Include);
+        if (spaceMap != null && spaceMap.IsVisible) spaceMap.Hide();
+        SpaceRouteManager.Instance?.ClearTravelTracking();
 
         // ===== Restore units from save data =====
         yield return null;
@@ -3658,6 +3681,7 @@ public class GameManager : MonoBehaviour
         var allCivs = CivilizationManager.Instance?.GetAllCivs();
         if (allCivs == null) return;
 
+        var resourceLookup = BuildAssetLookup(ResourceCache.GetAllResourceData(), null);
         var techLookup = BuildAssetLookup(ResourceCache.GetAllTechData(), t => t.techName);
         var cultureLookup = BuildAssetLookup(ResourceCache.GetAllCultureData(), c => c.cultureName);
         var governorTraitLookup = BuildAssetLookup(Resources.LoadAll<GovernorTrait>(""), t => t.traitName);
@@ -3707,6 +3731,17 @@ public class GameManager : MonoBehaviour
                 unlockedPantheons,
                 unlockedBeliefs,
                 customAssignedBeliefs);
+            if (progress.hasEconomySnapshot)
+            {
+                civ.gold = progress.treasuryGold;
+                civ.resourceStockpile.Clear();
+                if (progress.resourceStockpile != null)
+                    foreach (var entry in progress.resourceStockpile)
+                        if (entry != null && !string.IsNullOrEmpty(entry.resourceAssetName) &&
+                            resourceLookup.TryGetValue(entry.resourceAssetName, out var resource))
+                            civ.resourceStockpile[resource] = entry.amount;
+            }
+
             civ.electionState = progress.electionState ?? new ElectionState();
             civ.ImportStandardLoadouts(progress.standardLoadouts);
 
