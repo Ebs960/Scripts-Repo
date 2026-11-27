@@ -581,7 +581,7 @@ MonoBehaviour:
   brightness: 1.12
   seed: 0
   randomizeSeed: 1
-  autoConfigurePreviewRig: 1
+  autoConfigurePreviewRig: 0
   cameraDistance: 5
   cameraFov: 37.5
   cameraLocalEuler: {x: 8, y: 0, z: 0}
@@ -995,7 +995,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 3.345, y: -0.284, z: 0.73}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 1.2999878}
+  m_AnchoredPosition: {x: 0.05, y: 0.5}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!20 &5433544173430284001
