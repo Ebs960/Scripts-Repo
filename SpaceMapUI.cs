@@ -320,7 +320,22 @@ public class SpaceMapUI : MonoBehaviour
         if (fleetAdmiralText != null)
             fleetAdmiralText.text = $"<color={SpaceMapSelectionInfo.LabelColor}>Admiral</color>\n{SpaceMapSelectionInfo.FleetAdmiral(fleet)}";
         if (fleetLocationText != null)
-            fleetLocationText.text = $"<color={SpaceMapSelectionInfo.LabelColor}>Location</color>\n{SpaceMapSelectionInfo.SectorName(GetFleetTile(fleet))}\n{SpaceMapSelectionInfo.FleetStatus(fleet)}";
+        {
+            string movement = string.Empty;
+            if (SpaceShipMovementController.Instance != null &&
+                SpaceShipMovementController.Instance.TryGetPackedMembers(fleet, out var members, out _))
+            {
+                int remaining = int.MaxValue;
+                int perTurn = int.MaxValue;
+                foreach (var member in members)
+                {
+                    remaining = Mathf.Min(remaining, member.currentSpaceMovementPoints);
+                    perTurn = Mathf.Min(perTurn, member.spaceMovementPointsPerTurn);
+                }
+                movement = $"\nMovement: {remaining}/{perTurn}";
+            }
+            fleetLocationText.text = $"<color={SpaceMapSelectionInfo.LabelColor}>Location</color>\n{SpaceMapSelectionInfo.SectorName(GetFleetTile(fleet))}\n{SpaceMapSelectionInfo.FleetStatus(fleet)}{movement}";
+        }
 
         RefreshFleetRoster(fleet);
         RefreshFleetActions(fleet, owner);
@@ -396,8 +411,8 @@ public class SpaceMapUI : MonoBehaviour
     private static bool CanPackFleet(SpaceFleet fleet, out string reason)
     {
         if (SpaceFleetManager.Instance != null) return SpaceFleetManager.Instance.CanPack(fleet, out reason);
-        reason = fleet.admiralId < 0 ? "fleet requires an admiral before packing" : null;
-        return reason == null;
+        reason = "fleet manager is unavailable";
+        return false;
     }
 
     private FleetDeploymentManager GetDeploymentManager()

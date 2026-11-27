@@ -60,6 +60,11 @@ public sealed class BattleParticipantCollector
 
         var attackerUnits = CollectArmyCombatUnits(attacker);
         var defenderUnits = CollectArmyCombatUnits(defender);
+        if (attackerUnits == null || defenderUnits == null)
+        {
+            preview.RejectionReason = "packed fleet membership is invalid";
+            return false;
+        }
 
         AddSnapshots(attackerUnits, preview.AttackerUnits, preview.Theater);
         AddSnapshots(defenderUnits, preview.DefenderUnits, preview.Theater);
@@ -85,7 +90,7 @@ public sealed class BattleParticipantCollector
         preview.AttackerParty = attacker;
         preview.DefenderParty = defender;
         preview.PlanetIndex = defender.PlanetIndex;
-        preview.AnchorTile = defender.CampaignTileIndex;
+        preview.AnchorTile = preview.Theater == BattleTheater.DeepSpace ? defenderUnit.currentSpaceTileIndex : defender.CampaignTileIndex;
         preview.AttackerUnits.Clear();
         preview.DefenderUnits.Clear();
         if (!TryCollectPartySnapshots(attacker, defender, preview.AttackerUnits, preview.DefenderUnits,
@@ -110,7 +115,7 @@ public sealed class BattleParticipantCollector
         rejectionReason = string.Empty;
         if (attacker == null || defender == null || attackerSnapshots == null || defenderSnapshots == null)
         { rejectionReason = "missing battle party or snapshot destination"; return false; }
-        if (attacker.PlanetIndex != defender.PlanetIndex)
+        if (theater != BattleTheater.DeepSpace && attacker.PlanetIndex != defender.PlanetIndex)
         { rejectionReason = "different planets"; return false; }
         AddSnapshots(new List<CombatUnit>(attacker.CombatUnits), attackerSnapshots, theater);
         AddSnapshots(new List<CombatUnit>(defender.CombatUnits), defenderSnapshots, theater);
@@ -144,7 +149,12 @@ public sealed class BattleParticipantCollector
     {
         var list = new List<CombatUnit>();
         var seen = new HashSet<CombatUnit>();
-        var members = CampaignArmyService.GetMembers(root);
+        List<CombatUnit> members;
+        if (root.isPackedInSpaceFleet)
+        {
+            if (!SpaceFleetManager.TryGetPackedBattleMembers(root, out members)) return null;
+        }
+        else members = CampaignArmyService.GetMembers(root);
         for (int i = 0; i < members.Count; i++)
             AddUnitAndCargo(members[i], list, seen);
 

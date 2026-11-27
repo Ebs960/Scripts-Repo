@@ -89,6 +89,7 @@ public class PauseMenuManager : MonoBehaviour
     public bool gameInProgress;
     public bool isAutosave; // Mark if this is an autosave
     public WorldSnapshotData worldSnapshot;
+    public SpaceWorldSaveData spaceWorld;
     // Persisted manager/job state
     public List<ImprovementManager.JobAssignmentSaveData> jobAssignments;
 
@@ -334,6 +335,8 @@ public class PauseMenuManager : MonoBehaviour
         public bool hasActedThisTurn;
         public SpaceLocation spaceLocation;
         public int currentSpaceMovementPoints;
+        public bool hasSpaceMovementState;
+        public int spaceMovementPointsPerTurn;
         public int currentSpaceTileIndex;
         public List<int> queuedSpacePath = new List<int>();
         public int queuedSpacePathCursor;

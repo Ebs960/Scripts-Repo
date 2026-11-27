@@ -14,6 +14,7 @@ public sealed class BattleResultApplier
 
         var byId = BuildUnitLookup(preview);
         var deferredCargo = new List<BattleUnitOutcome>();
+        var fleetPlacements = new Dictionary<SpaceFleet, int>();
 
         for (int i = 0; i < result.UnitOutcomes.Count; i++)
         {
@@ -27,6 +28,13 @@ public sealed class BattleResultApplier
                 continue;
 
             unit.ClearCampaignOrdersForBattle();
+            if (preview.Theater == BattleTheater.DeepSpace)
+            {
+                unit.queuedSpacePath?.Clear();
+                unit.queuedSpacePathCursor = 0;
+                var fleet = unit.isPackedInSpaceFleet ? SpaceFleetManager.Instance?.GetFleet(unit.spaceFleetId) : null;
+                if (fleet != null) { fleet.queuedPath?.Clear(); fleet.queuedPathCursor = 0; }
+            }
             unit.MarkCampaignActionConsumedByBattle();
             unit.ApplyBattleExperience(outcome.ExperienceGained);
 
@@ -44,7 +52,7 @@ public sealed class BattleResultApplier
                 continue;
             }
 
-            TryRepositionSurvivor(result, preview, unit, outcome);
+            PlaceSurvivor(result, preview, unit, outcome, fleetPlacements);
         }
 
         for (int i = 0; i < deferredCargo.Count; i++)
@@ -58,7 +66,21 @@ public sealed class BattleResultApplier
                 && carrier.TryRestoreBattleCargo(cargo))
                 continue;
 
-            TryRepositionSurvivor(result, preview, cargo, outcome);
+            PlaceSurvivor(result, preview, cargo, outcome, fleetPlacements);
+        }
+
+        foreach (var pair in fleetPlacements)
+        {
+            var fleet = pair.Key;
+            foreach (int id in fleet.memberUnitIds)
+            {
+                var member = UnitRegistry.GetObject(id)?.GetComponent<CombatUnit>();
+                if (member == null || member.currentHealth <= 0) continue;
+                if (SpaceShipMovementController.Instance == null || !SpaceShipMovementController.Instance.PlaceOnSpaceTile(member, pair.Value))
+                    Debug.LogError($"[BattleResultApplier] Could not restore fleet {fleet.fleetId} member {id} to its formation.");
+            }
+            fleet.currentSpaceTileIndex = pair.Value;
+            fleet.location = SpaceLocation.InSpace(pair.Value);
         }
 
         foreach (var unit in byId.Values)
@@ -89,6 +111,7 @@ public sealed class BattleResultApplier
 
     private static void ApplyCivilianFormationFate(BattleResult result, EngagementPreview preview)
     {
+        if (preview.Theater == BattleTheater.DeepSpace) return;
         var losing = result.WinningSide == BattleSide.Attacker ? preview.DefenderParty : preview.AttackerParty;
         var winning = result.WinningSide == BattleSide.Attacker ? preview.AttackerParty : preview.DefenderParty;
         if (losing == null || losing.Kind != CampaignBattlePartyKind.Army ||
@@ -157,24 +180,35 @@ public sealed class BattleResultApplier
         }
     }
 
-    private void TryRepositionSurvivor(BattleResult result, EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)
+    private void PlaceSurvivor(BattleResult result, EngagementPreview preview, CombatUnit unit,
+        BattleUnitOutcome outcome, Dictionary<SpaceFleet, int> fleetPlacements)
+    {
+        var fleet = preview.Theater == BattleTheater.DeepSpace && unit.isPackedInSpaceFleet
+            ? SpaceFleetManager.Instance?.GetFleet(unit.spaceFleetId) : null;
+        int forcedTile = fleet != null && fleetPlacements.TryGetValue(fleet, out int tile) ? tile : -1;
+        if (TryRepositionSurvivor(result, preview, unit, outcome, forcedTile) && fleet != null)
+            fleetPlacements[fleet] = unit.currentSpaceTileIndex;
+    }
+
+    private bool TryRepositionSurvivor(BattleResult result, EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome, int forcedSpaceTile)
     {
         if (preview.Theater == BattleTheater.DeepSpace)
         {
             int attempted=-1;
-            foreach(int spaceTile in GetSpacePlacementCandidates(result,preview,unit,outcome))
+            var candidates = forcedSpaceTile >= 0 ? new[] { forcedSpaceTile } : GetSpacePlacementCandidates(result,preview,unit,outcome);
+            foreach(int spaceTile in candidates)
             {
                 attempted=spaceTile;
                 if(placement.TryPlaceAfterBattle(unit,new BattleCampaignPlacementRequest{PlanetIndex=preview.PlanetIndex,
                     SpaceTileIndex=spaceTile,Layer=unit.currentLayer,PreferredStackSlot=outcome.SuggestedStackSlot},out _))
-                { BattleRecoveryHoldingService.GetOrCreate().Resolve(unit); return; }
+                { BattleRecoveryHoldingService.GetOrCreate().Resolve(unit); return true; }
             }
             string reason = $"Living space unit {unit.GetRuntimeId()} has no legal post-battle placement; it remains at its recoverable pre-placement location.";
             result.PlacementFailures.Add(new BattlePlacementFailure { CampaignRuntimeId=outcome.CampaignRuntimeId, Side=outcome.Side,
                 Reason=reason, OriginalTile=unit.currentSpaceTileIndex, RequestedTile=attempted, IsDeepSpace=true });
             Debug.LogError($"[BattleResultApplier] {reason}");
             BattleRecoveryHoldingService.GetOrCreate().Hold(unit, reason, true);
-            return;
+            return false;
         }
 
         foreach (int tile in GetPlacementCandidates(result, preview, unit, outcome))
@@ -186,13 +220,14 @@ public sealed class BattleResultApplier
                 Layer = unit.currentLayer,
                 PreferredStackSlot = outcome.SuggestedStackSlot,
             }, out _))
-            { BattleRecoveryHoldingService.GetOrCreate().Resolve(unit); return; }
+            { BattleRecoveryHoldingService.GetOrCreate().Resolve(unit); return true; }
         }
         string failure = $"Living unit {unit.GetRuntimeId()} has no legal post-battle placement; it remains at its recoverable pre-placement location.";
         result.PlacementFailures.Add(new BattlePlacementFailure { CampaignRuntimeId=outcome.CampaignRuntimeId, Side=outcome.Side,
             Reason=failure, OriginalTile=unit.currentTileIndex, RequestedTile=outcome.WithdrawalCampaignTile, IsDeepSpace=false });
         Debug.LogError($"[BattleResultApplier] {failure}");
         BattleRecoveryHoldingService.GetOrCreate().Hold(unit, failure, false);
+        return false;
     }
 
     private static IEnumerable<int> GetPlacementCandidates(BattleResult result, EngagementPreview preview, CombatUnit unit, BattleUnitOutcome outcome)
