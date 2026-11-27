@@ -115,6 +115,39 @@ Edit the `ConfigureGameSetupForPlanet()` method to change:
 - Add custom planet icons
 - Implement custom transition effects
 
+## Contextual Selection Panels
+
+`SpaceMapWorldController` is the only owner of space map selection and input. It selects a
+planet, a fleet, a single spacecraft, or a space sector, and tells `SpaceMapUI` what to show.
+`SpaceMapUI` only displays: it shows exactly one right-side panel at a time, all saved in
+`UI/Space Map UI.prefab` and all inactive until something is selected.
+
+| Selection | Panel | Artwork (`UI/Space UI`) |
+| --- | --- | --- |
+| Planet marker | Planet Information Panel | Planet Information Sidebar |
+| Fleet marker | Fleet Overview Panel | Fleet Overview Shell, Fleet Roster Row |
+| Ship, or a roster row | Individual Spacecraft Panel | Individual Spacecraft Card |
+| Empty sector | Space Infrastructure Panel | Space Infrastructure Shell, Space Structure Card |
+
+- Every fleet gets its own map marker (`SpaceFleetView`), so packed fleets stay selectable while
+  their ships are inactive. An unpacked fleet's marker sits beside its first surviving ship.
+- Roster rows resolve members from `SpaceFleet.memberUnitIds` through `UnitRegistry` on every
+  refresh. A missing or destroyed member shows as such and cannot be opened.
+- Opening a ship from the roster is inspection only: it stays in its fleet and cannot be given a
+  movement order. Movement orders (click a sector twice) apply only to a player-owned ship that
+  was selected directly on the map.
+- Back to Fleet appears only when the ship's fleet also lists it as a member, and returns to that
+  fleet with the roster scroll position kept.
+- Unexplored planets show "Unknown" for atmosphere, temperature, colonization, and
+  civilizations. Features marked hidden-until-detected, hidden resources, and undetected hazards
+  are not listed. A foreign ship's route is not shown.
+- Pack Fleet and Deploy Fleet call the existing `FleetDeploymentManager` and are offered only for
+  the player's own fleets. The panels add no other actions.
+- Panels re-read live data four times a second and clear themselves when their fleet, ship, or
+  sector no longer exists. Closing the map clears the selection.
+
+All display text is produced by `SpaceMapSelectionInfo`, which reads live objects and stores nothing.
+
 ## Events
 The system provides events for integration:
 - `OnPlanetSwitched` - Fired when switching planets

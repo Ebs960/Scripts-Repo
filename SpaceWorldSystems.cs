@@ -49,6 +49,8 @@ public class SpaceShipView : MonoBehaviour
         entityId = unit != null ? unit.gameObject.GetRuntimeId() : -1;
     }
 }
+/// <summary>Map marker for a SpaceFleet. Identifies the fleet by id so packed fleets stay selectable.</summary>
+public class SpaceFleetView : MonoBehaviour { public int fleetId = -1; }
 public class SpaceFeatureView : MonoBehaviour { public int entityId; }
 public class SpaceImprovementView : MonoBehaviour { public int entityId; }
 public class SpacePlanetView : MonoBehaviour { public int entityId; }

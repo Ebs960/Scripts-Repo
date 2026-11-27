@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -7,6 +8,8 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Overlay-only UI for the mandatory world-space solar-system map. Rendering,
 /// selection, hexes, planets, routes, and ships are owned by SpaceMapWorldController.
+/// This class shows exactly one contextual panel on the right side for whatever the
+/// controller has selected: a planet, a fleet, a single spacecraft, or a space sector.
 /// </summary>
 public class SpaceMapUI : MonoBehaviour
 {
@@ -16,51 +19,105 @@ public class SpaceMapUI : MonoBehaviour
     public Button closeButton;
     public TextMeshProUGUI titleText;
 
-    [Header("Selected Entity Info")]
+    [Header("Planet Information Panel")]
     public GameObject planetInfoPanel;
     public TextMeshProUGUI planetNameText;
     public TextMeshProUGUI planetTypeText;
     public TextMeshProUGUI planetStatusText;
     public TextMeshProUGUI distanceText;
+    [SerializeField] private TextMeshProUGUI planetEnvironmentText;
+    [SerializeField] private TextMeshProUGUI planetMoonsText;
+    [SerializeField] private TextMeshProUGUI planetCivilizationsText;
+    [SerializeField] private RawImage planetPreviewImage;
     public Button travelButton;
     public Button cancelButton;
 
-    [Header("Civilization List")]
-    public Transform civilizationContainer;
-    public GameObject civilizationEntryPrefab;
-    public TextMeshProUGUI noCivilizationsText;
+    [Header("Fleet Overview Panel")]
+    [SerializeField] private GameObject fleetPanel;
+    [SerializeField] private TextMeshProUGUI fleetNameText;
+    [SerializeField] private TextMeshProUGUI fleetOwnerText;
+    [SerializeField] private TextMeshProUGUI fleetAdmiralText;
+    [SerializeField] private TextMeshProUGUI fleetLocationText;
+    [SerializeField] private ScrollRect fleetRosterScroll;
+    [SerializeField] private RectTransform fleetRosterContent;
+    [SerializeField] private SpaceFleetRosterRowView fleetRosterRowTemplate;
+    [SerializeField] private TextMeshProUGUI fleetRosterEmptyText;
+    [SerializeField] private Button fleetPackButton;
+    [SerializeField] private Button fleetDeployButton;
+    [SerializeField] private TextMeshProUGUI fleetActionStatusText;
+    [SerializeField] private Button fleetCloseButton;
+    [Tooltip("Members must be within this many sectors of the fleet's lead ship to pack. Matches the deployment spread.")]
+    [SerializeField] private int fleetPackGatherRadius = 3;
+
+    [Header("Individual Spacecraft Panel")]
+    [SerializeField] private GameObject shipPanel;
+    [SerializeField] private TextMeshProUGUI shipNameText;
+    [SerializeField] private TextMeshProUGUI shipClassText;
+    [SerializeField] private Image shipIconImage;
+    [SerializeField] private TextMeshProUGUI shipIconFallbackText;
+    [SerializeField] private TextMeshProUGUI shipSummaryText;
+    [SerializeField] private TextMeshProUGUI shipHealthText;
+    [SerializeField] private TextMeshProUGUI shipAttackText;
+    [SerializeField] private TextMeshProUGUI shipDefenseText;
+    [SerializeField] private TextMeshProUGUI shipMovementText;
+    [SerializeField] private TextMeshProUGUI shipLocationText;
+    [SerializeField] private TextMeshProUGUI shipRouteText;
+    [SerializeField] private TextMeshProUGUI shipAbilitiesText;
+    [SerializeField] private TextMeshProUGUI shipMissionsText;
+    [SerializeField] private TextMeshProUGUI shipFleetText;
+    [SerializeField] private Button backToFleetButton;
+    [SerializeField] private Button shipCloseButton;
+
+    [Header("Space Infrastructure Panel")]
+    [SerializeField] private GameObject infrastructurePanel;
+    [SerializeField] private TextMeshProUGUI sectorTitleText;
+    [SerializeField] private TextMeshProUGUI sectorInfoText;
+    [SerializeField] private RectTransform structureListContent;
+    [SerializeField] private SpaceStructureCardView structureCardTemplate;
+    [SerializeField] private TextMeshProUGUI structureEmptyText;
+    [SerializeField] private TextMeshProUGUI sectorSummaryText;
+    [SerializeField] private Button infrastructureCloseButton;
 
     [Header("World-Space Space Map")]
     [SerializeField] private SpaceMapWorldController spaceMapWorldController;
 
+    private const float RefreshInterval = 0.25f;
+
+    private SpaceMapSelectionKind activeKind = SpaceMapSelectionKind.None;
     private GameManager.PlanetData selectedPlanet;
     private BaseUnit selectedShip;
+    private int selectedShipFleetId = -1;
+    private int selectedFleetId = -1;
+    private int selectedSectorTile = -1;
+    private int rosterFleetId = -1;
+    private int lastInspectedUnitId;
+    private readonly List<SpaceFleetRosterRowView> rosterRows = new List<SpaceFleetRosterRowView>();
+    private readonly List<SpaceStructureCardView> structureCards = new List<SpaceStructureCardView>();
+    private readonly StringBuilder text = new StringBuilder();
+    private FleetDeploymentManager deploymentManager;
+    private MinimapUI minimapUI;
+    private bool buttonsWired;
     private bool spaceMapModeActive;
     private float ignoreCloseInputUntil;
+    private float nextRefreshTime;
 
     private void Awake()
     {
         ResolveAssignedReferences();
         ValidateAssignedReferences();
+        WireButtons();
         Hide();
-    }
-
-    private void Start()
-    {
-        if (closeButton != null) { closeButton.onClick.RemoveAllListeners(); closeButton.onClick.AddListener(Hide); }
-        if (travelButton != null)
-        {
-            travelButton.onClick.RemoveAllListeners();
-            travelButton.onClick.AddListener(() => { if (selectedPlanet != null) SwitchToPlanet(selectedPlanet); });
-            var label = travelButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (label != null) label.text = "View Planet";
-        }
-        if (cancelButton != null) { cancelButton.onClick.RemoveAllListeners(); cancelButton.onClick.AddListener(ClearSelection); }
     }
 
     private void Update()
     {
-        if (!spaceMapModeActive || Time.unscaledTime < ignoreCloseInputUntil) return;
+        if (!spaceMapModeActive) return;
+        if (Time.unscaledTime >= nextRefreshTime)
+        {
+            nextRefreshTime = Time.unscaledTime + RefreshInterval;
+            RefreshActivePanel();
+        }
+        if (Time.unscaledTime < ignoreCloseInputUntil) return;
         bool keyboardClose = Keyboard.current != null && (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.mKey.wasPressedThisFrame);
         bool gamepadClose = Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame;
         if (keyboardClose || gamepadClose) Hide();
@@ -71,69 +128,178 @@ public class SpaceMapUI : MonoBehaviour
         gameObject.SetActive(true); if (spaceMapCanvas != null) spaceMapCanvas.gameObject.SetActive(true); if (spaceMapPanel != null) spaceMapPanel.SetActive(true);
         EnterSpaceMapMode(); SetSpaceMapPanelBackgroundVisible(false);
         WorldViewContext.GetOrCreate().SetStarSystemViewActive(true);
+        ShowNoSelection();
         if (spaceMapWorldController != null)
             spaceMapWorldController.ShowMap(this);
         else
             Debug.LogError("[SpaceMapUI] Cannot show space map because SpaceMapWorldController is not assigned.");
-        RefreshCivilizations(null);
     }
 
     public void Hide()
     {
         if (spaceMapWorldController != null) spaceMapWorldController.HideMap(); ExitSpaceMapMode();
+        ShowNoSelection();
         if (spaceMapCanvas != null) spaceMapCanvas.gameObject.SetActive(false); else gameObject.SetActive(false);
         WorldViewContext.GetOrCreate().SetStarSystemViewActive(false);
     }
 
+    public void TestCloseButton() => Hide();
+
+    // ── Selection display (called by SpaceMapWorldController, the single selection owner) ──
+
     public void SelectPlanet(GameManager.PlanetData planet)
     {
-        selectedPlanet = planet; selectedShip = null; if (planetInfoPanel != null) planetInfoPanel.SetActive(planet != null);
-        if (planetNameText != null) planetNameText.text = planet != null ? planet.planetName : "No selection";
-        if (planetTypeText != null) planetTypeText.text = planet != null ? $"{planet.celestialBodyType} • {planet.planetType}" : string.Empty;
-        if (planetStatusText != null) planetStatusText.text = planet == null ? string.Empty : BuildPlanetStatus(planet);
-        if (distanceText != null)
-        {
-            int anchorTile = planet != null && spaceMapWorldController != null ? spaceMapWorldController.GetPlanetAnchorTile(planet.planetIndex) : -1;
-            distanceText.text = planet == null ? string.Empty : anchorTile >= 0 ? $"System location: hex {anchorTile}" : "System location unavailable";
-        }
-        if (travelButton != null) travelButton.gameObject.SetActive(planet != null);
-        RefreshCivilizations(planet);
+        if (planet == null) { ShowNoSelection(); return; }
+        ClearSelectionState();
+        selectedPlanet = planet;
+        SetActivePanel(SpaceMapSelectionKind.Planet);
+        RefreshPlanetPanel();
     }
 
     public void SelectShip(BaseUnit ship)
     {
-        selectedShip = ship; selectedPlanet = null; if (planetInfoPanel != null) planetInfoPanel.SetActive(ship != null);
-        if (planetNameText != null) planetNameText.text = ship != null ? ship.name : "No selection";
-        if (planetTypeText != null) planetTypeText.text = ship != null ? "Spacecraft" : string.Empty;
-        if (planetStatusText != null) planetStatusText.text = ship != null ? $"Tile {ship.currentSpaceTileIndex} • MP {ship.currentSpaceMovementPoints}/{ship.spaceMovementPointsPerTurn}" : string.Empty;
-        if (distanceText != null)
-        {
-            int remaining = ship != null && ship.queuedSpacePath != null
-                ? Mathf.Max(0, ship.queuedSpacePath.Count - 1 - ship.queuedSpacePathCursor)
-                : 0;
-            distanceText.text = remaining > 0 ? $"Remaining route: {remaining} hexes" : "No queued route";
-        }
-        if (travelButton != null) travelButton.gameObject.SetActive(false);
-        RefreshCivilizations(null);
+        if (!SpaceMapSelectionInfo.IsAlive(ship)) { ShowNoSelection(); return; }
+        ClearSelectionState();
+        selectedShip = ship;
+        var fleet = SpaceMapSelectionInfo.GetFleetOf(ship);
+        selectedShipFleetId = fleet != null ? fleet.fleetId : -1;
+        if (fleet != null && fleet.fleetId == rosterFleetId) lastInspectedUnitId = ship.gameObject.GetRuntimeId();
+        SetActivePanel(SpaceMapSelectionKind.Ship);
+        RefreshShipPanel();
     }
 
-    public void TestCloseButton() => Hide();
+    public void SelectFleet(SpaceFleet fleet)
+    {
+        if (fleet == null) { ShowNoSelection(); return; }
+        ClearSelectionState();
+        selectedFleetId = fleet.fleetId;
+        bool sameRoster = rosterFleetId == fleet.fleetId;
+        if (!sameRoster) { rosterFleetId = fleet.fleetId; lastInspectedUnitId = 0; }
+        SetActivePanel(SpaceMapSelectionKind.Fleet);
+        RefreshFleetPanel();
+        // Returning to the same fleet keeps the roster where the player left it.
+        if (!sameRoster && fleetRosterScroll != null) fleetRosterScroll.verticalNormalizedPosition = 1f;
+    }
 
-    private void ClearSelection()
+    public void SelectSector(int tileIndex)
+    {
+        ClearSelectionState();
+        selectedSectorTile = tileIndex;
+        SetActivePanel(SpaceMapSelectionKind.Sector);
+        RefreshInfrastructurePanel();
+    }
+
+    public void ShowNoSelection()
+    {
+        ClearSelectionState();
+        SetActivePanel(SpaceMapSelectionKind.None);
+    }
+
+    private void ClearSelectionState()
     {
         selectedPlanet = null;
         selectedShip = null;
-        spaceMapWorldController?.ClearSelection();
-        SelectPlanet(null);
+        selectedShipFleetId = -1;
+        selectedFleetId = -1;
+        selectedSectorTile = -1;
     }
 
-    private string BuildPlanetStatus(GameManager.PlanetData planet)
+    /// <summary>The only place panels are switched, so two contextual panels can never be visible together.</summary>
+    private void SetActivePanel(SpaceMapSelectionKind kind)
     {
-        var parts = new List<string>();
-        parts.Add(planet.isHomeWorld ? "Homeworld" : planet.isColonized ? "Colonized" : planet.isExplored ? "Explored" : "Unexplored");
-        parts.Add($"Size: {planet.planetSize}");
-        if (planet.childMoonIds != null && planet.childMoonIds.Count > 0) parts.Add($"Moons {planet.childMoonIds.Count}");
-        return string.Join(" • ", parts);
+        activeKind = kind;
+        if (planetInfoPanel != null) planetInfoPanel.SetActive(kind == SpaceMapSelectionKind.Planet);
+        if (fleetPanel != null) fleetPanel.SetActive(kind == SpaceMapSelectionKind.Fleet);
+        if (shipPanel != null) shipPanel.SetActive(kind == SpaceMapSelectionKind.Ship);
+        if (infrastructurePanel != null) infrastructurePanel.SetActive(kind == SpaceMapSelectionKind.Sector);
+    }
+
+    // Re-reads live data and drops selections whose entity no longer exists.
+    private void RefreshActivePanel()
+    {
+        switch (activeKind)
+        {
+            case SpaceMapSelectionKind.Planet: RefreshPlanetPanel(); break;
+            case SpaceMapSelectionKind.Fleet:
+                if (SpaceMapSelectionInfo.FindFleet(selectedFleetId) == null) DropLostSelection(null);
+                else RefreshFleetPanel();
+                break;
+            case SpaceMapSelectionKind.Ship:
+                if (!SpaceMapSelectionInfo.IsAlive(selectedShip)) DropLostSelection(SpaceMapSelectionInfo.FindFleet(selectedShipFleetId));
+                else RefreshShipPanel();
+                break;
+            case SpaceMapSelectionKind.Sector: RefreshInfrastructurePanel(); break;
+        }
+    }
+
+    private void DropLostSelection(SpaceFleet fallbackFleet)
+    {
+        if (spaceMapWorldController == null) { ShowNoSelection(); return; }
+        spaceMapWorldController.RefreshTravelVisuals();
+        if (fallbackFleet != null) spaceMapWorldController.SelectFleet(fallbackFleet);
+        else spaceMapWorldController.ClearSelection();
+    }
+
+    // ── Planet ──
+
+    private void RefreshPlanetPanel()
+    {
+        var planet = selectedPlanet;
+        if (planet == null) return;
+        bool known = SpaceMapSelectionInfo.IsPlanetDiscovered(planet);
+
+        if (planetNameText != null) planetNameText.text = planet.planetName;
+        if (planetTypeText != null)
+            planetTypeText.text = $"{SpaceMapSelectionInfo.Nicify(planet.celestialBodyType)}, {SpaceMapSelectionInfo.Nicify(planet.planetType)}";
+        if (planetStatusText != null)
+        {
+            string exploration = planet.isHomeWorld ? "Homeworld" : planet.isExplored ? "Explored" : "Unexplored";
+            string colonization = !known ? "Unknown" : planet.isColonized ? "Colonized" : "Not colonized";
+            planetStatusText.text = SpaceMapSelectionInfo.Label("Size", SpaceMapSelectionInfo.Nicify(planet.planetSize)) + "\n"
+                + SpaceMapSelectionInfo.Label("Exploration", exploration) + "\n"
+                + SpaceMapSelectionInfo.Label("Colonization", colonization);
+        }
+        if (planetEnvironmentText != null)
+        {
+            string atmosphere = !known ? "Unknown"
+                : !planet.hasAtmosphere ? "None"
+                : string.IsNullOrEmpty(planet.atmosphereComposition) ? "Present" : planet.atmosphereComposition;
+            string temperature = known ? $"{planet.averageTemperature:0} C average" : "Unknown";
+            planetEnvironmentText.text = SpaceMapSelectionInfo.Label("Atmosphere", atmosphere) + "\n"
+                + SpaceMapSelectionInfo.Label("Temperature", temperature);
+        }
+        if (planetMoonsText != null) planetMoonsText.text = BuildMoonText(planet);
+        if (planetCivilizationsText != null)
+        {
+            string civilizations = !known ? "Unknown"
+                : planet.civilizationNames != null && planet.civilizationNames.Count > 0 ? string.Join("\n", planet.civilizationNames) : "None known";
+            planetCivilizationsText.text = $"<color={SpaceMapSelectionInfo.LabelColor}>Known Civilizations</color>\n{civilizations}";
+        }
+        if (distanceText != null)
+        {
+            int anchorTile = spaceMapWorldController != null ? spaceMapWorldController.GetPlanetAnchorTile(planet.planetIndex) : -1;
+            distanceText.text = anchorTile >= 0 ? $"System location: sector {anchorTile}" : "System location unavailable";
+        }
+        if (planetPreviewImage != null)
+        {
+            if (minimapUI == null) minimapUI = FindAnyObjectByType<MinimapUI>(FindObjectsInactive.Include);
+            Texture preview = known && minimapUI != null ? minimapUI.GetPlanetMinimapTexture(planet.planetIndex) : null;
+            planetPreviewImage.texture = preview;
+            planetPreviewImage.enabled = preview != null;
+        }
+    }
+
+    private string BuildMoonText(GameManager.PlanetData planet)
+    {
+        string header = $"<color={SpaceMapSelectionInfo.LabelColor}>Moons</color>\n";
+        if (planet.celestialBodyType == GameManager.CelestialBodyType.Moon)
+        {
+            var parent = SpaceMapSelectionInfo.FindPlanetByBodyId(planet.parentBodyId);
+            return header + (parent != null ? $"Moon of {parent.planetName}" : "This body is a moon");
+        }
+        int count = planet.childMoonIds != null ? planet.childMoonIds.Count : 0;
+        if (planet.moonNames != null && planet.moonNames.Count > 0) return header + string.Join("\n", planet.moonNames);
+        return header + (count > 0 ? $"{count} moon{(count == 1 ? string.Empty : "s")}" : "None");
     }
 
     private void SwitchToPlanet(GameManager.PlanetData planet)
@@ -141,27 +307,285 @@ public class SpaceMapUI : MonoBehaviour
         if (planet == null) return; Hide(); if (GameManager.Instance != null) GameManager.Instance.StartCoroutine(GameManager.Instance.SwitchToMultiPlanet(planet.planetIndex));
     }
 
-    private void RefreshCivilizations(GameManager.PlanetData planet)
+    // ── Fleet ──
+
+    private void RefreshFleetPanel()
     {
-        if (civilizationContainer == null) return; for (int i = civilizationContainer.childCount - 1; i >= 0; i--) Destroy(civilizationContainer.GetChild(i).gameObject);
-        var names = planet?.civilizationNames; bool any = names != null && names.Count > 0; if (noCivilizationsText != null) noCivilizationsText.gameObject.SetActive(!any);
-        if (!any) return; foreach (string name in names) CreateCivilizationEntry(name);
+        var fleet = SpaceMapSelectionInfo.FindFleet(selectedFleetId);
+        if (fleet == null) return;
+        var owner = SpaceMapSelectionInfo.GetFleetOwner(fleet);
+
+        if (fleetNameText != null) fleetNameText.text = string.IsNullOrEmpty(fleet.fleetName) ? $"Fleet {fleet.fleetId}" : fleet.fleetName;
+        if (fleetOwnerText != null) fleetOwnerText.text = SpaceMapSelectionInfo.CivilizationName(owner);
+        if (fleetAdmiralText != null)
+            fleetAdmiralText.text = $"<color={SpaceMapSelectionInfo.LabelColor}>Admiral</color>\n{SpaceMapSelectionInfo.FleetAdmiral(fleet)}";
+        if (fleetLocationText != null)
+            fleetLocationText.text = $"<color={SpaceMapSelectionInfo.LabelColor}>Location</color>\n{SpaceMapSelectionInfo.SectorName(GetFleetTile(fleet))}\n{SpaceMapSelectionInfo.FleetStatus(fleet)}";
+
+        RefreshFleetRoster(fleet);
+        RefreshFleetActions(fleet, owner);
     }
 
-    private void CreateCivilizationEntry(string text)
+    private static int GetFleetTile(SpaceFleet fleet)
     {
-        if (civilizationEntryPrefab == null)
+        if (fleet.isPacked || fleet.memberUnitIds == null) return fleet.currentSpaceTileIndex;
+        foreach (int id in fleet.memberUnitIds)
         {
-            Debug.LogWarning("[SpaceMapUI] Civilization entry prefab is not assigned; cannot render civilization entry.");
-            return;
+            var unit = SpaceMapSelectionInfo.ResolveUnit(id);
+            if (SpaceMapSelectionInfo.IsAlive(unit) && unit.currentSpaceTileIndex >= 0) return unit.currentSpaceTileIndex;
         }
+        return fleet.currentSpaceTileIndex;
+    }
 
-        GameObject go = Instantiate(civilizationEntryPrefab, civilizationContainer);
-        var label = go.GetComponentInChildren<TextMeshProUGUI>();
-        if (label != null)
-            label.text = text;
-        else
-            Debug.LogWarning("[SpaceMapUI] Civilization entry prefab needs a TextMeshProUGUI child to display civilization names.");
+    private void RefreshFleetRoster(SpaceFleet fleet)
+    {
+        int count = fleet.memberUnitIds != null ? fleet.memberUnitIds.Count : 0;
+        if (fleetRosterEmptyText != null) fleetRosterEmptyText.gameObject.SetActive(count == 0);
+        if (fleetRosterRowTemplate == null || fleetRosterContent == null) return;
+
+        // Rows are pooled and rebound in place, so the scroll position survives every refresh.
+        while (rosterRows.Count < count)
+        {
+            var row = Instantiate(fleetRosterRowTemplate, fleetRosterContent);
+            row.name = $"Fleet Roster Row {rosterRows.Count + 1}";
+            if (row.Button != null) row.Button.onClick.AddListener(() => OnRosterRowClicked(row));
+            rosterRows.Add(row);
+        }
+        for (int i = 0; i < rosterRows.Count; i++)
+        {
+            bool used = i < count;
+            rosterRows[i].gameObject.SetActive(used);
+            if (!used) continue;
+            int unitId = fleet.memberUnitIds[i];
+            rosterRows[i].Bind(unitId, SpaceMapSelectionInfo.ResolveUnit(unitId), unitId == lastInspectedUnitId);
+        }
+    }
+
+    private void OnRosterRowClicked(SpaceFleetRosterRowView row)
+    {
+        if (row == null || spaceMapWorldController == null) return;
+        var unit = SpaceMapSelectionInfo.ResolveUnit(row.UnitId);
+        if (!SpaceMapSelectionInfo.IsAlive(unit)) { RefreshActivePanel(); return; }
+        lastInspectedUnitId = row.UnitId;
+        // Inspection only: the ship stays in its fleet and cannot receive movement orders from here.
+        spaceMapWorldController.InspectShip(unit);
+    }
+
+    private void RefreshFleetActions(SpaceFleet fleet, Civilization owner)
+    {
+        bool playerFleet = SpaceMapSelectionInfo.IsPlayerOwned(owner);
+        bool showPack = playerFleet && !fleet.isPacked;
+        bool showDeploy = playerFleet && fleet.isPacked;
+        string status = playerFleet ? string.Empty : "No orders available for this fleet.";
+
+        if (showPack)
+        {
+            bool canPack = CanPackFleet(fleet, out string reason);
+            if (fleetPackButton != null) fleetPackButton.interactable = canPack;
+            status = canPack ? "Pack the fleet into a single formation." : $"Cannot pack: {reason}.";
+        }
+        else if (showDeploy)
+        {
+            status = "Deploy the fleet's ships around its position.";
+        }
+        if (fleetPackButton != null) fleetPackButton.gameObject.SetActive(showPack);
+        if (fleetDeployButton != null) fleetDeployButton.gameObject.SetActive(showDeploy);
+        if (fleetActionStatusText != null) fleetActionStatusText.text = status;
+    }
+
+    private static bool CanPackFleet(SpaceFleet fleet, out string reason)
+    {
+        if (SpaceFleetManager.Instance != null) return SpaceFleetManager.Instance.CanPack(fleet, out reason);
+        reason = fleet.admiralId < 0 ? "fleet requires an admiral before packing" : null;
+        return reason == null;
+    }
+
+    private FleetDeploymentManager GetDeploymentManager()
+    {
+        if (deploymentManager == null) deploymentManager = FindAnyObjectByType<FleetDeploymentManager>(FindObjectsInactive.Include);
+        if (deploymentManager == null) deploymentManager = gameObject.AddComponent<FleetDeploymentManager>();
+        // Fleet and ship positions are indices into the world's grid, so packing must use that same grid.
+        var worldGrid = SpaceWorldManager.Instance != null ? SpaceWorldManager.Instance.Grid : null;
+        if (worldGrid != null) deploymentManager.spaceGrid = worldGrid;
+        return deploymentManager;
+    }
+
+    private void OnPackFleetClicked()
+    {
+        var fleet = SpaceMapSelectionInfo.FindFleet(selectedFleetId);
+        if (fleet == null || fleet.isPacked || !SpaceMapSelectionInfo.IsPlayerOwned(SpaceMapSelectionInfo.GetFleetOwner(fleet))) return;
+        if (!CanPackFleet(fleet, out string reason) || !GetDeploymentManager().PackFleet(fleet, fleetPackGatherRadius, out reason))
+            UIManager.Instance?.ShowNotification($"Cannot pack fleet: {reason}.");
+        AfterFleetAction(fleet);
+    }
+
+    private void OnDeployFleetClicked()
+    {
+        var fleet = SpaceMapSelectionInfo.FindFleet(selectedFleetId);
+        if (fleet == null || !fleet.isPacked || !SpaceMapSelectionInfo.IsPlayerOwned(SpaceMapSelectionInfo.GetFleetOwner(fleet))) return;
+        if (!GetDeploymentManager().UnpackFleet(fleet, out string reason))
+            UIManager.Instance?.ShowNotification($"Cannot deploy fleet: {reason}.");
+        AfterFleetAction(fleet);
+    }
+
+    private void AfterFleetAction(SpaceFleet fleet)
+    {
+        if (spaceMapWorldController == null) { RefreshFleetPanel(); return; }
+        spaceMapWorldController.RefreshTravelVisuals();
+        spaceMapWorldController.SelectFleet(fleet);
+    }
+
+    // ── Individual spacecraft ──
+
+    private void RefreshShipPanel()
+    {
+        var ship = selectedShip;
+        if (ship == null) return;
+        var fleet = SpaceMapSelectionInfo.GetFleetOf(ship);
+        selectedShipFleetId = fleet != null ? fleet.fleetId : -1;
+        bool playerShip = SpaceMapSelectionInfo.PlayerCivilization == null || SpaceMapSelectionInfo.IsPlayerOwned(ship.owner);
+        string unitName = SpaceMapSelectionInfo.UnitName(ship);
+        string fleetName = fleet == null ? "Independent" : string.IsNullOrEmpty(fleet.fleetName) ? $"Fleet {fleet.fleetId}" : fleet.fleetName;
+
+        if (shipNameText != null) shipNameText.text = unitName;
+        if (shipClassText != null) shipClassText.text = SpaceMapSelectionInfo.UnitClass(ship);
+        Sprite sprite = SpaceMapSelectionInfo.UnitIcon(ship);
+        if (shipIconImage != null) { shipIconImage.sprite = sprite; shipIconImage.enabled = sprite != null; }
+        if (shipIconFallbackText != null)
+        {
+            shipIconFallbackText.gameObject.SetActive(sprite == null);
+            shipIconFallbackText.text = unitName.Length > 0 ? unitName.Substring(0, 1).ToUpperInvariant() : "?";
+        }
+        if (shipSummaryText != null)
+            shipSummaryText.text = SpaceMapSelectionInfo.Label("Owner", SpaceMapSelectionInfo.CivilizationName(ship.owner)) + "\n"
+                + SpaceMapSelectionInfo.Label("Fleet", fleetName) + "\n"
+                + SpaceMapSelectionInfo.Label("Status", SpaceMapSelectionInfo.UnitStatus(ship));
+        if (shipHealthText != null) shipHealthText.text = SpaceMapSelectionInfo.Label("Health", $"{Mathf.Max(0, ship.currentHealth)}/{ship.MaxHealth}");
+        if (shipAttackText != null) shipAttackText.text = SpaceMapSelectionInfo.Label("Space Attack", ship.CurrentSpaceAttack.ToString());
+        if (shipDefenseText != null) shipDefenseText.text = SpaceMapSelectionInfo.Label("Defense", ship.CurrentDefense.ToString());
+        if (shipMovementText != null) shipMovementText.text = SpaceMapSelectionInfo.Label("Movement", $"{ship.currentSpaceMovementPoints}/{ship.spaceMovementPointsPerTurn}");
+        if (shipLocationText != null) shipLocationText.text = SpaceMapSelectionInfo.Label("Location", SpaceMapSelectionInfo.UnitLocation(ship));
+        // A foreign ship's planned route is not something the player has discovered.
+        if (shipRouteText != null) shipRouteText.text = SpaceMapSelectionInfo.Label("Route", playerShip ? SpaceMapSelectionInfo.UnitRoute(ship) : "Unknown");
+        if (shipAbilitiesText != null)
+            shipAbilitiesText.text = $"<color={SpaceMapSelectionInfo.LabelColor}>Abilities</color>\n{SpaceMapSelectionInfo.UnitAbilities(ship)}";
+        if (shipMissionsText != null)
+            shipMissionsText.text = $"<color={SpaceMapSelectionInfo.LabelColor}>Space Missions</color>\n{SpaceMapSelectionInfo.UnitMissions(ship)}";
+        if (shipFleetText != null)
+            shipFleetText.text = fleet != null ? $"<color={SpaceMapSelectionInfo.LabelColor}>Member of</color>\n{fleetName}" : "Independent spacecraft";
+        if (backToFleetButton != null) backToFleetButton.gameObject.SetActive(fleet != null);
+    }
+
+    private void OnBackToFleetClicked()
+    {
+        var fleet = SpaceMapSelectionInfo.FindFleet(selectedShipFleetId);
+        if (fleet == null || spaceMapWorldController == null) { RefreshActivePanel(); return; }
+        spaceMapWorldController.SelectFleet(fleet);
+    }
+
+    // ── Space infrastructure ──
+
+    private void RefreshInfrastructurePanel()
+    {
+        var world = SpaceWorldManager.Instance;
+        var state = world != null ? world.CurrentSystem : null;
+        var tile = state != null && state.grid != null ? state.grid.GetTile(selectedSectorTile) : null;
+        if (tile == null) { DropLostSelection(null); return; }
+
+        if (sectorTitleText != null) sectorTitleText.text = SpaceMapSelectionInfo.SectorName(tile.tileIndex);
+
+        int structureCount = 0;
+        if (state.improvements != null && structureCardTemplate != null && structureListContent != null)
+        {
+            foreach (var improvement in state.improvements)
+            {
+                if (improvement == null || improvement.spaceTileIndex != tile.tileIndex) continue;
+                GetStructureCard(structureCount).Bind(improvement);
+                structureCount++;
+            }
+        }
+        for (int i = 0; i < structureCards.Count; i++) structureCards[i].gameObject.SetActive(i < structureCount);
+        if (structureEmptyText != null) structureEmptyText.gameObject.SetActive(structureCount == 0);
+
+        int orderCount = 0;
+        text.Clear();
+        text.Append(SpaceMapSelectionInfo.Label("Sector", $"{tile.tileIndex} ({tile.q}, {tile.r})")).Append('\n');
+        text.Append(SpaceMapSelectionInfo.Label("Terrain", SpaceMapSelectionInfo.Nicify(tile.terrainType))).Append('\n');
+        text.Append(SpaceMapSelectionInfo.Label("Movement Cost", tile.blocksMovement ? "Impassable" : tile.movementCost.ToString())).Append('\n');
+        string controller = tile.controllingCivilizationId < 0 ? "Unclaimed" : SpaceMapSelectionInfo.CivilizationName(SpaceMapSelectionInfo.ResolveCivilization(tile.controllingCivilizationId));
+        text.Append(SpaceMapSelectionInfo.Label("Control", controller)).Append('\n');
+        if (tile.isPlanetOrbitSector)
+        {
+            var orbited = SpaceMapSelectionInfo.FindPlanetByBodyId(tile.associatedPlanetId);
+            text.Append(SpaceMapSelectionInfo.Label("Orbit Sector", orbited != null ? orbited.planetName : "Yes")).Append('\n');
+        }
+        if (tile.resource != null && !tile.resource.hidden && !string.IsNullOrEmpty(tile.resource.resourceId))
+            text.Append(SpaceMapSelectionInfo.Label("Resource", $"{SpaceMapSelectionInfo.Nicify(tile.resource.resourceId)} x{tile.resource.quantity}")).Append('\n');
+        if (tile.hazard != null && (!tile.hazard.hidden || tile.hazard.detected) && !string.IsNullOrEmpty(tile.hazard.hazardId))
+            text.Append(SpaceMapSelectionInfo.Label("Hazard", SpaceMapSelectionInfo.Nicify(tile.hazard.hazardId))).Append('\n');
+        AppendFeatures(tile);
+        if (state.constructionOrders != null)
+        {
+            foreach (var order in state.constructionOrders)
+            {
+                if (order == null || order.completed || order.targetTileIndex != tile.tileIndex) continue;
+                var data = SpaceImprovementRegistry.GetData(order.improvementDataId);
+                string orderName = data != null && !string.IsNullOrEmpty(data.displayName) ? data.displayName : order.improvementDataId;
+                text.Append(SpaceMapSelectionInfo.Label("Construction",
+                    $"{orderName} {order.accumulatedProduction}/{order.requiredProduction}{(order.paused ? ", paused" : string.Empty)}")).Append('\n');
+                orderCount++;
+            }
+        }
+        if (sectorInfoText != null) sectorInfoText.text = text.ToString().TrimEnd('\n');
+        if (sectorSummaryText != null)
+            sectorSummaryText.text = $"{structureCount} structure{(structureCount == 1 ? string.Empty : "s")}, {orderCount} construction order{(orderCount == 1 ? string.Empty : "s")} in this sector";
+    }
+
+    private void AppendFeatures(SpaceHexTile tile)
+    {
+        if (tile.featureInstanceIds == null || SpaceFeatureManager.Instance == null) return;
+        foreach (int id in tile.featureInstanceIds)
+        {
+            var feature = SpaceFeatureManager.Instance.GetFeature(id);
+            var data = feature != null ? SpaceFeatureManager.Instance.GetFeatureData(feature.featureDataId) : null;
+            if (!SpaceMapSelectionInfo.IsFeatureKnown(feature, data)) continue;
+            string featureName = data != null && !string.IsNullOrEmpty(data.displayName) ? data.displayName : feature.featureDataId;
+            text.Append(SpaceMapSelectionInfo.Label("Feature", featureName)).Append('\n');
+        }
+    }
+
+    private SpaceStructureCardView GetStructureCard(int index)
+    {
+        while (structureCards.Count <= index)
+        {
+            var card = Instantiate(structureCardTemplate, structureListContent);
+            card.name = $"Space Structure Card {structureCards.Count + 1}";
+            structureCards.Add(card);
+        }
+        return structureCards[index];
+    }
+
+    // ── Setup ──
+
+    private void WireButtons()
+    {
+        if (buttonsWired) return;
+        buttonsWired = true;
+        if (closeButton != null) closeButton.onClick.AddListener(Hide);
+        if (travelButton != null) travelButton.onClick.AddListener(() => { if (selectedPlanet != null) SwitchToPlanet(selectedPlanet); });
+        foreach (var button in new[] { cancelButton, fleetCloseButton, shipCloseButton, infrastructureCloseButton })
+            if (button != null) button.onClick.AddListener(ClearSelection);
+        if (fleetPackButton != null) fleetPackButton.onClick.AddListener(OnPackFleetClicked);
+        if (fleetDeployButton != null) fleetDeployButton.onClick.AddListener(OnDeployFleetClicked);
+        if (backToFleetButton != null) backToFleetButton.onClick.AddListener(OnBackToFleetClicked);
+        if (fleetRosterRowTemplate != null) fleetRosterRowTemplate.gameObject.SetActive(false);
+        if (structureCardTemplate != null) structureCardTemplate.gameObject.SetActive(false);
+    }
+
+    private void ClearSelection()
+    {
+        if (spaceMapWorldController != null) spaceMapWorldController.ClearSelection();
+        else ShowNoSelection();
     }
 
     private void ResolveAssignedReferences()
@@ -176,10 +600,13 @@ public class SpaceMapUI : MonoBehaviour
         if (spaceMapCanvas == null) Debug.LogWarning("[SpaceMapUI] Space Map Canvas is not assigned. Assign it in the Unity inspector.");
         if (spaceMapPanel == null) Debug.LogWarning("[SpaceMapUI] Space Map Panel is not assigned. Create the panel manually in Unity and assign it.");
         if (closeButton == null) Debug.LogWarning("[SpaceMapUI] Close Button is not assigned. Create it manually in Unity and assign it.");
-        if (planetInfoPanel == null) Debug.LogWarning("[SpaceMapUI] Planet/ship Info Panel is not assigned. Create it manually in Unity and assign it.");
+        if (planetInfoPanel == null) Debug.LogWarning("[SpaceMapUI] Planet Information panel is not assigned.");
+        if (fleetPanel == null) Debug.LogWarning("[SpaceMapUI] Fleet Overview panel is not assigned.");
+        if (shipPanel == null) Debug.LogWarning("[SpaceMapUI] Individual Spacecraft panel is not assigned.");
+        if (infrastructurePanel == null) Debug.LogWarning("[SpaceMapUI] Space Infrastructure panel is not assigned.");
         if (spaceMapWorldController == null) Debug.LogWarning("[SpaceMapUI] SpaceMapWorldController is not assigned. Add one to the scene and assign it.");
     }
     private void SetSpaceMapPanelBackgroundVisible(bool visible) { var img = spaceMapPanel != null ? spaceMapPanel.GetComponent<Image>() : null; if (img != null) img.enabled = visible; }
-    private void EnterSpaceMapMode() { spaceMapModeActive = true; ignoreCloseInputUntil = Time.unscaledTime + .15f; }
+    private void EnterSpaceMapMode() { spaceMapModeActive = true; ignoreCloseInputUntil = Time.unscaledTime + .15f; nextRefreshTime = 0f; }
     private void ExitSpaceMapMode() { spaceMapModeActive = false; }
 }

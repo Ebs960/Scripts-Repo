@@ -206,7 +206,7 @@ public class SpaceMissionManager : MonoBehaviour
                && unit.data.canInterceptSpaceMissions;
     }
 
-    private static bool SupportsMission(CombatUnitData data, bool isInOrbit, SpaceMissionKind missionKind)
+    public static bool SupportsMission(CombatUnitData data, bool isInOrbit, SpaceMissionKind missionKind)
     {
         bool isSpace = CombatUnitData.IsSpaceCategory(data.unitType) || isInOrbit;
         switch (missionKind)
