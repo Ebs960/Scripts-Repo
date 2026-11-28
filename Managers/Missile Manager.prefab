@@ -1777,7 +1777,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 2100000, guid: 438b867e02eb9da4fbf03864dcbd8bdf, type: 2}
+  m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -1785,7 +1785,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 6a020eecb62377b4a99d58cf0179ee75, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 02d1059d910b7a9449c4ededbadb62ad, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1820,6 +1820,10 @@ MonoBehaviour:
   nuclearWarningLabel: {fileID: 3358167746582419939}
   launchButton: {fileID: 4109469983198527962}
   launchButtonText: {fileID: 541955363489719998}
+  rowArtwork: {fileID: 21300000, guid: 6dcf81d3b4dddae489c6c088e7e46395, type: 3}
+  nuclearBadgeArtwork: {fileID: 21300000, guid: 24e9ac1317c35c84fba92d928a08d986, type: 3}
+  targetingBarArtwork: {fileID: 21300000, guid: 9326dea3a95c0244cbdf4753da00a9ee, type: 3}
+  buttonArtwork: {fileID: 21300000, guid: 190a7c821b0456a41b575b14ffc47acc, type: 3}
 --- !u!1 &5180766309138963540
 GameObject:
   m_ObjectHideFlags: 0
@@ -2227,7 +2231,7 @@ RectTransform:
   m_GameObject: {fileID: 5867787269629025297}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8189740865293864351}
@@ -2259,7 +2263,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 900
   m_TargetDisplay: 0
 --- !u!114 &5759489930687868333
 MonoBehaviour:
@@ -2273,10 +2277,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
-  m_UiScaleMode: 0
+  m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 0
   m_PhysicalUnit: 3
@@ -2410,6 +2414,7 @@ GameObject:
   - component: {fileID: 2918136111566646551}
   - component: {fileID: 2612022797932707836}
   - component: {fileID: 3184143803212841527}
+  - component: {fileID: 800000000000000001}
   m_Layer: 0
   m_Name: Missile Manager
   m_TagString: Untagged
@@ -2445,6 +2450,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63fc160c3d564cd449d20d4fae56c1fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MissileManager
+--- !u!114 &800000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6015381158646398002}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 174ba1a19d02fd145874cd338cd7dc91, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::MissileLaunchMode
+  rangeOverlayPrefab: {fileID: 0}
+  targetOverlayPrefab: {fileID: 0}
 --- !u!114 &3184143803212841527
 MonoBehaviour:
   m_ObjectHideFlags: 0

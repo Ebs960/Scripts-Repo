@@ -37,6 +37,11 @@ public class UnitInfoPanel : MonoBehaviour
     [SerializeField] private Button startBuildButton; // starts selected build option (optional)
     [SerializeField] private Button captureButton; // capture action for animals/workers
     [SerializeField] private Button upgradeButton; // upgrades selected combat unit to latest unlocked replacement
+    private Button missileButton;
+    [Header("Space Missions")]
+    [Tooltip("The three-command mission strip shown above this panel for a spacecraft positioned over this planet.")]
+    [SerializeField] private SpaceMissionBarView spaceMissionBarPrefab;
+    private SpaceMissionBarView spaceMissionBar;
     [Header("Orbit Controls")]
     [SerializeField] private TextMeshProUGUI orbitStatusText;
     [SerializeField] private Button enterOrbitButton;
@@ -96,6 +101,16 @@ public class UnitInfoPanel : MonoBehaviour
         AddTooltipToButton(forageButton, "Forage", "Forage resources from this tile if available.");
         EnsureUpgradeButton();
         EnsureOrbitButtons();
+        if (fortifyButton != null)
+        {
+            missileButton = CreateActionButton("Missiles", 200f);
+            if (missileButton != null)
+            {
+                var rect = missileButton.transform as RectTransform;
+                if (rect != null) rect.anchoredPosition = new Vector2(200f, 20f);
+                missileButton.onClick.AddListener(OpenUnitMissiles);
+            }
+        }
         if (fortifyButton != null)
             fortifyButton.onClick.AddListener(OnFortifyClicked);
         AddTooltipToButton(fortifyButton, "Fortify", "Fortify to gain defense and skip this unit's action.");
@@ -366,6 +381,7 @@ public class UnitInfoPanel : MonoBehaviour
         {
             nextStatusRefresh = Time.unscaledTime + 0.2f;
             RefreshUnitStatus();
+            RefreshMissileButton();
         }
     }
 
@@ -426,6 +442,8 @@ public class UnitInfoPanel : MonoBehaviour
 
     private void ClearPanelInfo()
     {
+        if (missileButton != null) missileButton.gameObject.SetActive(false);
+        if (spaceMissionBar != null) spaceMissionBar.Bind(null);
         statusUnit = null;
         displayedStatus = null;
         // Set all text fields to their default "empty" state and ensure they are visible
@@ -648,6 +666,7 @@ public class UnitInfoPanel : MonoBehaviour
     private void UpdateUnitInfoForCombatUnit()
     {
         if (currentCombatUnit == null) return;
+        RefreshMissileButton();
 
         // Ensure all relevant fields are visible
         if (unitNameText != null) unitNameText.gameObject.SetActive(true);
@@ -697,6 +716,8 @@ public class UnitInfoPanel : MonoBehaviour
 
     private void UpdateUnitInfoForWorkerUnit()
     {
+        if (missileButton != null) missileButton.gameObject.SetActive(false);
+        if (spaceMissionBar != null) spaceMissionBar.Bind(null);
         if (currentWorkerUnit == null) return;
 
         // Ensure common and worker-specific fields are visible, hide others
@@ -829,6 +850,47 @@ public class UnitInfoPanel : MonoBehaviour
 
         if (currentCombatUnit != null) UpdateUnitInfoForCombatUnit();
         else if (currentWorkerUnit != null) UpdateUnitInfoForWorkerUnit();
+    }
+
+    private void RefreshMissileButton()
+    {
+        RefreshSpaceMissionBar();
+        if (missileButton == null) return;
+        bool available = currentCombatUnit != null && currentCombatUnit.owner != null &&
+            currentCombatUnit.owner.isPlayerControlled && currentCombatUnit.data != null &&
+            currentCombatUnit.data.canStoreMissiles && currentCombatUnit.storedMissiles != null &&
+            currentCombatUnit.storedMissiles.Count > 0;
+        if (missileButton.gameObject.activeSelf != available) missileButton.gameObject.SetActive(available);
+    }
+
+    // Space missions resolve on this planet's tiles, so their commands sit beside the planet-view unit panel.
+    private void RefreshSpaceMissionBar()
+    {
+        bool commands = currentCombatUnit != null && currentCombatUnit.owner != null && currentCombatUnit.owner.isPlayerControlled;
+        if (spaceMissionBar == null)
+        {
+            if (!commands || spaceMissionBarPrefab == null || unitInfoPanel == null ||
+                !SpaceMissionTargetingMode.IsMissionPlatform(currentCombatUnit)) return;
+            spaceMissionBar = Instantiate(spaceMissionBarPrefab, unitInfoPanel.transform);
+            spaceMissionBar.name = "Space Mission Bar";
+            var rect = (RectTransform)spaceMissionBar.transform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 8f);
+            rect.sizeDelta = new Vector2(460f, 109f);
+            spaceMissionBar.MissionRequested += (unit, kind) => SpaceMissionTargetingMode.GetOrCreate().Begin(unit, kind);
+        }
+        spaceMissionBar.Bind(commands ? currentCombatUnit : null);
+    }
+
+    private void OpenUnitMissiles()
+    {
+        if (MissilePanelUI.Instance == null)
+        {
+            Debug.LogError("[UnitInfoPanel] Missile panel is missing.", this);
+            return;
+        }
+        MissilePanelUI.Instance.OpenForUnit(currentCombatUnit);
     }
 
     private void OnUnstackClicked()

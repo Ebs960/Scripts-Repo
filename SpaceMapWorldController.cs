@@ -36,25 +36,69 @@ public class SpaceMapWorldController : MonoBehaviour
     [SerializeField] private Color reachableColor = new Color(0f, 1f, 0.7f, 0.45f);
     [SerializeField] private Color blockedColor = new Color(1f, 0.15f, 0.1f, 0.35f);
 
+    [Header("Map Markers")]
+    [SerializeField] private Sprite shipMarkerSprite;
+    [SerializeField] private Sprite fleetMarkerSprite;
+    [SerializeField] private Sprite infrastructureMarkerSprite;
+    [Tooltip("Where the artwork sits inside each marker image, as a fraction of the image measured from its bottom-left corner. " +
+        "Markers are sized and clicked by this area, not by the transparent padding. Leave empty to measure it from the sprite mesh.")]
+    [SerializeField] private Rect shipMarkerArtArea;
+    [SerializeField] private Rect fleetMarkerArtArea;
+    [SerializeField] private Rect infrastructureMarkerArtArea;
+    [Tooltip("Visible marker widths as a fraction of the hex size.")]
+    [SerializeField] private float shipMarkerSize = 0.66f;
+    [SerializeField] private float fleetMarkerSize = 0.95f;
+    [Tooltip("An unpacked fleet's marker sits beside its ships, so it is drawn smaller than a packed formation.")]
+    [SerializeField] private float escortFleetMarkerSize = 0.4f;
+    [SerializeField] private float infrastructureMarkerSize = 0.36f;
+    [Tooltip("Width of a structure's own icon inside the marker's empty recess, as a fraction of the marker width.")]
+    [SerializeField] private float infrastructureIconSize = 0.37f;
+    [Tooltip("Markers grow when the camera zooms out so a ship never drops below this many screen pixels.")]
+    [SerializeField] private float minimumShipMarkerPixels = 26f;
+    [SerializeField] private float maximumMarkerZoomScale = 1.6f;
+
+    private const int InfrastructureSortingOrder = 10;
+    private const int EscortFleetSortingOrder = 20;
+    private const int ShipSortingOrder = 30;
+    private const float EntityCheckInterval = 0.5f;
+
+    private sealed class MapMarker
+    {
+        public Transform root;
+        public SpriteRenderer art;
+        public SpriteRenderer ring;
+        public Vector3 anchor;
+        public Vector3 offset;
+        public float height;
+        public float width;
+        public Rect visible;
+        public Color baseTint;
+    }
+
     public SpaceHexGrid Grid { get; private set; }
     private readonly Dictionary<int, SpaceMapPlanetMarker> markersByPlanet = new Dictionary<int, SpaceMapPlanetMarker>();
     private readonly Dictionary<int, GameObject> hexObjects = new Dictionary<int, GameObject>();
     private readonly Dictionary<Camera, int> hiddenGameplayCameraMasks = new Dictionary<Camera, int>();
-    private readonly Dictionary<int, Renderer> shipProxyRenderers = new Dictionary<int, Renderer>();
-    private readonly Dictionary<int, Renderer> fleetMarkerRenderers = new Dictionary<int, Renderer>();
-    private readonly Dictionary<int, GameObject> improvementMarkers = new Dictionary<int, GameObject>();
-    private int lastImprovementCount = -1;
+    private readonly Dictionary<int, MapMarker> shipMarkers = new Dictionary<int, MapMarker>();
+    private readonly Dictionary<int, MapMarker> fleetMarkers = new Dictionary<int, MapMarker>();
+    private readonly Dictionary<int, MapMarker> improvementMarkers = new Dictionary<int, MapMarker>();
+    private int lastImprovementSignature = int.MinValue;
+    private int lastEntitySignature = int.MinValue;
+    private float nextEntityCheck;
+    private float markerZoom = 1f;
     private readonly List<SpaceFleet> fleetBuffer = new List<SpaceFleet>();
-    private static readonly Color shipColor = new Color(0.8f, 0.85f, 0.9f, 1f);
-    private static readonly Color fleetColor = new Color(0.85f, 0.65f, 0.2f, 1f);
-    private static readonly Color fleetMemberColor = new Color(0.3f, 0.9f, 1f, 1f);
+    // Tints multiply the artwork, so the gold-and-navy marker stays recognizable in every state.
+    private static readonly Color foreignMarkerTint = new Color(1f, 0.7f, 0.68f, 1f);
+    private static readonly Color fleetMemberTint = new Color(0.62f, 0.95f, 1f, 1f);
     private static readonly Color selectedEntityColor = Color.yellow;
     private static readonly Color selectedSectorColor = new Color(1f, 0.8f, 0.2f, 0.55f);
+    private static readonly Color routeEndColor = Color.cyan;
     private BaseUnit selectedShip;
     private bool selectedShipIsInspection;
     private int selectedFleetId = -1;
     private int selectedPlanetIndex = -1;
     private int selectedSectorTile = -1;
+    private int selectedImprovementId = -1;
     private int pendingDestinationTile = -1;
     private List<int> pendingPath;
     private bool isVisible;
@@ -72,7 +116,15 @@ public class SpaceMapWorldController : MonoBehaviour
     {
         if (!isVisible) return;
         var structures = SpaceWorldManager.Instance?.CurrentSystem?.improvements;
-        if (structures != null && lastImprovementCount != structures.Count) RefreshImprovementMarkers(structures);
+        if (structures != null && lastImprovementSignature != GetImprovementSignature(structures)) RefreshImprovementMarkers(structures);
+        // Ships and fleets move, pack, deploy, and die outside this controller, so their markers are re-checked here.
+        if (Time.unscaledTime >= nextEntityCheck)
+        {
+            nextEntityCheck = Time.unscaledTime + EntityCheckInterval;
+            if (GetEntitySignature() != lastEntitySignature) RefreshTravelVisuals();
+        }
+        if (pendingPath != null && !IsPendingRouteValid()) CancelPendingRoute();
+        UpdateMarkerZoom(false);
         HandleSelectionInput();
     }
 
@@ -232,6 +284,7 @@ public class SpaceMapWorldController : MonoBehaviour
         ResetSelection();
         SelectionKind = SpaceMapSelectionKind.Improvement;
         selectedSectorTile = improvement.spaceTileIndex;
+        selectedImprovementId = improvement.instanceId;
         ApplySelectionVisuals();
         spaceMapUI?.SelectImprovement(improvement);
     }
@@ -262,8 +315,146 @@ public class SpaceMapWorldController : MonoBehaviour
         selectedFleetId = -1;
         selectedPlanetIndex = -1;
         selectedSectorTile = -1;
+        selectedImprovementId = -1;
         pendingDestinationTile = -1;
         pendingPath = null;
+    }
+
+    // ── Pending route (the destination preview shown before a movement order is committed) ──
+
+    public readonly struct RoutePreview
+    {
+        public readonly string entityName;
+        public readonly bool isFleet;
+        public readonly int destinationTile;
+        public readonly int hexes;
+        public readonly int cost;
+        public readonly int availablePoints;
+        public readonly int pointsPerTurn;
+
+        public RoutePreview(string entityName, bool isFleet, int destinationTile, int hexes, int cost, int availablePoints, int pointsPerTurn)
+        {
+            this.entityName = entityName; this.isFleet = isFleet; this.destinationTile = destinationTile;
+            this.hexes = hexes; this.cost = cost; this.availablePoints = availablePoints; this.pointsPerTurn = pointsPerTurn;
+        }
+    }
+
+    public bool HasPendingRoute => pendingPath != null;
+    public int PendingDestinationTile => pendingDestinationTile;
+
+    /// <summary>Describes the uncommitted route using the movement controller's own cost rules.</summary>
+    public bool TryGetPendingRoute(out RoutePreview preview)
+    {
+        preview = default;
+        if (!IsPendingRouteValid()) return false;
+        var movement = SpaceShipMovementController.Instance;
+        var fleet = GetOrderableFleet();
+        int hexes = pendingPath.Count - 1;
+        if (fleet != null)
+        {
+            if (!movement.TryGetPackedMembers(fleet, out var members, out _)) return false;
+            // A formation moves at the pace of its most constrained member.
+            int cost = 0, available = int.MaxValue, perTurn = int.MaxValue;
+            foreach (var member in members)
+            {
+                cost = Mathf.Max(cost, movement.GetRouteCost(member, pendingPath, 0));
+                available = Mathf.Min(available, member.currentSpaceMovementPoints);
+                perTurn = Mathf.Min(perTurn, member.spaceMovementPointsPerTurn);
+            }
+            string fleetName = string.IsNullOrEmpty(fleet.fleetName) ? $"Fleet {fleet.fleetId}" : fleet.fleetName;
+            preview = new RoutePreview(fleetName, true, pendingDestinationTile, hexes, cost, available, perTurn);
+            return true;
+        }
+        preview = new RoutePreview(SpaceMapSelectionInfo.UnitName(selectedShip), false, pendingDestinationTile, hexes,
+            movement.GetRouteCost(selectedShip, pendingPath, 0), selectedShip.currentSpaceMovementPoints, selectedShip.spaceMovementPointsPerTurn);
+        return true;
+    }
+
+    /// <summary>Commits the previewed route. Clicking the destination a second time and the Confirm button both end here.</summary>
+    public bool ConfirmPendingRoute()
+    {
+        if (pendingPath == null) return false;
+        if (!IsPendingRouteValid())
+        {
+            CancelPendingRoute();
+            UIManager.Instance?.ShowNotification("That route is no longer valid.");
+            return false;
+        }
+        ConfirmDestination(pendingDestinationTile);
+        return true;
+    }
+
+    /// <summary>Drops only the uncommitted preview. Routes that were already queued are left alone.</summary>
+    public void CancelPendingRoute()
+    {
+        if (pendingPath == null && pendingDestinationTile < 0) return;
+        pendingDestinationTile = -1;
+        pendingPath = null;
+        RefreshHexVisuals();
+        RefreshRouteVisuals();
+    }
+
+    private bool IsPendingRouteValid()
+    {
+        if (pendingPath == null || pendingPath.Count < 2 || Grid == null || SpaceShipMovementController.Instance == null) return false;
+        if (pendingPath[pendingPath.Count - 1] != pendingDestinationTile) return false;
+        var destination = Grid.GetTile(pendingDestinationTile);
+        if (destination == null || destination.blocksMovement) return false;
+        var fleet = GetOrderableFleet();
+        if (fleet != null) return pendingPath[0] == fleet.currentSpaceTileIndex;
+        return CanOrderSelectedShip() && pendingPath[0] == selectedShip.currentSpaceTileIndex;
+    }
+
+    // ── Selection state read by the UI ──
+
+    /// <summary>True for a living, player-owned ship picked on the map itself; roster inspection never qualifies.</summary>
+    public bool SelectedShipAcceptsCommands
+    {
+        get
+        {
+            var player = SpaceMapSelectionInfo.PlayerCivilization;
+            return SelectionKind == SpaceMapSelectionKind.Ship && SpaceMapSelectionInfo.IsAlive(selectedShip) &&
+                !selectedShipIsInspection && player != null && selectedShip.owner == player;
+        }
+    }
+
+    public Color SelectionColor => selectedSectorColor;
+    public Color ReachableColor => reachableColor;
+    public Color BlockedColor => blockedColor;
+    public Color RouteColor => routeEndColor;
+    public Color ForeignMarkerTint => foreignMarkerTint;
+    public Sprite ShipMarkerSprite => shipMarkerSprite;
+    public Sprite FleetMarkerSprite => fleetMarkerSprite;
+    public Sprite InfrastructureMarkerSprite => infrastructureMarkerSprite;
+
+    /// <summary>Called after the UI resolves a confirmed attack, so markers and the selection follow the outcome.</summary>
+    public void NotifyCombatResolved(BaseUnit attacker)
+    {
+        RefreshTravelVisuals();
+        if (SpaceMapSelectionInfo.IsAlive(attacker) && attacker.currentSpaceTileIndex >= 0 && !attacker.isPackedInSpaceFleet)
+            SelectShip(attacker);
+        else
+            ClearSelection();
+    }
+
+    // An attack is offered only for the player's own orderable ship against a hostile ship the combat rules accept.
+    private bool TryBeginAttack(BaseUnit clicked)
+    {
+        var combat = SpaceCombatManager.Instance;
+        var attacker = selectedShip as CombatUnit;
+        var target = clicked as CombatUnit;
+        var player = SpaceMapSelectionInfo.PlayerCivilization;
+        if (combat == null || spaceMapUI == null || attacker == null || target == null || target == attacker || attacker.data == null) return false;
+        if (player == null || attacker.owner != player || !CanOrderSelectedShip()) return false;
+        if (!AircraftMissionManager.IsHostile(attacker.owner, target.owner)) return false;
+        if (!combat.CanDirectAttack(attacker, target, out string reason))
+        {
+            if (attacker.data.canAttackSpace && attacker.data.canDirectlyAttackSpacecraft)
+                UIManager.Instance?.ShowNotification($"Cannot attack {SpaceMapSelectionInfo.UnitName(target)}: {reason}.");
+            return false;
+        }
+        CancelPendingRoute();
+        return spaceMapUI.ShowCombatPreview(attacker, target);
     }
 
     private void ApplySelectionVisuals()
@@ -297,16 +488,28 @@ public class SpaceMapWorldController : MonoBehaviour
         if (spaceMapCamera == null || Mouse.current == null) return;
         bool inspect = Mouse.current.rightButton.wasPressedThisFrame;
         if (!inspect && !Mouse.current.leftButton.wasPressedThisFrame) return;
+        // An open forecast or confirmation owns the click; it must never reach the map behind it.
+        if (ConfirmationDialogService.IsVisible || (spaceMapUI != null && spaceMapUI.BlocksMapInput)) return;
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
         Ray ray = spaceMapCamera.ScreenPointToRay(Mouse.current.position.ReadValue()); if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity)) return;
         var world = SpaceWorldManager.Instance;
         if (inspect)
         {
-            var view = hit.collider.GetComponentInParent<SpaceImprovementView>();
-            if (view != null && world != null && world.Entities.TryGetImprovement(view.entityId, out var structure))
-                SelectImprovement(structure);
-            else if (hit.collider.TryGetComponent<SpaceHexTileView>(out var sector))
-                SelectSector(sector.tileIndex);
+            // Markers float above their sector, so inspection looks past them to the structure or sector underneath.
+            foreach (var candidate in Physics.RaycastAll(ray, Mathf.Infinity).OrderBy(h => h.distance))
+            {
+                var view = candidate.collider.GetComponentInParent<SpaceImprovementView>();
+                if (view != null && world != null && world.Entities.TryGetImprovement(view.entityId, out var structure))
+                {
+                    SelectImprovement(structure);
+                    return;
+                }
+                if (candidate.collider.TryGetComponent<SpaceHexTileView>(out var sector))
+                {
+                    SelectSector(sector.tileIndex);
+                    return;
+                }
+            }
             return;
         }
         var fleetView = hit.collider.GetComponentInParent<SpaceFleetView>();
@@ -318,18 +521,22 @@ public class SpaceMapWorldController : MonoBehaviour
         }
         var shipView = hit.collider.GetComponentInParent<SpaceShipView>();
         var ship = shipView != null ? shipView.Unit : hit.collider.GetComponentInParent<BaseUnit>();
-        if (ship != null && ship.currentSpaceTileIndex >= 0 && !ship.isPackedInSpaceFleet) { SelectShip(ship); return; }
+        if (ship != null && ship.currentSpaceTileIndex >= 0 && !ship.isPackedInSpaceFleet)
+        {
+            if (!TryBeginAttack(ship)) SelectShip(ship);
+            return;
+        }
         var marker = hit.collider.GetComponentInParent<SpaceMapPlanetMarker>(); if (marker != null) { SelectPlanetMarker(marker); return; }
         var improvementView = hit.collider.GetComponentInParent<SpaceImprovementView>();
         if (improvementView != null && world != null && world.Entities.TryGetImprovement(improvementView.entityId, out var improvement))
         {
-            if (pendingDestinationTile == improvement.spaceTileIndex) ConfirmDestination(improvement.spaceTileIndex);
+            if (pendingDestinationTile == improvement.spaceTileIndex) ConfirmPendingRoute();
             else SelectImprovement(improvement);
             return;
         }
         var hex = hit.collider.GetComponent<SpaceHexTileView>();
         if (hex == null) return;
-        if (pendingDestinationTile == hex.tileIndex) { ConfirmDestination(hex.tileIndex); return; }
+        if (pendingDestinationTile == hex.tileIndex) { ConfirmPendingRoute(); return; }
         var fleet = GetOrderableFleet();
         bool shipOrder = CanOrderSelectedShip();
         if (!shipOrder && fleet == null) { SelectSector(hex.tileIndex); return; }
@@ -349,7 +556,6 @@ public class SpaceMapWorldController : MonoBehaviour
         RefreshHexVisuals();
         SetHexColor(hex.tileIndex, Color.yellow);
         RefreshRouteVisuals();
-        UIManager.Instance?.ShowNotification("Click again to confirm movement, or right-click to inspect a sector.");
     }
 
     private void ConfirmDestination(int tileIndex)
@@ -418,20 +624,21 @@ public class SpaceMapWorldController : MonoBehaviour
     private void RefreshShipVisuals()
     {
         ClearChildren(unitRoot);
-        shipProxyRenderers.Clear();
-        fleetMarkerRenderers.Clear();
+        shipMarkers.Clear();
+        fleetMarkers.Clear();
         if (Grid == null) return;
+        var player = SpaceMapSelectionInfo.PlayerCivilization;
         var deployedUnits = FindObjectsByType<BaseUnit>(FindObjectsInactive.Exclude)
             .Concat(UnitRegistry.GetCombatUnits()).Distinct();
         foreach (var unit in deployedUnits)
         {
             if (!SpaceMapSelectionInfo.IsAlive(unit) || Grid.GetTile(unit.currentSpaceTileIndex) == null || unit.isPackedInSpaceFleet) continue;
-            var proxy = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            proxy.name = $"SpaceShipView_{unit.gameObject.GetRuntimeId()}";
-            proxy.transform.SetParent(unitRoot, false);
-            proxy.transform.position = Grid.GetWorldPosition(unit.currentSpaceTileIndex) + Vector3.up * 1.2f;
-            proxy.AddComponent<SpaceShipView>().Initialize(unit);
-            shipProxyRenderers[unit.gameObject.GetRuntimeId()] = proxy.GetComponent<Renderer>();
+            int unitId = unit.gameObject.GetRuntimeId();
+            var marker = CreateMarker($"SpaceShipView_{unitId}", unitRoot, shipMarkerSprite, shipMarkerArtArea,
+                Grid.GetWorldPosition(unit.currentSpaceTileIndex), Vector3.zero, 1.2f, hexSize * shipMarkerSize, ShipSortingOrder);
+            marker.baseTint = player != null && unit.owner != player ? foreignMarkerTint : Color.white;
+            marker.root.gameObject.AddComponent<SpaceShipView>().Initialize(unit);
+            shipMarkers[unitId] = marker;
         }
 
         // Fleets get their own marker so they are selectable as fleets, including packed ones whose ships are inactive.
@@ -440,16 +647,16 @@ public class SpaceMapWorldController : MonoBehaviour
         {
             int tileIndex = GetFleetMarkerTile(fleet, out bool besideShips);
             if (Grid.GetTile(tileIndex) == null) continue;
-            var marker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            marker.name = $"SpaceFleetView_{fleet.fleetId}";
-            marker.transform.SetParent(unitRoot, false);
             Vector3 offset = besideShips ? new Vector3(hexSize * 0.45f, 0f, hexSize * 0.45f) : Vector3.zero;
-            marker.transform.position = Grid.GetWorldPosition(tileIndex) + offset + Vector3.up * 1.4f;
-            float diameter = hexSize * (besideShips ? 0.3f : 0.55f);
-            marker.transform.localScale = new Vector3(diameter, 0.2f, diameter);
-            marker.AddComponent<SpaceFleetView>().fleetId = fleet.fleetId;
-            fleetMarkerRenderers[fleet.fleetId] = marker.GetComponent<Renderer>();
+            var marker = CreateMarker($"SpaceFleetView_{fleet.fleetId}", unitRoot, fleetMarkerSprite, fleetMarkerArtArea,
+                Grid.GetWorldPosition(tileIndex), offset, 1.4f,
+                hexSize * (besideShips ? escortFleetMarkerSize : fleetMarkerSize),
+                besideShips ? EscortFleetSortingOrder : ShipSortingOrder);
+            marker.baseTint = player != null && SpaceMapSelectionInfo.GetFleetOwner(fleet) != player ? foreignMarkerTint : Color.white;
+            marker.root.gameObject.AddComponent<SpaceFleetView>().fleetId = fleet.fleetId;
+            fleetMarkers[fleet.fleetId] = marker;
         }
+        lastEntitySignature = GetEntitySignature();
         RefreshEntityHighlights();
     }
 
@@ -457,11 +664,15 @@ public class SpaceMapWorldController : MonoBehaviour
     {
         foreach (var marker in improvementMarkers.Values)
         {
-            marker.SetActive(false);
-            Destroy(marker);
+            if (marker.root == null) continue;
+            marker.root.gameObject.SetActive(false);
+            Destroy(marker.root.gameObject);
         }
         improvementMarkers.Clear();
-        lastImprovementCount = improvements.Count;
+        lastImprovementSignature = GetImprovementSignature(improvements);
+        if (Grid == null) return;
+        var player = SpaceMapSelectionInfo.PlayerCivilization;
+        int playerId = player != null ? player.gameObject.GetRuntimeId() : -1;
         var offsets = new Dictionary<int, int>();
         foreach (var improvement in improvements)
         {
@@ -469,16 +680,128 @@ public class SpaceMapWorldController : MonoBehaviour
             offsets.TryGetValue(improvement.spaceTileIndex, out int next);
             offsets[improvement.spaceTileIndex] = next + 1;
 
-            // The system map uses lightweight selection proxies for gameplay objects.
-            var marker = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            marker.name = $"SpaceImprovementView_{improvement.instanceId}";
-            marker.transform.SetParent(hexRoot, false);
+            // Structures sharing a sector are spread around its centre, one marker each.
             float angle = next * 60f * Mathf.Deg2Rad;
             Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (Grid.tileSize * 0.48f);
-            marker.transform.position = Grid.GetWorldPosition(improvement.spaceTileIndex) + offset + Vector3.up * 0.65f;
-            marker.transform.localScale = Vector3.one * (Grid.tileSize * 0.22f);
-            marker.AddComponent<SpaceImprovementView>().entityId = improvement.instanceId;
+            var marker = CreateMarker($"SpaceImprovementView_{improvement.instanceId}", hexRoot, infrastructureMarkerSprite, infrastructureMarkerArtArea,
+                Grid.GetWorldPosition(improvement.spaceTileIndex), offset, 0.65f, Grid.tileSize * infrastructureMarkerSize, InfrastructureSortingOrder);
+            marker.baseTint = player != null && improvement.ownerCivilizationId != playerId ? foreignMarkerTint : Color.white;
+            marker.root.gameObject.AddComponent<SpaceImprovementView>().entityId = improvement.instanceId;
+            AddStructureIcon(marker, SpaceImprovementRegistry.GetData(improvement.improvementDataId)?.icon);
             improvementMarkers.Add(improvement.instanceId, marker);
+        }
+        RefreshEntityHighlights();
+    }
+
+    // The universal base has an empty recess; each structure's own icon is placed in it at runtime.
+    private void AddStructureIcon(MapMarker marker, Sprite icon)
+    {
+        bool generic = icon == null;
+        if (generic) icon = SpaceMapMarkerArt.Fallback;
+        var iconObject = new GameObject("Structure Icon");
+        iconObject.transform.SetParent(marker.root, false);
+        iconObject.transform.localPosition = new Vector3(marker.visible.center.x, marker.visible.center.y, 0f);
+        var renderer = iconObject.AddComponent<SpriteRenderer>();
+        renderer.sprite = icon;
+        renderer.sortingOrder = InfrastructureSortingOrder + 1;
+        Rect iconRect = SpaceMapMarkerArt.GetVisibleRect(icon);
+        float target = marker.visible.width * infrastructureIconSize * (generic ? 0.5f : 1f);
+        iconObject.transform.localScale = Vector3.one * (target / Mathf.Max(0.0001f, Mathf.Max(iconRect.width, iconRect.height)));
+        iconObject.transform.localPosition -= new Vector3(iconRect.center.x, iconRect.center.y, 0f) * iconObject.transform.localScale.x;
+    }
+
+    /// <summary>
+    /// Builds one world-space marker: the sprite faces the map camera, keeps a collider the size of its
+    /// visible artwork for selection, and carries a hidden ring that is shown while it is selected.
+    /// </summary>
+    private MapMarker CreateMarker(string markerName, Transform parent, Sprite sprite, Rect artArea, Vector3 anchor, Vector3 offset, float height, float width, int sortingOrder)
+    {
+        if (sprite == null) { sprite = SpaceMapMarkerArt.Fallback; artArea = default; }
+        var go = new GameObject(markerName);
+        go.transform.SetParent(parent, false);
+        go.transform.rotation = spaceMapCamera != null ? spaceMapCamera.transform.rotation : Quaternion.Euler(90f, 0f, 0f);
+        var art = go.AddComponent<SpriteRenderer>();
+        art.sprite = sprite;
+        art.sortingOrder = sortingOrder;
+
+        Rect visible = SpaceMapMarkerArt.GetVisibleRect(sprite, artArea);
+        var selection = go.AddComponent<BoxCollider>();
+        selection.center = new Vector3(visible.center.x, visible.center.y, 0f);
+        selection.size = new Vector3(visible.width, visible.height, 0.05f);
+
+        var ringObject = new GameObject("Selection Ring");
+        ringObject.transform.SetParent(go.transform, false);
+        ringObject.transform.localPosition = new Vector3(visible.center.x, visible.center.y, 0f);
+        var ring = ringObject.AddComponent<SpriteRenderer>();
+        ring.sprite = SpaceMapMarkerArt.Ring;
+        ring.color = selectedEntityColor;
+        ring.sortingOrder = sortingOrder - 1;
+        ring.enabled = false;
+        ringObject.transform.localScale = Vector3.one * (Mathf.Max(visible.width, visible.height) * 1.24f / SpaceMapMarkerArt.Ring.bounds.size.x);
+
+        var marker = new MapMarker { root = go.transform, art = art, ring = ring, anchor = anchor, offset = offset, height = height, width = width, visible = visible, baseTint = Color.white };
+        LayoutMarker(marker);
+        return marker;
+    }
+
+    private void LayoutMarker(MapMarker marker)
+    {
+        if (marker.root == null) return;
+        float scale = marker.width * markerZoom / Mathf.Max(0.0001f, marker.visible.width);
+        marker.root.localScale = Vector3.one * scale;
+        // Centre the visible artwork, not the padded sprite rectangle, on the marker's position.
+        Vector3 centre = marker.anchor + marker.offset * markerZoom + Vector3.up * marker.height;
+        marker.root.position = centre - marker.root.rotation * new Vector3(marker.visible.center.x, marker.visible.center.y, 0f) * scale;
+    }
+
+    // Keeps markers readable when zoomed out without letting them outgrow their hexes when zoomed in.
+    private void UpdateMarkerZoom(bool force)
+    {
+        float zoom = 1f;
+        if (spaceMapCamera != null && spaceMapCamera.orthographic && Screen.height > 0)
+        {
+            float worldPerPixel = spaceMapCamera.orthographicSize * 2f / Screen.height;
+            float shipWidth = Mathf.Max(0.01f, hexSize * shipMarkerSize);
+            zoom = Mathf.Clamp(worldPerPixel * minimumShipMarkerPixels / shipWidth, 1f, Mathf.Max(1f, maximumMarkerZoomScale));
+        }
+        if (!force && Mathf.Abs(zoom - markerZoom) < 0.01f) return;
+        markerZoom = zoom;
+        foreach (var marker in shipMarkers.Values) LayoutMarker(marker);
+        foreach (var marker in fleetMarkers.Values) LayoutMarker(marker);
+        foreach (var marker in improvementMarkers.Values) LayoutMarker(marker);
+    }
+
+    private int GetEntitySignature()
+    {
+        unchecked
+        {
+            int hash = 17;
+            foreach (var unit in UnitRegistry.GetCombatUnits())
+            {
+                if (unit == null) continue;
+                hash = hash * 31 + unit.gameObject.GetRuntimeId();
+                hash = hash * 31 + unit.currentSpaceTileIndex;
+                hash = hash * 31 + (unit.isPackedInSpaceFleet ? 1 : 0) + (unit.currentHealth > 0 ? 2 : 0);
+            }
+            SpaceMapSelectionInfo.CollectFleets(fleetBuffer);
+            foreach (var fleet in fleetBuffer)
+            {
+                hash = hash * 31 + fleet.fleetId;
+                hash = hash * 31 + GetFleetMarkerTile(fleet, out bool besideShips);
+                hash = hash * 31 + (fleet.isPacked ? 1 : 0) + (besideShips ? 2 : 0);
+            }
+            return hash;
+        }
+    }
+
+    private static int GetImprovementSignature(List<SpaceImprovementInstance> improvements)
+    {
+        unchecked
+        {
+            int hash = improvements.Count;
+            foreach (var improvement in improvements)
+                if (improvement != null) hash = hash * 31 + improvement.instanceId * 7 + improvement.spaceTileIndex;
+            return hash;
         }
     }
 
@@ -501,25 +824,23 @@ public class SpaceMapWorldController : MonoBehaviour
     {
         var selectedFleet = SelectionKind == SpaceMapSelectionKind.Fleet ? SpaceMapSelectionInfo.FindFleet(selectedFleetId) : null;
         int selectedShipId = selectedShip != null ? selectedShip.gameObject.GetRuntimeId() : 0;
-        foreach (var pair in shipProxyRenderers)
+        foreach (var pair in shipMarkers)
         {
-            Color color = shipColor;
-            if (selectedShip != null && pair.Key == selectedShipId) color = selectedEntityColor;
-            else if (selectedFleet != null && selectedFleet.memberUnitIds != null && selectedFleet.memberUnitIds.Contains(pair.Key)) color = fleetMemberColor;
-            SetRendererColor(pair.Value, color);
+            bool selected = selectedShip != null && pair.Key == selectedShipId;
+            bool fleetMember = !selected && selectedFleet != null && selectedFleet.memberUnitIds != null && selectedFleet.memberUnitIds.Contains(pair.Key);
+            SetMarkerState(pair.Value, selected, fleetMember ? fleetMemberTint : pair.Value.baseTint);
         }
-        foreach (var pair in fleetMarkerRenderers)
-            SetRendererColor(pair.Value, selectedFleet != null && pair.Key == selectedFleetId ? selectedEntityColor : fleetColor);
+        foreach (var pair in fleetMarkers)
+            SetMarkerState(pair.Value, selectedFleet != null && pair.Key == selectedFleetId, pair.Value.baseTint);
+        foreach (var pair in improvementMarkers)
+            SetMarkerState(pair.Value, SelectionKind == SpaceMapSelectionKind.Improvement && pair.Key == selectedImprovementId, pair.Value.baseTint);
     }
 
-    private void SetRendererColor(Renderer renderer, Color color)
+    // Selection is shown by a ring around the marker, so the state never depends on recolouring the artwork.
+    private static void SetMarkerState(MapMarker marker, bool selected, Color tint)
     {
-        if (renderer == null) return;
-        colorProperties ??= new MaterialPropertyBlock();
-        renderer.GetPropertyBlock(colorProperties);
-        colorProperties.SetColor("_Color", color);
-        colorProperties.SetColor("_BaseColor", color);
-        renderer.SetPropertyBlock(colorProperties);
+        if (marker.art != null) marker.art.color = tint;
+        if (marker.ring != null) marker.ring.enabled = selected;
     }
 
     private void RefreshRouteVisuals()
@@ -547,7 +868,7 @@ public class SpaceMapWorldController : MonoBehaviour
         int firstPathIndex = Mathf.Clamp(cursor, 0, path.Count - 1);
         line.positionCount = path.Count - firstPathIndex;
         line.startColor = reachableColor;
-        line.endColor = Color.cyan;
+        line.endColor = routeEndColor;
         routeMaterial ??= new Material(Shader.Find("Sprites/Default"));
         line.sharedMaterial = routeMaterial;
         for (int i = firstPathIndex; i < path.Count; i++)
@@ -581,3 +902,56 @@ public class SpaceMapWorldController : MonoBehaviour
 }
 
 public class SpaceHexTileView : MonoBehaviour { public int tileIndex; }
+
+/// <summary>Small generated sprites the map markers share: the selection ring and a restrained generic symbol.</summary>
+public static class SpaceMapMarkerArt
+{
+    private static Sprite ring;
+    private static Sprite fallback;
+
+    public static Sprite Ring => ring != null ? ring : ring = Build("Space Map Selection Ring", 128, (x, y) =>
+    {
+        float distance = Mathf.Sqrt(x * x + y * y);
+        return Mathf.Clamp01(1f - Mathf.Abs(distance - 0.86f) / 0.07f);
+    }, Color.white);
+
+    /// <summary>Shown when a structure has no icon, or when a marker sprite was never assigned.</summary>
+    public static Sprite Fallback => fallback != null ? fallback : fallback = Build("Space Map Generic Symbol", 64, (x, y) =>
+        Mathf.Clamp01((0.8f - (Mathf.Abs(x) + Mathf.Abs(y))) / 0.08f), new Color(0.88f, 0.72f, 0.36f, 1f));
+
+    /// <summary>The sprite's opaque area in local units, so padding around the artwork never affects size or clicks.</summary>
+    public static Rect GetVisibleRect(Sprite sprite, Rect artArea = default)
+    {
+        if (artArea.width > 0f && artArea.height > 0f)
+        {
+            // The sprite's own rectangle in local units, then the stated share of it.
+            Vector2 size = sprite.rect.size / sprite.pixelsPerUnit;
+            Vector2 origin = -sprite.pivot / sprite.pixelsPerUnit;
+            return new Rect(origin.x + artArea.x * size.x, origin.y + artArea.y * size.y, artArea.width * size.x, artArea.height * size.y);
+        }
+        var vertices = sprite.vertices;
+        if (vertices == null || vertices.Length < 3)
+            return new Rect(sprite.bounds.min.x, sprite.bounds.min.y, sprite.bounds.size.x, sprite.bounds.size.y);
+        Vector2 min = vertices[0], max = vertices[0];
+        for (int i = 1; i < vertices.Length; i++) { min = Vector2.Min(min, vertices[i]); max = Vector2.Max(max, vertices[i]); }
+        return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+    }
+
+    private static Sprite Build(string spriteName, int size, System.Func<float, float, float> coverage, Color color)
+    {
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = spriteName, hideFlags = HideFlags.HideAndDontSave, wrapMode = TextureWrapMode.Clamp };
+        var pixels = new Color32[size * size];
+        for (int y = 0; y < size; y++)
+        for (int x = 0; x < size; x++)
+        {
+            float alpha = coverage((x + 0.5f) / size * 2f - 1f, (y + 0.5f) / size * 2f - 1f);
+            pixels[y * size + x] = new Color(color.r, color.g, color.b, alpha);
+        }
+        texture.SetPixels32(pixels);
+        texture.Apply(false, true);
+        var sprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+        sprite.name = spriteName;
+        sprite.hideFlags = HideFlags.HideAndDontSave;
+        return sprite;
+    }
+}

@@ -74,6 +74,10 @@ public class ImprovementUpgradeUI : MonoBehaviour
     [SerializeField] private Button manageSpecialistsButton;
     [SerializeField] private Button openCityStorageButton;
     [SerializeField] private Button dismantleButton;
+    private Button launchSiloMissileButton;
+    private RectTransform actionsRect;
+    private float actionsBaseHeight;
+    private float contentBaseBottom;
 
     [Header("Slide Settings")]
     [SerializeField] private float slideDuration = 0.18f;
@@ -126,6 +130,19 @@ public class ImprovementUpgradeUI : MonoBehaviour
         if (manageSpecialistsButton != null) manageSpecialistsButton.onClick.AddListener(OpenCitizenAssignment);
         if (openCityStorageButton != null) openCityStorageButton.onClick.AddListener(OpenCityStorage);
         if (dismantleButton != null) dismantleButton.onClick.AddListener(OnDismantleClicked);
+        if (openCityStorageButton != null)
+        {
+            launchSiloMissileButton = Instantiate(openCityStorageButton, openCityStorageButton.transform.parent, false);
+            launchSiloMissileButton.name = "Launch Silo Missile Button";
+            launchSiloMissileButton.onClick.RemoveAllListeners();
+            launchSiloMissileButton.onClick.AddListener(OpenSiloMissiles);
+            var label = launchSiloMissileButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (label != null) label.text = "Missiles";
+            launchSiloMissileButton.gameObject.SetActive(false);
+            actionsRect = launchSiloMissileButton.transform.parent as RectTransform;
+            if (actionsRect != null) actionsBaseHeight = actionsRect.rect.height;
+            if (contentScroll != null) contentBaseBottom = ((RectTransform)contentScroll.transform).offsetMin.y;
+        }
 
         if (upgradePanel != null && upgradePanel != gameObject)
         {
@@ -172,7 +189,9 @@ public class ImprovementUpgradeUI : MonoBehaviour
     {
         if (!IsVisible) return;
 
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame && !ConfirmationDialogService.IsVisible)
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame &&
+            !ConfirmationDialogService.IsVisible &&
+            (MissileLaunchMode.Instance == null || !MissileLaunchMode.Instance.BlocksMapInput))
         {
             HidePanel();
             return;
@@ -185,6 +204,16 @@ public class ImprovementUpgradeUI : MonoBehaviour
             return;
         }
 
+        if (launchSiloMissileButton != null && currentImprovement != null)
+        {
+            bool showMissiles = !constructionMode && currentImprovement.isMissileSilo &&
+                MissileManager.Instance != null && MissileManager.Instance.SiloHasMissiles(currentPlanetIndex, currentTileIndex);
+            if (launchSiloMissileButton.gameObject.activeSelf != showMissiles)
+            {
+                launchSiloMissileButton.gameObject.SetActive(showMissiles);
+                ResizeMissileActions();
+            }
+        }
         if (dirty) RefreshAll(false);
     }
 
@@ -1001,6 +1030,13 @@ public class ImprovementUpgradeUI : MonoBehaviour
     private void RefreshActions(ImprovementInstance instance, City city)
     {
         bool managing = !constructionMode;
+        if (launchSiloMissileButton != null)
+        {
+            bool showMissiles = managing && currentImprovement.isMissileSilo &&
+                MissileManager.Instance != null && MissileManager.Instance.SiloHasMissiles(currentPlanetIndex, currentTileIndex);
+            launchSiloMissileButton.gameObject.SetActive(showMissiles);
+            BindTooltip(launchSiloMissileButton, "Missiles", "Choose a missile stored in this silo.");
+        }
 
         if (manageLaborButton != null)
         {
@@ -1048,6 +1084,35 @@ public class ImprovementUpgradeUI : MonoBehaviour
             dismantleRefundText.gameObject.SetActive(showDismantle);
             dismantleRefundText.text = !showDismantle ? string.Empty : canDismantle ? "If dismantled\n" + refund : blockedReason;
         }
+        ResizeMissileActions();
+    }
+
+    private void ResizeMissileActions()
+    {
+        if (actionsRect == null || contentScroll == null) return;
+        var grid = actionsRect.GetComponent<GridLayoutGroup>();
+        if (grid == null || grid.constraintCount <= 0) return;
+        int activeCount = 0;
+        foreach (Transform child in actionsRect)
+            if (child.gameObject.activeSelf) activeCount++;
+        int rows = Mathf.CeilToInt((float)activeCount / grid.constraintCount);
+        float needed = grid.padding.vertical + rows * grid.cellSize.y + Mathf.Max(0, rows - 1) * grid.spacing.y;
+        float extra = Mathf.Max(0, needed - actionsBaseHeight);
+        actionsRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, actionsBaseHeight + extra);
+        var scrollRect = (RectTransform)contentScroll.transform;
+        var offset = scrollRect.offsetMin;
+        offset.y = contentBaseBottom + extra;
+        scrollRect.offsetMin = offset;
+    }
+
+    private void OpenSiloMissiles()
+    {
+        if (MissilePanelUI.Instance == null)
+        {
+            Debug.LogError("[ImprovementUpgradeUI] Missile panel is missing.", this);
+            return;
+        }
+        MissilePanelUI.Instance.OpenForSilo(currentTileIndex, currentPlanetIndex);
     }
 
     private static string BuildDismantleRefundText(ImprovementData improvement)

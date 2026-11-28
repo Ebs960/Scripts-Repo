@@ -80,10 +80,46 @@ public class SpaceMapUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI sectorSummaryText;
     [SerializeField] private Button infrastructureCloseButton;
 
+    [Header("Navigation Bar")]
+    [SerializeField] private GameObject navigationBar;
+    [SerializeField] private TextMeshProUGUI navigationEntityText;
+    [SerializeField] private TextMeshProUGUI navigationRouteText;
+    [SerializeField] private TextMeshProUGUI navigationDestinationText;
+    [SerializeField] private Button navigationConfirmButton;
+    [SerializeField] private Button navigationCancelButton;
+
+    [Header("Map Legend")]
+    [SerializeField] private Button legendToggleButton;
+    [SerializeField] private GameObject legendPanel;
+    [SerializeField] private Button legendCollapseButton;
+    [SerializeField] private Image legendSelectionSwatch;
+    [SerializeField] private Image legendReachableSwatch;
+    [SerializeField] private Image legendBlockedSwatch;
+    [SerializeField] private Image legendRouteSwatch;
+    [SerializeField] private Image legendForeignSwatch;
+
+    [Header("Space Missions")]
+    [SerializeField] private SpaceMissionBarView missionBarPrefab;
+    [Tooltip("Where the mission strip is placed, directly below the spacecraft card.")]
+    [SerializeField] private RectTransform missionBarAnchor;
+
+    [Header("Combat Forecast")]
+    [SerializeField] private SpaceCombatPreviewPanel combatPreviewPanel;
+
     [Header("World-Space Space Map")]
     [SerializeField] private SpaceMapWorldController spaceMapWorldController;
 
     private const float RefreshInterval = 0.25f;
+
+    /// <summary>True while any space map is open. Other Escape handlers use this to stay out of the way.</summary>
+    public static bool AnyVisible { get; private set; }
+    /// <summary>The frame in which the space map last consumed Escape, including the frame it closed on.</summary>
+    public static int EscapeHandledFrame { get; private set; } = -1;
+
+    private SpaceMissionBarView missionBar;
+    private CombatUnit combatAttacker;
+    private CombatUnit combatTarget;
+    private int shownRouteDestination = -1;
 
     private SpaceMapSelectionKind activeKind = SpaceMapSelectionKind.None;
     private GameManager.PlanetData selectedPlanet;
@@ -117,15 +153,26 @@ public class SpaceMapUI : MonoBehaviour
     private void Update()
     {
         if (!spaceMapModeActive) return;
-        if (Time.unscaledTime >= nextRefreshTime)
+        bool tick = Time.unscaledTime >= nextRefreshTime;
+        if (tick)
         {
             nextRefreshTime = Time.unscaledTime + RefreshInterval;
             RefreshActivePanel();
+            ValidateCombatPreview();
         }
-        if (Time.unscaledTime < ignoreCloseInputUntil) return;
-        bool keyboardClose = Keyboard.current != null && (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.mKey.wasPressedThisFrame);
-        bool gamepadClose = Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame;
-        if (keyboardClose || gamepadClose) Hide();
+        RefreshNavigationBar(tick);
+        if (Time.unscaledTime < ignoreCloseInputUntil || ConfirmationDialogService.IsVisible) return;
+        bool back = (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) ||
+            (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame);
+        if (back)
+        {
+            // Back out of the innermost interaction first; only an idle map closes.
+            EscapeHandledFrame = Time.frameCount;
+            if (CloseCombatPreview()) return;
+            if (spaceMapWorldController != null && spaceMapWorldController.HasPendingRoute) { spaceMapWorldController.CancelPendingRoute(); return; }
+            Hide();
+        }
+        else if (Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame) Hide();
     }
 
     public void Show()
@@ -134,18 +181,30 @@ public class SpaceMapUI : MonoBehaviour
         EnterSpaceMapMode(); SetSpaceMapPanelBackgroundVisible(false);
         WorldViewContext.GetOrCreate().SetStarSystemViewActive(true);
         ShowNoSelection();
+        ResetOverlays();
         if (spaceMapWorldController != null)
             spaceMapWorldController.ShowMap(this);
         else
             Debug.LogError("[SpaceMapUI] Cannot show space map because SpaceMapWorldController is not assigned.");
+        ApplyLegendColors();
     }
 
     public void Hide()
     {
+        ResetOverlays();
         if (spaceMapWorldController != null) spaceMapWorldController.HideMap(); ExitSpaceMapMode();
         ShowNoSelection();
         if (spaceMapCanvas != null) spaceMapCanvas.gameObject.SetActive(false); else gameObject.SetActive(false);
         WorldViewContext.GetOrCreate().SetStarSystemViewActive(false);
+    }
+
+    // Temporary, uncommitted UI never outlives the map: forecasts, route previews, and the open legend all reset.
+    private void ResetOverlays()
+    {
+        CloseCombatPreview();
+        SetLegendExpanded(false);
+        shownRouteDestination = -1;
+        if (navigationBar != null) navigationBar.SetActive(false);
     }
 
     public void TestCloseButton() => Hide();
@@ -212,6 +271,7 @@ public class SpaceMapUI : MonoBehaviour
 
     private void ClearSelectionState()
     {
+        CloseCombatPreview();
         selectedImprovementId = -1;
         constructionMessage = null;
         selectedPlanet = null;
@@ -229,6 +289,166 @@ public class SpaceMapUI : MonoBehaviour
         if (fleetPanel != null) fleetPanel.SetActive(kind == SpaceMapSelectionKind.Fleet);
         if (shipPanel != null) shipPanel.SetActive(kind == SpaceMapSelectionKind.Ship);
         if (infrastructurePanel != null) infrastructurePanel.SetActive(kind == SpaceMapSelectionKind.Sector || kind == SpaceMapSelectionKind.Improvement);
+        if (kind != SpaceMapSelectionKind.Ship && missionBar != null) missionBar.Bind(null);
+    }
+
+    // ── Navigation bar (the uncommitted route preview owned by the world controller) ──
+
+    private void RefreshNavigationBar(bool tick)
+    {
+        if (navigationBar == null) return;
+        bool pending = spaceMapWorldController != null && spaceMapWorldController.HasPendingRoute && !IsCombatPreviewOpen;
+        if (!pending)
+        {
+            shownRouteDestination = -1;
+            if (navigationBar.activeSelf) navigationBar.SetActive(false);
+            return;
+        }
+        // Movement points and costs can change under the preview, so the text is rebuilt on the regular refresh too.
+        if (navigationBar.activeSelf && spaceMapWorldController.PendingDestinationTile == shownRouteDestination && !tick) return;
+        if (!spaceMapWorldController.TryGetPendingRoute(out var route))
+        {
+            shownRouteDestination = -1;
+            if (navigationBar.activeSelf) navigationBar.SetActive(false);
+            return;
+        }
+        shownRouteDestination = route.destinationTile;
+
+        if (navigationEntityText != null)
+            navigationEntityText.text = $"<color={SpaceMapSelectionInfo.LabelColor}>{(route.isFleet ? "Fleet" : "Spacecraft")}</color>\n{route.entityName}";
+        if (navigationDestinationText != null)
+            navigationDestinationText.text = $"<color={SpaceMapSelectionInfo.LabelColor}>Destination</color>\n{SpaceMapSelectionInfo.SectorName(route.destinationTile)}";
+        if (navigationRouteText != null)
+        {
+            string status = route.cost <= route.availablePoints
+                ? "Reachable this turn."
+                : "Beyond this turn's movement; the route continues on later turns.";
+            navigationRouteText.text =
+                $"{SpaceMapSelectionInfo.Label("Route", $"{route.hexes} hex{(route.hexes == 1 ? string.Empty : "es")}")}   " +
+                $"{SpaceMapSelectionInfo.Label("Cost", $"{route.cost} movement")}   " +
+                $"{SpaceMapSelectionInfo.Label("Available", $"{route.availablePoints}/{route.pointsPerTurn}")}\n" +
+                $"{status} Confirm, or click the destination again.";
+        }
+        if (!navigationBar.activeSelf) navigationBar.SetActive(true);
+    }
+
+    private void OnNavigationConfirmClicked()
+    {
+        if (spaceMapWorldController != null) spaceMapWorldController.ConfirmPendingRoute();
+        RefreshNavigationBar(true);
+    }
+
+    private void OnNavigationCancelClicked()
+    {
+        if (spaceMapWorldController != null) spaceMapWorldController.CancelPendingRoute();
+        RefreshNavigationBar(true);
+    }
+
+    // ── Map legend ──
+
+    private void SetLegendExpanded(bool expanded)
+    {
+        if (legendPanel != null && legendPanel.activeSelf != expanded) legendPanel.SetActive(expanded);
+    }
+
+    // Swatches take the colours the map is really drawing with, so the legend cannot drift from the map.
+    private void ApplyLegendColors()
+    {
+        if (spaceMapWorldController == null) return;
+        SetSwatch(legendSelectionSwatch, spaceMapWorldController.SelectionColor);
+        SetSwatch(legendReachableSwatch, spaceMapWorldController.ReachableColor);
+        SetSwatch(legendBlockedSwatch, spaceMapWorldController.BlockedColor);
+        SetSwatch(legendRouteSwatch, spaceMapWorldController.RouteColor);
+        SetSwatch(legendForeignSwatch, spaceMapWorldController.ForeignMarkerTint);
+    }
+
+    private static void SetSwatch(Image swatch, Color color)
+    {
+        if (swatch == null) return;
+        color.a = 1f;
+        swatch.color = color;
+    }
+
+    // ── Space missions ──
+
+    private void BindMissionBar(BaseUnit ship)
+    {
+        if (missionBar == null)
+        {
+            if (missionBarPrefab == null || missionBarAnchor == null) return;
+            missionBar = Instantiate(missionBarPrefab, missionBarAnchor);
+            missionBar.name = "Space Mission Bar";
+            var rect = (RectTransform)missionBar.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            missionBar.MissionRequested += OnMissionRequested;
+        }
+        // Commands are for the player's own ship picked on the map; enemy ships and roster inspection get no strip.
+        bool commands = spaceMapWorldController != null && spaceMapWorldController.SelectedShipAcceptsCommands;
+        missionBar.Bind(commands ? ship as CombatUnit : null);
+    }
+
+    private void OnMissionRequested(CombatUnit spacecraft, SpaceMissionKind kind)
+    {
+        // Missions resolve on the tiles of the planet the spacecraft is over, so the target is picked on
+        // that planet's map rather than on a space sector.
+        Hide();
+        if (UnitSelectionManager.Instance != null) UnitSelectionManager.Instance.SelectUnit(spacecraft);
+        SpaceMissionTargetingMode.GetOrCreate().Begin(spacecraft, kind);
+    }
+
+    // ── Combat forecast ──
+
+    /// <summary>True while a modal overlay owns input, so the world controller ignores map clicks.</summary>
+    public bool BlocksMapInput => IsCombatPreviewOpen;
+    private bool IsCombatPreviewOpen => combatPreviewPanel != null && combatPreviewPanel.IsOpen;
+
+    /// <summary>Opens the forecast for an attack the combat rules already accepted. Nothing is resolved until Confirm.</summary>
+    public bool ShowCombatPreview(CombatUnit attacker, CombatUnit target)
+    {
+        var combat = SpaceCombatManager.Instance;
+        if (combat == null || combatPreviewPanel == null || !combatPreviewPanel.IsConfigured) return false;
+        SpaceCombatPreview preview = combat.BuildPreview(attacker, target);
+        if (preview.affectedUnits.Count == 0) return false;
+        combatAttacker = attacker;
+        combatTarget = target;
+        combatPreviewPanel.Show(attacker, target, preview, ConfirmAttack, () => CloseCombatPreview());
+        return true;
+    }
+
+    private bool CloseCombatPreview()
+    {
+        if (!IsCombatPreviewOpen) return false;
+        combatPreviewPanel.Hide();
+        combatAttacker = null;
+        combatTarget = null;
+        return true;
+    }
+
+    private void ConfirmAttack()
+    {
+        var attacker = combatAttacker;
+        var target = combatTarget;
+        CloseCombatPreview();
+        var combat = SpaceCombatManager.Instance;
+        if (combat == null || attacker == null || target == null) return;
+        if (!combat.ResolveDirectAttack(attacker, target, out string reason))
+            UIManager.Instance?.ShowNotification($"Attack cancelled: {reason}.");
+        if (spaceMapWorldController != null) spaceMapWorldController.NotifyCombatResolved(attacker);
+        else RefreshActivePanel();
+    }
+
+    // A forecast is closed as soon as the combat rules would no longer allow the attack it describes.
+    private void ValidateCombatPreview()
+    {
+        if (!IsCombatPreviewOpen) return;
+        var combat = SpaceCombatManager.Instance;
+        if (combat != null && SpaceMapSelectionInfo.IsAlive(combatAttacker) && SpaceMapSelectionInfo.IsAlive(combatTarget) &&
+            combat.CanDirectAttack(combatAttacker, combatTarget, out _)) return;
+        CloseCombatPreview();
+        UIManager.Instance?.ShowNotification("That attack is no longer possible.");
     }
 
     // Re-reads live data and drops selections whose entity no longer exists.
@@ -514,6 +734,7 @@ public class SpaceMapUI : MonoBehaviour
         if (shipFleetText != null)
             shipFleetText.text = fleet != null ? $"<color={SpaceMapSelectionInfo.LabelColor}>Member of</color>\n{fleetName}" : "Independent spacecraft";
         if (backToFleetButton != null) backToFleetButton.gameObject.SetActive(fleet != null);
+        BindMissionBar(ship);
     }
 
     private void OnBackToFleetClicked()
@@ -689,6 +910,10 @@ public class SpaceMapUI : MonoBehaviour
         if (fleetPackButton != null) fleetPackButton.onClick.AddListener(OnPackFleetClicked);
         if (fleetDeployButton != null) fleetDeployButton.onClick.AddListener(OnDeployFleetClicked);
         if (backToFleetButton != null) backToFleetButton.onClick.AddListener(OnBackToFleetClicked);
+        if (navigationConfirmButton != null) navigationConfirmButton.onClick.AddListener(OnNavigationConfirmClicked);
+        if (navigationCancelButton != null) navigationCancelButton.onClick.AddListener(OnNavigationCancelClicked);
+        if (legendToggleButton != null) legendToggleButton.onClick.AddListener(() => SetLegendExpanded(legendPanel != null && !legendPanel.activeSelf));
+        if (legendCollapseButton != null) legendCollapseButton.onClick.AddListener(() => SetLegendExpanded(false));
         if (fleetRosterRowTemplate != null) fleetRosterRowTemplate.gameObject.SetActive(false);
         if (structureCardTemplate != null) structureCardTemplate.gameObject.SetActive(false);
     }
@@ -718,6 +943,7 @@ public class SpaceMapUI : MonoBehaviour
         if (spaceMapWorldController == null) Debug.LogWarning("[SpaceMapUI] SpaceMapWorldController is not assigned. Add one to the scene and assign it.");
     }
     private void SetSpaceMapPanelBackgroundVisible(bool visible) { var img = spaceMapPanel != null ? spaceMapPanel.GetComponent<Image>() : null; if (img != null) img.enabled = visible; }
-    private void EnterSpaceMapMode() { spaceMapModeActive = true; ignoreCloseInputUntil = Time.unscaledTime + .15f; nextRefreshTime = 0f; }
-    private void ExitSpaceMapMode() { spaceMapModeActive = false; }
+    private void EnterSpaceMapMode() { spaceMapModeActive = true; AnyVisible = true; ignoreCloseInputUntil = Time.unscaledTime + .15f; nextRefreshTime = 0f; }
+    private void ExitSpaceMapMode() { if (spaceMapModeActive) AnyVisible = false; spaceMapModeActive = false; }
+    private void OnDestroy() { if (spaceMapModeActive) AnyVisible = false; }
 }

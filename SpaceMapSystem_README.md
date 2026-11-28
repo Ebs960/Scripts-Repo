@@ -134,7 +134,7 @@ planet, a fleet, a single spacecraft, or a space sector, and tells `SpaceMapUI` 
 - Roster rows resolve members from `SpaceFleet.memberUnitIds` through `UnitRegistry` on every
   refresh. A missing or destroyed member shows as such and cannot be opened.
 - Opening a ship from the roster is inspection only: it stays in its fleet and cannot be given a
-  movement order. Movement orders (click a sector twice) apply only to a player-owned ship that
+  movement order. Movement orders (pick a sector, then Confirm or click it again) apply only to a
   was selected directly on the map. Spacecraft use their remaining movement points; queued paths
   resume when their civilization starts its next turn. Packed members cannot receive ship orders.
 - Back to Fleet appears only when the ship's fleet also lists it as a member, and returns to that
@@ -148,6 +148,44 @@ planet, a fleet, a single spacecraft, or a space sector, and tells `SpaceMapUI` 
   sector no longer exists. Closing the map clears the selection.
 
 All display text is produced by `SpaceMapSelectionInfo`, which reads live objects and stores nothing.
+
+## Map Markers, Navigation, Missions, and Combat
+
+Artwork for everything below lives in `UI/Space UI`. All of it is decorative; text, buttons, and
+highlights are real Unity UI or world objects.
+
+| Feature | Where it lives | Artwork |
+| --- | --- | --- |
+| Ship, fleet, and structure markers | Built by `SpaceMapWorldController` | Ship Marker Icon, Fleet Marker Icon, Infrastructure Marker Icon |
+| Navigation bar | `Navigation Bar` in `Space Map UI.prefab` | Route Confirmation Row |
+| Map legend | `Legend Toggle Button` and `Map Legend Panel` | Space Map Legend |
+| Combat forecast | `Combat Forecast` (`SpaceCombatPreviewPanel`) | Combat Preview Shell |
+| Mission strip | `Space Mission Bar.prefab` (`SpaceMissionBarView`) | Mission Bar |
+| Interplanetary travel | `Managers/Space Embark Canvas.prefab` (`SpaceEmbarkUI`) | Embarkation Panel Shell |
+
+- **Markers** are world-space sprites facing the map camera, each with a collider the size of its
+  visible artwork and the same `SpaceShipView`, `SpaceFleetView`, or `SpaceImprovementView` as
+  before. A selected marker gets a ring; ships of a selected fleet and other civilizations' markers
+  are tinted, never recoloured flat. A structure's own `SpaceImprovementData.icon` is drawn in the
+  infrastructure marker's empty recess, with a small generic symbol when it has none. Markers are
+  rebuilt when a ship or fleet moves, packs, deploys, or dies, and grow slightly when zoomed out.
+- **Navigation bar**: choosing a destination previews the route and shows the bar with the route
+  length, movement cost, and available movement from `SpaceShipMovementController`. Confirm and a
+  second click on the destination both call `ConfirmPendingRoute`; Cancel only drops the preview.
+- **Legend**: collapsed by default. Its swatches are coloured at runtime from the controller's own
+  colours.
+- **Combat forecast**: with one of your ships selected, clicking a hostile ship that
+  `SpaceCombatManager.CanDirectAttack` accepts opens the forecast from `BuildPreview`. Confirm calls
+  `ResolveDirectAttack` once; Cancel closes it. While it is open the map ignores clicks.
+- **Missions**: `SpaceMissionManager` resolves missions on the tiles of the planet a spacecraft is
+  positioned over, so targets are planetary tile indices, never space sectors. The strip therefore
+  appears in two places. On the space map it sits under the spacecraft card and shows real
+  availability; a ship in open space has no planetary tile, so its commands are disabled with the
+  reason. On the planet view it sits above the unit panel for a spacecraft at that planet: choosing a
+  mission starts `SpaceMissionTargetingMode`, a right-click on a tile is checked with
+  `CanLaunchMission`, and `LaunchMission` runs only after the confirmation dialog.
+- **Escape** backs out one step at a time: the combat forecast, then a pending route, then the map.
+  The pause menu ignores Escape while the map or mission targeting is handling it.
 
 ## Events
 The system provides events for integration:

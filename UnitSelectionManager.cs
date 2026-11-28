@@ -235,8 +235,15 @@ public class UnitSelectionManager : MonoBehaviour
         ClearAttackHover();
     }
 
+    // Missile and space-mission targeting own map clicks while they are active.
+    private static bool TargetingModeBlocksInput =>
+        (MissileLaunchMode.Instance != null && MissileLaunchMode.Instance.BlocksMapInput) ||
+        (SpaceMissionTargetingMode.Instance != null && SpaceMissionTargetingMode.Instance.BlocksMapInput);
+
     private bool OnTileClickedTileSystem(int tileIndex, Vector3 worldPos)
     {
+        if (TargetingModeBlocksInput)
+            return true;
         if (TransportUIManager.Instance != null && TransportUIManager.Instance.TryHandleTileClick(tileIndex))
             return true;
         // Left-click selection is routed via TileSystem; select/deselect units here.
@@ -428,6 +435,16 @@ public class UnitSelectionManager : MonoBehaviour
     /// </summary>
     private void HandleInput()
     {
+        if (TargetingModeBlocksInput)
+        {
+            if (isPreviewing)
+            {
+                isPreviewing = false;
+                ClearPreviewVisuals();
+            }
+            return;
+        }
+
         if (GameInteractionStateService.GetOrCreate().Mode != GameInteractionMode.Campaign)
             return;
 
@@ -1383,7 +1400,8 @@ public class UnitSelectionManager : MonoBehaviour
     /// </summary>
     public void SelectUnit(BaseUnit unit)
     {
-        if (unit == null || (TransportUIManager.Instance != null && TransportUIManager.Instance.BlocksUnitSelection))
+        if (unit == null || (TargetingModeBlocksInput) ||
+            (TransportUIManager.Instance != null && TransportUIManager.Instance.BlocksUnitSelection))
             return;
         
         // Deselect previous unit

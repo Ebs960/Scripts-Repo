@@ -488,7 +488,10 @@ public class PauseMenuManager : MonoBehaviour
             || !canTogglePause || Instance != this)
             return;
 
-        if (ConfirmationDialogService.IsVisible)
+        if (ConfirmationDialogService.IsVisible ||
+            (MissileLaunchMode.Instance != null && MissileLaunchMode.Instance.BlocksMapInput) ||
+            (SpaceMissionTargetingMode.Instance != null && SpaceMissionTargetingMode.Instance.BlocksMapInput) ||
+            SpaceMapUI.AnyVisible || SpaceMapUI.EscapeHandledFrame == Time.frameCount)
             return;
         if (SaveLoadMenuUI.IsVisible)
         {

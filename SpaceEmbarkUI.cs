@@ -28,6 +28,9 @@ public class SpaceEmbarkUI : MonoBehaviour
     [Tooltip("Panel containing this embark UI (for show/hide)")]
     public GameObject embarkPanel;
 
+    [Tooltip("Unit class, current planet, and location, shown under the unit name")]
+    [SerializeField] private TextMeshProUGUI unitDetailText;
+
     [Header("Configuration")]
     [Tooltip("Only show planets that are explored/colonized")]
     public bool onlyShowKnownPlanets = true;
@@ -36,25 +39,38 @@ public class SpaceEmbarkUI : MonoBehaviour
     private GameObject selectedUnit;
     private int currentPlanetIndex;
     private float nextRefresh;
+    private bool initialized;
+    private bool showing;
 
     private void Awake()
     {
+        Initialize();
+        // This component sits on the panel it hides, so Awake can run while the panel is being opened.
+        if (!showing) HideEmbarkUI();
+    }
+
+    private void Initialize()
+    {
+        if (initialized) return;
+        initialized = true;
         if (embarkButton != null) embarkButton.onClick.AddListener(OnEmbarkButtonClicked);
         if (cancelButton != null) cancelButton.onClick.AddListener(HideEmbarkUI);
         if (destinationDropdown != null) destinationDropdown.onValueChanged.AddListener(OnDestinationChanged);
-        HideEmbarkUI();
     }
 
     public void ShowEmbarkUI(GameObject unit, int fromPlanetIndex)
     {
+        showing = true;
+        Initialize();
         var ship = unit != null ? unit.GetComponent<CombatUnit>() : null;
         selectedUnit = ship != null && ship.data != null && ship.data.unitType == CombatCategory.Spaceship ? unit : null;
         currentPlanetIndex = fromPlanetIndex;
         if (selectedUnitText != null)
         {
-            selectedUnitText.text = selectedUnit != null ? $"Selected unit: {unit.name}" : "Select a spaceship to embark.";
+            selectedUnitText.text = selectedUnit != null ? SpaceMapSelectionInfo.UnitName(ship) : "Select a spaceship to embark.";
             selectedUnitText.color = selectedUnit != null ? Color.white : Color.red;
         }
+        RefreshUnitDetail();
 
         destinations.Clear();
         var options = new List<TMP_Dropdown.OptionData>();
@@ -78,12 +94,16 @@ public class SpaceEmbarkUI : MonoBehaviour
             destinationDropdown.SetValueWithoutNotify(0);
             destinationDropdown.RefreshShownValue();
         }
+        // The canvas may be switched off in the scene until the modal is first needed.
+        for (Transform parent = transform.parent; parent != null; parent = parent.parent)
+            if (!parent.gameObject.activeSelf) parent.gameObject.SetActive(true);
         if (embarkPanel != null) embarkPanel.SetActive(true);
         OnDestinationChanged(0);
     }
 
     public void HideEmbarkUI()
     {
+        showing = false;
         selectedUnit = null;
         if (embarkPanel != null) embarkPanel.SetActive(false);
     }
@@ -92,7 +112,31 @@ public class SpaceEmbarkUI : MonoBehaviour
     {
         if (Time.unscaledTime < nextRefresh || selectedUnit == null || destinationDropdown == null ||
             (embarkPanel != null && !embarkPanel.activeInHierarchy)) return;
+        RefreshUnitDetail();
         OnDestinationChanged(destinationDropdown.value);
+    }
+
+    private void RefreshUnitDetail()
+    {
+        if (unitDetailText == null) return;
+        var ship = selectedUnit != null ? selectedUnit.GetComponent<CombatUnit>() : null;
+        if (ship == null) { unitDetailText.text = string.Empty; return; }
+        var planet = SpaceMapSelectionInfo.FindPlanetByIndex(currentPlanetIndex);
+        unitDetailText.text =
+            SpaceMapSelectionInfo.Label("Class", SpaceMapSelectionInfo.UnitClass(ship)) + "\n" +
+            SpaceMapSelectionInfo.Label("Planet", SpaceMapSelectionInfo.IsPlanetDiscovered(planet) ? planet.planetName : "Unknown") + "\n" +
+            SpaceMapSelectionInfo.Label("Status", SpaceMapSelectionInfo.UnitStatus(ship));
+    }
+
+    // The route service only answers yes or no; these are the same conditions it checks, put into words.
+    private string DescribeBlockedRoute(CombatUnit ship)
+    {
+        if (ship.isPackedInSpaceFleet) return "The ship is packed in a fleet.";
+        bool fromOrbit = ship.spaceLocation.locationType == SpaceLocationType.PlanetOrbit && ship.spaceLocation.planetIndex == currentPlanetIndex;
+        if (!fromOrbit && !ship.spaceLocation.IsInSolarSystemSpace)
+            return ship.IsInOrbit ? "This orbit is not registered for interplanetary travel." : "Enter orbit before departing.";
+        if (ship.spaceMovementPointsPerTurn <= 0) return "The ship has no space movement.";
+        return "No open path to the destination's orbit.";
     }
 
     private void OnDestinationChanged(int index)
@@ -110,21 +154,24 @@ public class SpaceEmbarkUI : MonoBehaviour
         var manager = SpaceRouteManager.Instance;
         var movement = SpaceShipMovementController.Instance;
         string name = destinationDropdown.options[index].text;
+        string destinationLine = SpaceMapSelectionInfo.Label("Destination", name);
         if (manager == null)
         {
-            if (travelInfoText != null) travelInfoText.text = $"Destination: {name}\nRoute service unavailable";
+            if (travelInfoText != null) travelInfoText.text = $"{destinationLine}\n{SpaceMapSelectionInfo.Label("Route", "Route service unavailable")}";
             return;
         }
 
         bool routeAvailable = manager.TryGetRoute(selectedUnit, currentPlanetIndex, destinationIndex, out var path, out int destination);
-        var ship = selectedUnit.GetComponent<BaseUnit>();
+        var ship = selectedUnit.GetComponent<CombatUnit>();
         bool arrived = destination >= 0 && ship.currentSpaceTileIndex == destination;
         var queuedPath = ship.queuedSpacePath;
         bool queued = destination >= 0 && !arrived && queuedPath != null && queuedPath.Count > 0 &&
             queuedPath[queuedPath.Count - 1] == destination && ship.queuedSpacePathCursor + 1 < queuedPath.Count;
+        string available = SpaceMapSelectionInfo.Label("Movement available", $"{ship.currentSpaceMovementPoints}/{ship.spaceMovementPointsPerTurn}");
         if (!routeAvailable && !queued)
         {
-            if (travelInfoText != null) travelInfoText.text = $"Destination: {name}\nNo valid route";
+            if (travelInfoText != null)
+                travelInfoText.text = $"{destinationLine}\n{SpaceMapSelectionInfo.Label("Route", "No valid route")}\n{DescribeBlockedRoute(ship)}\n{available}";
             return;
         }
 
@@ -134,7 +181,9 @@ public class SpaceEmbarkUI : MonoBehaviour
         int cost = (movement ?? SpaceShipMovementController.Instance).GetRouteCost(ship, path, cursor);
         string status = arrived ? "At destination approach sector" : queued ? (routeAvailable ? "Movement queued" : "Queued route blocked") : "Route available";
         if (travelInfoText != null)
-            travelInfoText.text = $"Destination: {name}\n{status}\n{hexes} hexes remaining · {cost} movement points\nAvailable this turn: {ship.currentSpaceMovementPoints}/{ship.spaceMovementPointsPerTurn}";
+            travelInfoText.text = $"{destinationLine}\n{SpaceMapSelectionInfo.Label("Route", status)}\n" +
+                $"{SpaceMapSelectionInfo.Label("Distance", $"{hexes} hex{(hexes == 1 ? string.Empty : "es")} remaining")}\n" +
+                $"{SpaceMapSelectionInfo.Label("Movement required", cost.ToString())}\n{available}";
         if (embarkButton != null) embarkButton.interactable = !arrived && !queued;
     }
 
@@ -153,7 +202,7 @@ public class SpaceEmbarkUI : MonoBehaviour
     /// </summary>
     public static void ShowEmbarkUIForUnit(GameObject unit, int fromPlanetIndex)
     {
-        var embarkUI = FindAnyObjectByType<SpaceEmbarkUI>();
+        var embarkUI = FindAnyObjectByType<SpaceEmbarkUI>(FindObjectsInactive.Include);
         if (embarkUI != null)
         {
             embarkUI.ShowEmbarkUI(unit, fromPlanetIndex);
