@@ -56,6 +56,7 @@ public class UnitInfoPanel : MonoBehaviour
     private CombatUnit currentCombatUnit;
     private WorkerUnit currentWorkerUnit;
     private CampaignArmyPanel campaignArmyPanel;
+    private TransportUIManager transportUI;
     private GameEventManager subscribedGameEvents;
     public bool IsVisible => unitInfoPanel != null && unitInfoPanel.activeSelf;
     public TMP_Text StackInfoText => stackInfoText;
@@ -81,6 +82,7 @@ public class UnitInfoPanel : MonoBehaviour
     private void Awake()
     {
         campaignArmyPanel = CampaignArmyPanel.GetOrCreate(this);
+        transportUI = GetComponentInChildren<TransportUIManager>(true);
         if (settleCityButton != null)
             settleCityButton.onClick.AddListener(OnSettleCityClicked);
 
@@ -292,6 +294,11 @@ public class UnitInfoPanel : MonoBehaviour
         if (unitInfoPanel != null && !unitInfoPanel.activeSelf)
             unitInfoPanel.SetActive(true);
 
+        if (unitObject is CombatUnit transport && transport.data != null && transport.data.isTransport)
+            transportUI?.ShowTransportUI(transport);
+        else
+            transportUI?.HideTransportUI();
+
         HideAllSections(); // Helper to hide all specific sections initially
 
         string unitNameForLog = "Unknown Unit";
@@ -344,6 +351,7 @@ public class UnitInfoPanel : MonoBehaviour
 
     public void HidePanel()
     {
+        transportUI?.HideTransportUI();
         ClearPanelInfo();
         if (unitInfoPanel != null) unitInfoPanel.SetActive(false);
     }

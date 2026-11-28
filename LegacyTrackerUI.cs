@@ -14,6 +14,7 @@ public class LegacyTrackerUI : MonoBehaviour
     private sealed class LegacyEntryView
     {
         public GameObject root;
+        public Image artwork;
         public Image icon;
         public TextMeshProUGUI nameText;
         public TextMeshProUGUI statusText;
@@ -23,11 +24,13 @@ public class LegacyTrackerUI : MonoBehaviour
     }
 
     // ─── UI references ───
-    private RectTransform rootRect;
     private Image backgroundImage;
     private TextMeshProUGUI headerText;
     private TextMeshProUGUI slotsText;
     private RectTransform listRect;
+    private GameObject headerObject;
+    private GameObject listViewport;
+    private ManagementUIAssets assets;
     private GameObject emptyStateObject;
     private TextMeshProUGUI emptyStateText;
 
@@ -55,9 +58,6 @@ public class LegacyTrackerUI : MonoBehaviour
 
     // ─── Colors ───
     private static readonly Color PanelColor = new Color(0.07f, 0.08f, 0.12f, 0.94f);
-    private static readonly Color HeaderColor = new Color(0.14f, 0.16f, 0.22f, 1f);
-    private static readonly Color EntryColor = new Color(0.11f, 0.13f, 0.18f, 0.98f);
-    private static readonly Color ActiveEntryColor = new Color(0.16f, 0.2f, 0.12f, 0.98f);
     private static readonly Color ButtonColor = new Color(0.2f, 0.24f, 0.32f, 1f);
     private static readonly Color PromoteColor = new Color(0.18f, 0.42f, 0.22f, 1f);
     private static readonly Color DemoteColor = new Color(0.42f, 0.18f, 0.18f, 1f);
@@ -82,13 +82,19 @@ public class LegacyTrackerUI : MonoBehaviour
     private void OnDisable()
     {
         Unsubscribe();
+        HideDetail();
+    }
+
+    private void OnDestroy()
+    {
+        if (detailBackdrop != null) Destroy(detailBackdrop);
     }
 
     private void Update()
     {
         TrySubscribe();
-        if (playerCiv == null)
-            playerCiv = ResolvePlayerCivilization();
+        if (playerCiv != ResolvePlayerCivilization())
+            RefreshAll();
     }
 
     // ─── Subscriptions ───
@@ -131,26 +137,14 @@ public class LegacyTrackerUI : MonoBehaviour
         if (uiBuilt) return;
         uiBuilt = true;
 
-        rootRect = gameObject.GetComponent<RectTransform>();
+        assets = ManagementUIAssets.Load();
         backgroundImage = gameObject.GetComponent<Image>();
         if (backgroundImage == null)
             backgroundImage = gameObject.AddComponent<Image>();
-        backgroundImage.color = PanelColor;
-
-        var layout = gameObject.GetComponent<VerticalLayoutGroup>();
-        if (layout == null)
-            layout = gameObject.AddComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(12, 12, 12, 12);
-        layout.spacing = 8;
-        layout.childControlHeight = true;
-        layout.childControlWidth = true;
-        layout.childForceExpandHeight = false;
-        layout.childForceExpandWidth = true;
-
-        var fitter = gameObject.GetComponent<ContentSizeFitter>();
-        if (fitter == null)
-            fitter = gameObject.AddComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        backgroundImage.sprite = assets != null ? assets.legacyTrackerShell : null;
+        backgroundImage.color = backgroundImage.sprite != null ? Color.white : PanelColor;
+        if (backgroundImage.sprite == null)
+            Debug.LogError("[LegacyTrackerUI] Legacy tracker shell is missing.", this);
 
         BuildHeader();
         BuildLegacyList();
@@ -159,34 +153,36 @@ public class LegacyTrackerUI : MonoBehaviour
 
     private void BuildHeader()
     {
-        var headerObject = CreatePanelObject("LegacyHeader", transform, HeaderColor);
-        var headerRect = headerObject.GetComponent<RectTransform>();
-        headerRect.sizeDelta = new Vector2(0f, 48f);
-
-        var headerLayout = headerObject.AddComponent<HorizontalLayoutGroup>();
-        headerLayout.padding = new RectOffset(10, 10, 8, 8);
-        headerLayout.spacing = 10;
-        headerLayout.childAlignment = TextAnchor.MiddleLeft;
-        headerLayout.childControlHeight = true;
-        headerLayout.childControlWidth = false;
-        headerLayout.childForceExpandHeight = false;
-        headerLayout.childForceExpandWidth = false;
-
-        headerText = CreateText("HeaderTitle", headerObject.transform, 20f, FontStyles.Bold, TextAlignmentOptions.Left);
+        headerObject = new GameObject("LegacyHeader", typeof(RectTransform));
+        headerObject.transform.SetParent(transform, false);
+        Stretch(headerObject.GetComponent<RectTransform>(), new Vector2(0.1f, 0.79f), new Vector2(0.9f, 0.99f));
+        headerText = CreateText("HeaderTitle", headerObject.transform, 20f, FontStyles.Bold, TextAlignmentOptions.Center);
         headerText.text = "Legacies";
-        var headerTextLayout = headerText.GetComponent<LayoutElement>();
-        headerTextLayout.flexibleWidth = 1f;
-
-        slotsText = CreateText("SlotsText", headerObject.transform, 16f, FontStyles.Bold, TextAlignmentOptions.Right);
+        Stretch(headerText.rectTransform, new Vector2(0f, 0.54f), Vector2.one);
+        slotsText = CreateText("SlotsText", headerObject.transform, 15f, FontStyles.Bold, TextAlignmentOptions.Center);
         slotsText.color = GoldColor;
-        slotsText.rectTransform.sizeDelta = new Vector2(92f, 32f);
+        Stretch(slotsText.rectTransform, new Vector2(0f, 0.02f), new Vector2(1f, 0.48f));
     }
 
     private void BuildLegacyList()
     {
+        listViewport = new GameObject("LegacyViewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D), typeof(ScrollRect));
+        listViewport.transform.SetParent(transform, false);
+        Stretch(listViewport.GetComponent<RectTransform>(), new Vector2(0.1f, 0.12f), new Vector2(0.9f, 0.76f));
+        listViewport.GetComponent<Image>().color = Color.clear;
+        var scroll = listViewport.GetComponent<ScrollRect>();
+        scroll.horizontal = false;
+        scroll.scrollSensitivity = 30f;
+        scroll.viewport = listViewport.GetComponent<RectTransform>();
         var listObject = new GameObject("LegacyList", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-        listObject.transform.SetParent(transform, false);
+        listObject.transform.SetParent(listViewport.transform, false);
         listRect = listObject.GetComponent<RectTransform>();
+        listRect.anchorMin = new Vector2(0f, 1f);
+        listRect.anchorMax = Vector2.one;
+        listRect.pivot = new Vector2(0.5f, 1f);
+        listRect.sizeDelta = Vector2.zero;
+        listRect.anchoredPosition = Vector2.zero;
+        scroll.content = listRect;
         var layout = listObject.GetComponent<VerticalLayoutGroup>();
         layout.spacing = 6;
         layout.childAlignment = TextAnchor.UpperCenter;
@@ -221,28 +217,25 @@ public class LegacyTrackerUI : MonoBehaviour
 
         // Panel
         detailPanel = CreatePanelObject("LegacyDetailPanel", detailBackdrop.transform, new Color(0.09f, 0.11f, 0.16f, 0.98f));
+        var detailImage = detailPanel.GetComponent<Image>();
+        detailImage.sprite = assets != null ? assets.legacyDetailShell : null;
+        if (detailImage.sprite != null) detailImage.color = Color.white;
+        else Debug.LogError("[LegacyTrackerUI] Legacy detail shell is missing.", this);
         var panelRect = detailPanel.GetComponent<RectTransform>();
         panelRect.anchorMin = new Vector2(0.5f, 0.5f);
         panelRect.anchorMax = new Vector2(0.5f, 0.5f);
         panelRect.pivot = new Vector2(0.5f, 0.5f);
-        panelRect.sizeDelta = new Vector2(480f, 520f);
-
-        var panelLayout = detailPanel.AddComponent<VerticalLayoutGroup>();
-        panelLayout.padding = new RectOffset(20, 20, 20, 20);
-        panelLayout.spacing = 10;
-        panelLayout.childControlHeight = true;
-        panelLayout.childControlWidth = true;
-        panelLayout.childForceExpandHeight = false;
-        panelLayout.childForceExpandWidth = true;
+        panelRect.sizeDelta = new Vector2(520f, 560f);
 
         // Icon + title row
         var topRow = new GameObject("TopRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         topRow.transform.SetParent(detailPanel.transform, false);
+        Stretch(topRow.GetComponent<RectTransform>(), new Vector2(0.12f, 0.72f), new Vector2(0.88f, 0.87f));
         var topLayout = topRow.GetComponent<HorizontalLayoutGroup>();
         topLayout.spacing = 14;
         topLayout.childAlignment = TextAnchor.MiddleLeft;
         topLayout.childControlHeight = true;
-        topLayout.childControlWidth = false;
+        topLayout.childControlWidth = true;
         topLayout.childForceExpandHeight = false;
         topLayout.childForceExpandWidth = false;
 
@@ -266,7 +259,8 @@ public class LegacyTrackerUI : MonoBehaviour
         // Scroll area for description, flavor, bonuses
         var scrollObject = new GameObject("DetailScroll", typeof(RectTransform), typeof(Image), typeof(Mask), typeof(ScrollRect), typeof(LayoutElement));
         scrollObject.transform.SetParent(detailPanel.transform, false);
-        scrollObject.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.05f);
+        Stretch(scrollObject.GetComponent<RectTransform>(), new Vector2(0.11f, 0.19f), new Vector2(0.89f, 0.69f));
+        scrollObject.GetComponent<Image>().color = Color.clear;
         scrollObject.GetComponent<Mask>().showMaskGraphic = false;
         scrollObject.GetComponent<LayoutElement>().flexibleHeight = 1f;
         var scrollRect = scrollObject.GetComponent<ScrollRect>();
@@ -301,6 +295,7 @@ public class LegacyTrackerUI : MonoBehaviour
         // Buttons row
         var buttonRow = new GameObject("ButtonRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
         buttonRow.transform.SetParent(detailPanel.transform, false);
+        Stretch(buttonRow.GetComponent<RectTransform>(), new Vector2(0.12f, 0.065f), new Vector2(0.88f, 0.14f));
         var buttonRowLayout = buttonRow.GetComponent<HorizontalLayoutGroup>();
         buttonRowLayout.spacing = 10;
         buttonRowLayout.childAlignment = TextAnchor.MiddleCenter;
@@ -330,12 +325,16 @@ public class LegacyTrackerUI : MonoBehaviour
         playerCiv = ResolvePlayerCivilization();
         if (playerCiv == null || playerCiv.earnedLegacies == null || playerCiv.earnedLegacies.Count == 0)
         {
-            gameObject.SetActive(false);
+            backgroundImage.enabled = false;
+            headerObject.SetActive(false);
+            listViewport.SetActive(false);
             HideDetail();
             return;
         }
 
-        gameObject.SetActive(true);
+        backgroundImage.enabled = true;
+        headerObject.SetActive(true);
+        listViewport.SetActive(true);
         RefreshHeader();
         RefreshEntries();
     }
@@ -389,21 +388,22 @@ public class LegacyTrackerUI : MonoBehaviour
     private LegacyEntryView CreateEntryView()
     {
         var view = new LegacyEntryView();
-        view.root = CreatePanelObject("LegacyEntry", listRect, EntryColor);
-
-        var entryLayout = view.root.AddComponent<HorizontalLayoutGroup>();
-        entryLayout.padding = new RectOffset(10, 10, 8, 8);
-        entryLayout.spacing = 10;
-        entryLayout.childAlignment = TextAnchor.MiddleLeft;
-        entryLayout.childControlHeight = true;
-        entryLayout.childControlWidth = false;
-        entryLayout.childForceExpandHeight = false;
-        entryLayout.childForceExpandWidth = false;
+        view.root = CreatePanelObject("LegacyEntry", listRect, Color.clear);
+        view.root.AddComponent<LayoutElement>().preferredHeight = 58f;
+        view.artwork = CreateImage("Art", view.root.transform, 0f, 0f);
+        view.artwork.sprite = assets != null ? assets.legacyEntryRow : null;
+        view.artwork.preserveAspect = false;
+        view.artwork.raycastTarget = false;
+        Stretch(view.artwork.rectTransform, new Vector2(0f, -0.3f), new Vector2(1f, 1.3f));
+        if (view.artwork.sprite == null)
+            Debug.LogError("[LegacyTrackerUI] Legacy entry row sprite is missing.", this);
 
         view.icon = CreateImage("Icon", view.root.transform, 36f, 36f);
+        Stretch(view.icon.rectTransform, new Vector2(0.08f, 0.2f), new Vector2(0.19f, 0.8f));
 
         var textColumn = new GameObject("TextColumn", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
         textColumn.transform.SetParent(view.root.transform, false);
+        Stretch(textColumn.GetComponent<RectTransform>(), new Vector2(0.23f, 0.12f), new Vector2(0.76f, 0.88f));
         textColumn.GetComponent<LayoutElement>().flexibleWidth = 1f;
         var textLayout = textColumn.GetComponent<VerticalLayoutGroup>();
         textLayout.spacing = 2;
@@ -418,7 +418,7 @@ public class LegacyTrackerUI : MonoBehaviour
         view.statusText.color = DimTextColor;
 
         view.actionButton = CreateButton("Action", view.root.transform, "View", ButtonColor);
-        view.actionButton.GetComponent<LayoutElement>().preferredWidth = 72f;
+        Stretch(view.actionButton.GetComponent<RectTransform>(), new Vector2(0.79f, 0.23f), new Vector2(0.96f, 0.77f));
         view.actionLabel = view.actionButton.GetComponentInChildren<TextMeshProUGUI>();
 
         view.root.SetActive(false);
@@ -436,7 +436,7 @@ public class LegacyTrackerUI : MonoBehaviour
         view.statusText.text = isActive ? "Active" : "Earned";
         view.statusText.color = isActive ? GoldColor : DimTextColor;
 
-        view.root.GetComponent<Image>().color = isActive ? ActiveEntryColor : EntryColor;
+        view.artwork.color = isActive ? new Color(1f, 0.93f, 0.75f) : Color.white;
 
         view.actionButton.onClick.RemoveAllListeners();
         var capturedLegacy = legacy;
@@ -452,6 +452,7 @@ public class LegacyTrackerUI : MonoBehaviour
         shownLegacy = legacy;
         RefreshDetailPanel(legacy);
         detailBackdrop.SetActive(true);
+        detailBackdrop.transform.SetAsLastSibling();
     }
 
     private void RefreshDetailPanel(LegacyData legacy)
@@ -550,6 +551,14 @@ public class LegacyTrackerUI : MonoBehaviour
     }
 
     // ─── UI Factory ───
+
+    private static void Stretch(RectTransform rect, Vector2 min, Vector2 max)
+    {
+        rect.anchorMin = min;
+        rect.anchorMax = max;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+    }
 
     private GameObject CreatePanelObject(string name, Transform parent, Color color)
     {

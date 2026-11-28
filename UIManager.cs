@@ -32,10 +32,15 @@ public class UIManager : MonoBehaviour
         public List<MissionData> missions;
         public List<MissionSelectionPopupUI.OptionData> customOptions;
         public List<Action> customActions;
+        public bool deferUntilCampaignHud;
+        public Civilization notificationCivilization;
     }
 
     public static UIManager Instance { get; private set; }
     public bool IsBlockingModalVisible => modalVisible;
+    public bool CanPresentElectionDecision => !modalVisible && !IsLoadingActive();
+    private bool IsElectionDecisionActive => ElectionManager.HasPendingPlayerDefeat ||
+        (electionDefeatModal != null && electionDefeatModal.IsVisible);
 
     [Header("UI Panels")]
     public GameObject notificationPanel;
@@ -85,7 +90,22 @@ public class UIManager : MonoBehaviour
     [Header("Notification Settings")]
     public float notificationDuration = 3f;
     private Coroutine notificationCoroutine;
-    private System.Collections.Generic.Queue<string> _pendingNotifications = new System.Collections.Generic.Queue<string>();
+    private struct PendingNotification
+    {
+        public string message;
+        public Sprite icon;
+        public Civilization civilization;
+        public bool worldEvent;
+    }
+    private readonly Queue<PendingNotification> _pendingNotifications = new Queue<PendingNotification>();
+    private Image notificationIcon;
+    private RectTransform notificationMessageRect;
+    private Vector2 notificationMessageOffsetMin;
+    private BatchThreeUIAssets batchThreeAssets;
+    private ElectionDefeatModalUI electionDefeatModal;
+    private NaturalDisasterManager subscribedDisasterManager;
+    private AncientRuinsManager subscribedRuinsManager;
+    private readonly List<KeyValuePair<BaseUnit, int>> disasterUnitHealth = new List<KeyValuePair<BaseUnit, int>>();
     private bool _wasLoadingLastFrame = false;
 
     private Dictionary<string, GameObject> panelDict;
@@ -151,6 +171,14 @@ public class UIManager : MonoBehaviour
             return;
         }
         UIManager.Instance = this;
+        batchThreeAssets = Resources.Load<BatchThreeUIAssets>("MenuUI/Batch Three UI Assets");
+        if (batchThreeAssets == null)
+            Debug.LogError("[UIManager] Batch Three UI Assets are missing.");
+        electionDefeatModal = FindAnyObjectByType<ElectionDefeatModalUI>(FindObjectsInactive.Include);
+        if (electionDefeatModal == null)
+            electionDefeatModal = ElectionDefeatModalUI.CreateRuntime(transform, batchThreeAssets);
+        if (GetComponent<ArmyTransferPanel>() == null)
+            gameObject.AddComponent<ArmyTransferPanel>();
         if (cityPanel == null && cityPanelPrefab != null)
         {
             cityPanel = Instantiate(cityPanelPrefab, transform);
@@ -237,6 +265,7 @@ public class UIManager : MonoBehaviour
         }
 
         TrySubscribeMissionCrisisUi();
+        TrySubscribeWorldNotifications();
         EnsureCrisisMissionTrackerUi();
         EnsureLegacyTrackerUi();
     }
@@ -250,6 +279,7 @@ public class UIManager : MonoBehaviour
         }
 
         UnsubscribeMissionCrisisUi();
+        UnsubscribeWorldNotifications();
     }
     
     /// <summary>
@@ -440,19 +470,35 @@ public class UIManager : MonoBehaviour
         }
 
         // If loading is active, enqueue the notification to be displayed later
-        if (IsLoadingActive())
+        if (IsLoadingActive() || IsElectionDecisionActive)
         {
-            _pendingNotifications.Enqueue(message);
+            _pendingNotifications.Enqueue(new PendingNotification { message = message });
             return;
         }
 
         // Display immediately
-        DisplayNotification(message);
+        DisplayNotification(message, null);
+    }
+
+    private void QueueWorldNotification(string message, Sprite icon)
+    {
+        if (notificationPanel == null)
+        {
+            Debug.LogWarning("[UIManager] Cannot display world notification: notification panel is not assigned.");
+            return;
+        }
+        _pendingNotifications.Enqueue(new PendingNotification
+        {
+            message = message,
+            icon = icon,
+            civilization = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null,
+            worldEvent = true
+        });
     }
 
     public bool ShowPoliticalSelection(string title, string subtitle, IReadOnlyList<MissionSelectionPopupUI.OptionData> options, Action<int> onSelected)
     {
-        if (modalVisible) return false;
+        if (modalVisible || IsElectionDecisionActive) return false;
 
         EnsureMissionCrisisPrefabViews();
         if (selectionPopupInstance == null) return false;
@@ -488,9 +534,26 @@ public class UIManager : MonoBehaviour
         ShowGovernmentPolitics(civ);
     }
 
-    private void DisplayNotification(string message)
+    private void DisplayNotification(string message, Sprite icon)
     {
         var tmpText = notificationPanel.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (notificationIcon == null)
+        {
+            var iconTransform = notificationPanel.transform.Find("Notification Card/Notification Icon");
+            if (iconTransform != null) notificationIcon = iconTransform.GetComponent<Image>();
+        }
+        if (tmpText != null && notificationMessageRect == null)
+        {
+            notificationMessageRect = tmpText.rectTransform;
+            notificationMessageOffsetMin = notificationMessageRect.offsetMin;
+        }
+        if (notificationIcon != null)
+        {
+            notificationIcon.sprite = icon;
+            notificationIcon.gameObject.SetActive(icon != null);
+            if (notificationMessageRect != null)
+                notificationMessageRect.offsetMin = notificationMessageOffsetMin + new Vector2(icon != null ? 75 : 0, 0);
+        }
         if (tmpText != null)
             tmpText.text = message;
         else
@@ -516,6 +579,7 @@ public class UIManager : MonoBehaviour
     void Update()
     {
         TrySubscribeMissionCrisisUi();
+        TrySubscribeWorldNotifications();
         EnsureCrisisMissionTrackerUi();
         EnsureLegacyTrackerUi();
 
@@ -528,11 +592,12 @@ public class UIManager : MonoBehaviour
         _wasLoadingLastFrame = loadingNow;
 
         // If not loading and no current notification displayed, and pending queue exists, show next
-        if (!loadingNow && notificationCoroutine == null && _pendingNotifications.Count > 0)
+        if (CanShowWorldNotifications() && notificationCoroutine == null && _pendingNotifications.Count > 0)
         {
             var next = _pendingNotifications.Dequeue();
-            DisplayNotification(next);
+            if (IsCurrentNotification(next)) DisplayNotification(next.message, next.icon);
         }
+        if (!modalVisible && modalQueue.Count > 0) TryShowNextModal();
 
         SyncGameplayHudVisibilityForOpenPanels();
 
@@ -546,11 +611,218 @@ public class UIManager : MonoBehaviour
     private void TryFlushPendingNotifications()
     {
         if (_pendingNotifications.Count == 0) return;
-        if (notificationCoroutine == null)
+        if (notificationCoroutine == null && CanShowWorldNotifications())
         {
             var next = _pendingNotifications.Dequeue();
-            DisplayNotification(next);
+            if (IsCurrentNotification(next)) DisplayNotification(next.message, next.icon);
         }
+    }
+
+    private static bool IsCurrentNotification(PendingNotification notification)
+    {
+        return !notification.worldEvent || (CivilizationManager.Instance != null &&
+            notification.civilization != null && notification.civilization == CivilizationManager.Instance.playerCiv);
+    }
+
+    private bool CanShowWorldNotifications()
+    {
+        var game = GameManager.Instance;
+        return !IsLoadingActive() && !modalVisible && !IsElectionDecisionActive &&
+            game != null && game.gameInProgress && !game.IsRestoringSave && !game.IsMatchConcluded &&
+            gameplayHudRoot != null && gameplayHudRoot.activeInHierarchy;
+    }
+
+    private void TrySubscribeWorldNotifications()
+    {
+        if (subscribedDisasterManager != NaturalDisasterManager.Instance)
+        {
+            if (subscribedDisasterManager != null)
+            {
+                subscribedDisasterManager.OnNaturalDisasterStarting -= CaptureDisasterUnits;
+                subscribedDisasterManager.OnNaturalDisasterTriggered -= OnDisasterTriggered;
+            }
+            subscribedDisasterManager = NaturalDisasterManager.Instance;
+            if (subscribedDisasterManager != null)
+            {
+                subscribedDisasterManager.OnNaturalDisasterStarting += CaptureDisasterUnits;
+                subscribedDisasterManager.OnNaturalDisasterTriggered += OnDisasterTriggered;
+            }
+        }
+        if (subscribedRuinsManager != AncientRuinsManager.Instance)
+        {
+            if (subscribedRuinsManager != null)
+            {
+                subscribedRuinsManager.OnRuinDiscovered -= OnRuinDiscovered;
+                subscribedRuinsManager.OnRuinExplorationCompleted -= OnRuinExplored;
+            }
+            subscribedRuinsManager = AncientRuinsManager.Instance;
+            if (subscribedRuinsManager != null)
+            {
+                subscribedRuinsManager.OnRuinDiscovered += OnRuinDiscovered;
+                subscribedRuinsManager.OnRuinExplorationCompleted += OnRuinExplored;
+            }
+        }
+    }
+
+    private void UnsubscribeWorldNotifications()
+    {
+        if (subscribedDisasterManager != null)
+        {
+            subscribedDisasterManager.OnNaturalDisasterStarting -= CaptureDisasterUnits;
+            subscribedDisasterManager.OnNaturalDisasterTriggered -= OnDisasterTriggered;
+        }
+        if (subscribedRuinsManager != null)
+        {
+            subscribedRuinsManager.OnRuinDiscovered -= OnRuinDiscovered;
+            subscribedRuinsManager.OnRuinExplorationCompleted -= OnRuinExplored;
+        }
+        subscribedDisasterManager = null;
+        subscribedRuinsManager = null;
+    }
+
+    private void CaptureDisasterUnits(NaturalDisasterData disaster, int planetIndex, int primaryTile, List<int> tiles)
+    {
+        disasterUnitHealth.Clear();
+        var player = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+        if (player == null || tiles == null) return;
+        var affected = new HashSet<int>(tiles);
+        foreach (var unit in UnitRegistry.GetCombatUnits())
+            CaptureDisasterUnit(unit, player, planetIndex, affected);
+        foreach (var unit in UnitRegistry.GetWorkerUnits())
+            CaptureDisasterUnit(unit, player, planetIndex, affected);
+    }
+
+    private void CaptureDisasterUnit(BaseUnit unit, Civilization player, int planetIndex, HashSet<int> affected)
+    {
+        if (unit != null && unit.owner == player && unit.planetIndex == planetIndex &&
+            unit.takesWeatherDamage && affected.Contains(unit.currentTileIndex))
+            disasterUnitHealth.Add(new KeyValuePair<BaseUnit, int>(unit, unit.currentHealth));
+    }
+
+    private void OnDisasterTriggered(NaturalDisasterData disaster, int planetIndex, int primaryTile, List<int> tiles)
+    {
+        var player = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null;
+        var game = GameManager.Instance;
+        if (disaster == null || player == null || game == null || tiles == null) return;
+        int damaged = 0, destroyed = 0;
+        foreach (var entry in disasterUnitHealth)
+        {
+            if (entry.Key == null || entry.Key.currentHealth <= 0) destroyed++;
+            else if (entry.Key.currentHealth < entry.Value) damaged++;
+        }
+        disasterUnitHealth.Clear();
+
+        var tileSystem = TileSystem.GetForPlanet(planetIndex);
+        var vision = UnitVisionManager.Instance;
+        int civId = UnitVisionManager.GetCivIndex(player);
+        bool canCheckVision = vision != null && vision.PlanetIndex == planetIndex &&
+            game.currentPlanetIndex == planetIndex && civId >= 0;
+        bool visible = false, owned = false;
+        var cities = new HashSet<City>();
+        if (tileSystem != null)
+        {
+            foreach (int tileIndex in tiles)
+            {
+                var tile = tileSystem.GetTileData(tileIndex);
+                if (tile == null) continue;
+                if (tile.owner == player) owned = true;
+                if (tile.controllingCity != null && tile.controllingCity.owner == player)
+                {
+                    owned = true;
+                    cities.Add(tile.controllingCity);
+                }
+                if (canCheckVision && vision.IsTileVisibleToCiv(tileIndex, civId)) visible = true;
+            }
+        }
+        if (!visible && !owned && damaged == 0 && destroyed == 0) return;
+
+        string location = cities.Count > 0 ? $"Near {cities.First().cityName}" :
+            owned ? "In your territory" : damaged + destroyed > 0 ? "Near your units" :
+            canCheckVision && vision.IsTileVisibleToCiv(primaryTile, civId) ? $"At tile {primaryTile}" : "In visible territory";
+        var planets = game.GetPlanetData();
+        if (planets != null && planets.TryGetValue(planetIndex, out var planet) && !string.IsNullOrWhiteSpace(planet.planetName))
+            location += $" on {planet.planetName}";
+        string description = string.IsNullOrWhiteSpace(disaster.description) ? string.Empty : "\n" + disaster.description.Trim();
+        string effects = cities.Count > 0 ? $"\n{cities.Count} of your cities affected." : string.Empty;
+        if (damaged > 0) effects += $"\n{damaged} of your units damaged.";
+        if (destroyed > 0) effects += $"\n{destroyed} of your units destroyed.";
+        string title = string.IsNullOrWhiteSpace(disaster.disasterName) ? "Natural Disaster" : disaster.disasterName;
+        Sprite icon = batchThreeAssets != null ? batchThreeAssets.disasterIcon : null;
+        if (cities.Count > 0 || destroyed > 0 || damaged >= 2)
+            QueueWorldNarrative(title, location + description + effects, icon, "DISASTER");
+        else
+            QueueWorldNotification($"{title}: {location}.{description}{effects}", icon);
+    }
+
+    private void OnRuinDiscovered(AncientRuinsManager.RuinSite ruin, Civilization civ)
+    {
+        if (ruin != null && civ != null && CivilizationManager.Instance != null &&
+            civ == CivilizationManager.Instance.playerCiv)
+            StartCoroutine(NotifyUnexploredRuin(ruin, civ));
+    }
+
+    private IEnumerator NotifyUnexploredRuin(AncientRuinsManager.RuinSite ruin, Civilization civ)
+    {
+        yield return null;
+        if (ruin.isExplored || CivilizationManager.Instance == null || civ != CivilizationManager.Instance.playerCiv)
+            yield break;
+        string name = string.IsNullOrWhiteSpace(ruin.ruinName) ? "Ancient Ruins" : ruin.ruinName;
+        QueueWorldNotification($"{name}: discovered ancient ruins.", batchThreeAssets != null ? batchThreeAssets.ruinsIcon : null);
+    }
+
+    private void OnRuinExplored(AncientRuinsManager.RuinSite ruin, Civilization civ, List<string> rewards)
+    {
+        if (ruin == null || civ == null || CivilizationManager.Instance == null ||
+            civ != CivilizationManager.Instance.playerCiv) return;
+        var actualRewards = new List<string>();
+        if (rewards != null)
+        {
+            foreach (string reward in rewards)
+            {
+                if (string.IsNullOrWhiteSpace(reward)) continue;
+                if (ruin.ruinData == null && (ruin.ruinType == AncientRuinsManager.RuinType.Technology ||
+                    ruin.ruinType == AncientRuinsManager.RuinType.Unit || ruin.ruinType == AncientRuinsManager.RuinType.Upgrade))
+                    continue;
+                if (reward.StartsWith("Revealed the surrounding area", StringComparison.Ordinal))
+                {
+                    var vision = UnitVisionManager.Instance;
+                    var generator = GameManager.Instance != null ? GameManager.Instance.GetPlanetGenerator(ruin.planetIndex) : null;
+                    var tiles = TileSystem.GetForPlanet(ruin.planetIndex);
+                    if (vision == null || vision.PlanetIndex != ruin.planetIndex || UnitVisionManager.GetCivIndex(civ) < 0 ||
+                        generator == null || generator.Grid == null || tiles == null || !tiles.IsReady() ||
+                        generator.Grid.GetTileAtPosition(ruin.position) < 0)
+                        continue;
+                }
+                if (reward.StartsWith("Ancient ruins explored.", StringComparison.Ordinal)) continue;
+                actualRewards.Add(reward);
+            }
+        }
+        string name = string.IsNullOrWhiteSpace(ruin.ruinName) ? "Ancient Ruins" : ruin.ruinName;
+        if (actualRewards.Count == 0)
+        {
+            QueueWorldNotification($"{name}: discovered and explored.", batchThreeAssets != null ? batchThreeAssets.ruinsIcon : null);
+            return;
+        }
+        string body = string.Join("\n", actualRewards);
+        Sprite icon = batchThreeAssets != null ? batchThreeAssets.rewardIcon : null;
+        bool significant = actualRewards.Any(r => r.StartsWith("Discovered the technology:", StringComparison.Ordinal)
+            || r.StartsWith("Population increased", StringComparison.Ordinal));
+        if (significant) QueueWorldNarrative(name, body, icon, "ANCIENT RUINS");
+        else QueueWorldNotification($"{name}: {string.Join(" ", actualRewards)}", icon);
+    }
+
+    private void QueueWorldNarrative(string title, string body, Sprite icon, string tag)
+    {
+        EnqueueModal(new ModalRequest
+        {
+            kind = ModalKind.Narrative,
+            title = title,
+            body = body,
+            image = icon,
+            tag = tag,
+            deferUntilCampaignHud = true,
+            notificationCivilization = CivilizationManager.Instance != null ? CivilizationManager.Instance.playerCiv : null
+        });
     }
 
     private void EnsureCrisisMissionTrackerUi()
@@ -579,16 +851,18 @@ public class UIManager : MonoBehaviour
             parentRect = gameplayHudRoot.GetComponentInParent<Canvas>()?.GetComponent<RectTransform>();
         if (parentRect == null) return;
 
-        var legacyObject = new GameObject("LegacyTracker", typeof(RectTransform), typeof(CanvasRenderer), typeof(LegacyTrackerUI));
+        var legacyObject = new GameObject("LegacyTracker", typeof(RectTransform), typeof(CanvasRenderer));
+        legacyObject.SetActive(false);
         var legacyRect = legacyObject.GetComponent<RectTransform>();
         legacyRect.SetParent(parentRect, false);
         legacyRect.anchorMin = new Vector2(0f, 1f);
         legacyRect.anchorMax = new Vector2(0f, 1f);
         legacyRect.pivot = new Vector2(0f, 1f);
         legacyRect.anchoredPosition = new Vector2(16f, -96f);
-        legacyRect.sizeDelta = new Vector2(320f, 0f);
+        legacyRect.sizeDelta = new Vector2(320f, 496f);
 
-        legacyTrackerUI = legacyObject.GetComponent<LegacyTrackerUI>();
+        legacyTrackerUI = legacyObject.AddComponent<LegacyTrackerUI>();
+        legacyObject.SetActive(true);
     }
 
     private void HideStartupMissionCrisisViews()
@@ -1381,9 +1655,17 @@ public class UIManager : MonoBehaviour
     private void TryShowNextModal()
     {
         if (modalVisible || modalQueue.Count == 0) return;
+        if (IsLoadingActive() || IsElectionDecisionActive ||
+            (GameManager.Instance != null && GameManager.Instance.IsMatchConcluded)) return;
 
+        while (modalQueue.Count > 0 && modalQueue.Peek().deferUntilCampaignHud &&
+            (CivilizationManager.Instance == null || modalQueue.Peek().notificationCivilization == null ||
+             modalQueue.Peek().notificationCivilization != CivilizationManager.Instance.playerCiv))
+            modalQueue.Dequeue();
+        if (modalQueue.Count == 0) return;
         Debug.Log($"[UIManager] TryShowNextModal: queue={modalQueue.Count} nextKind={modalQueue.Peek().kind}");
         var request = modalQueue.Peek();
+        if (request.deferUntilCampaignHud && !CanShowWorldNotifications()) return;
         if (TryShowPrefabModal(request))
         {
             modalQueue.Dequeue();
@@ -1463,6 +1745,11 @@ public class UIManager : MonoBehaviour
     private void ShowMissionSelectionDirectly(CrisisData crisis, List<MissionData> missions)
     {
         if (crisis == null || missions == null || missions.Count == 0) return;
+        if (IsElectionDecisionActive || IsLoadingActive())
+        {
+            QueueSelection(crisis, missions);
+            return;
+        }
         if (modalVisible)
         {
             Debug.Log("[UIManager] ShowMissionSelectionDirectly: a modal is already visible, deferring.");

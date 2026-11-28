@@ -76,6 +76,7 @@ public class CampaignMapModeController : MonoBehaviour
 
     public void SwitchPlanet(int planetIndex)
     {
+        HoverInfoChanged?.Invoke(string.Empty);
         Unbind(); ActivePlanetIndex = planetIndex;
         tileSystem = TileSystem.GetForPlanet(planetIndex);
         if (tileSystem == null) { mapColorByTile = null; categoryByTile = null; return; }

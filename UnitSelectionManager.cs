@@ -237,6 +237,8 @@ public class UnitSelectionManager : MonoBehaviour
 
     private bool OnTileClickedTileSystem(int tileIndex, Vector3 worldPos)
     {
+        if (TransportUIManager.Instance != null && TransportUIManager.Instance.TryHandleTileClick(tileIndex))
+            return true;
         // Left-click selection is routed via TileSystem; select/deselect units here.
         // Return true to consume the click (prevents improvements from also handling it).
         // IMPORTANT (Flat map compatibility):
@@ -1381,7 +1383,7 @@ public class UnitSelectionManager : MonoBehaviour
     /// </summary>
     public void SelectUnit(BaseUnit unit)
     {
-        if (unit == null)
+        if (unit == null || (TransportUIManager.Instance != null && TransportUIManager.Instance.BlocksUnitSelection))
             return;
         
         // Deselect previous unit

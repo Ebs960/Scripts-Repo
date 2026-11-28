@@ -201,8 +201,17 @@ public class TileSystem : MonoBehaviour
         if (mainCamera == null) return;
 
         // MIGRATED: Check InputManager priority before processing (Background priority for TileSystem)
-        if (InputManager.Instance != null && !InputManager.Instance.CanProcessInput(InputManager.InputPriority.Background))
+        if (InputManager.Instance != null &&
+            (!InputManager.Instance.CanProcessInput(InputManager.InputPriority.Background) || InputManager.Instance.IsPointerOverUI()))
+        {
+            if (lastHoveredTileIndex >= 0)
+            {
+                lastHoveredTileIndex = -1;
+                OnTileHoverExited?.Invoke();
+            }
+            _lastMouseScreenPos = new Vector2(-999f, -999f);
             return;
+        }
 
         // Read mouse position once
         Vector2 mousePos = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
@@ -214,7 +223,7 @@ public class TileSystem : MonoBehaviour
         {
             _lastMouseScreenPos = mousePos;
             var hit = GetMouseHitInfo();
-            if (hit.hit)
+            if (hit.hit && hit.tileIndex >= 0)
             {
                 int tileIndex = hit.tileIndex;
                 if (tileIndex >= 0 && tileIndex != lastHoveredTileIndex)

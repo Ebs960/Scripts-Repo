@@ -28,28 +28,44 @@ public class TransportUIManager : MonoBehaviour
     private PlanetGenerator planet;
     // Keyed by (planetIndex,tileIndex) to avoid cross-planet collisions
     private Dictionary<long, GameObject> tileHighlights = new Dictionary<long, GameObject>();
+    private int lastHandledTileClickFrame = -1;
+    public bool BlocksUnitSelection => isInLoadMode || isInDeployMode || lastHandledTileClickFrame == Time.frameCount;
 
     void Awake()
     {
         if (Instance == null)
             Instance = this;
         else
+        {
             Destroy(gameObject);
+            return;
+        }
         
         // Use GameManager API for multi-planet support
         planet = GameManager.Instance?.GetCurrentPlanetGenerator();
         grid = planet != null ? planet.Grid : null;
-    }
-
-    void Start()
-    {
-        // Hide panel by default
-        if (transportPanel != null)
-            transportPanel.SetActive(false);
-        
-        // Set up load button
         if (loadUnitButton != null)
             loadUnitButton.onClick.AddListener(EnterLoadUnitMode);
+        if (transportPanel != null && selectedTransport == null)
+            transportPanel.SetActive(false);
+    }
+
+    void OnDestroy()
+    {
+        UnsubscribeTransport();
+        if (loadUnitButton != null) loadUnitButton.onClick.RemoveListener(EnterLoadUnitMode);
+        if (Instance == this) Instance = null;
+    }
+
+    void OnDisable()
+    {
+        UnsubscribeTransport();
+        isInLoadMode = false;
+        isInDeployMode = false;
+        selectedUnitToUnload = null;
+        ClearAllHighlights();
+        if (transportPanel != null && transportPanel.activeSelf)
+            transportPanel.SetActive(false);
     }
 
     /// <summary>
@@ -57,15 +73,18 @@ public class TransportUIManager : MonoBehaviour
     /// </summary>
     public void ShowTransportUI(CombatUnit transport)
     {
-        if (transport == null || !transport.data.isTransport)
+        if (transport == null || transport.data == null || !transport.data.isTransport)
             return;
-            
+        UnsubscribeTransport();
         // Store reference to selected transport
         selectedTransport = transport;
+        planet = GameManager.Instance?.GetPlanetGenerator(transport.planetIndex);
+        grid = planet != null ? planet.Grid : null;
         
         // Reset UI state
         isInLoadMode = false;
         isInDeployMode = false;
+        selectedUnitToUnload = null;
         ClearAllHighlights();
         
         // Update UI
@@ -89,22 +108,34 @@ public class TransportUIManager : MonoBehaviour
     /// </summary>
     public void HideTransportUI()
     {
-        if (selectedTransport != null)
-        {
-            // Unsubscribe from events
-            selectedTransport.OnUnitLoaded.RemoveListener(OnUnitLoaded);
-            selectedTransport.OnUnitUnloaded.RemoveListener(OnUnitUnloaded);
-            selectedTransport = null;
-        }
+        UnsubscribeTransport();
         
         // Reset UI state
         isInLoadMode = false;
         isInDeployMode = false;
+        selectedUnitToUnload = null;
         ClearAllHighlights();
         
         // Hide panel
         if (transportPanel != null)
             transportPanel.SetActive(false);
+    }
+
+    private void UnsubscribeTransport()
+    {
+        if (selectedTransport == null) return;
+        selectedTransport.OnUnitLoaded.RemoveListener(OnUnitLoaded);
+        selectedTransport.OnUnitUnloaded.RemoveListener(OnUnitUnloaded);
+        selectedTransport = null;
+    }
+
+    public bool TryHandleTileClick(int tileIndex)
+    {
+        if (selectedTransport == null || (!isInLoadMode && !isInDeployMode)) return false;
+        lastHandledTileClickFrame = Time.frameCount;
+        if (isInLoadMode) HandleTileClickInLoadMode(tileIndex);
+        else HandleTileClickInDeployMode(tileIndex);
+        return true;
     }
 
     /// <summary>
@@ -231,6 +262,7 @@ public class TransportUIManager : MonoBehaviour
             
         foreach (Transform child in transportedUnitsContainer)
         {
+            child.gameObject.SetActive(false);
             Destroy(child.gameObject);
         }
     }
@@ -251,6 +283,9 @@ public class TransportUIManager : MonoBehaviour
             if (buttonText != null)
             {
                 buttonText.text = unit.data.unitName;
+                buttonText.enableAutoSizing = true;
+                buttonText.fontSizeMin = 12;
+                buttonText.fontSizeMax = 20;
             }
             
             // Set icon if available
@@ -370,6 +405,7 @@ public class TransportUIManager : MonoBehaviour
         {
             GameObject highlightObj = GameObject.CreatePrimitive(PrimitiveType.Plane);
             highlightObj.name = $"TileHighlight_{tileIndex}";
+            highlightObj.GetComponent<Collider>().enabled = false;
 
             // Position at tile center, slightly above
             var ts = TileSystem.GetForPlanet(pIndex) ?? TileSystem.Instance;
@@ -381,9 +417,22 @@ public class TransportUIManager : MonoBehaviour
             highlightObj.transform.localScale = new Vector3(tileSize, 1, tileSize);
             
             // Create a material for the highlight
-            Material highlightMat = new Material(Shader.Find("Standard"));
-            highlightMat.color = color;
-            highlightMat.SetFloat("_Mode", 3); // Transparent mode
+            Shader shader = Shader.Find("HDRP/Unlit") ?? Shader.Find("Standard");
+            if (shader == null)
+            {
+                Debug.LogError("[TransportUIManager] No shader is available for transport tile highlights.");
+                Destroy(highlightObj);
+                return;
+            }
+            Material highlightMat = new Material(shader);
+            if (highlightMat.HasProperty("_UnlitColor"))
+                highlightMat.SetColor("_UnlitColor", color);
+            else
+                highlightMat.color = color;
+            if (highlightMat.HasProperty("_SurfaceType"))
+                highlightMat.SetFloat("_SurfaceType", 1);
+            if (highlightMat.HasProperty("_Mode"))
+                highlightMat.SetFloat("_Mode", 3);
             highlightMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
             highlightMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
             highlightMat.SetInt("_ZWrite", 0);
@@ -394,7 +443,7 @@ public class TransportUIManager : MonoBehaviour
             
             // Apply material
             MeshRenderer renderer = highlightObj.GetComponent<MeshRenderer>();
-            renderer.material = highlightMat;
+            renderer.sharedMaterial = highlightMat;
             
             // Store in dictionary
             tileHighlights[key] = highlightObj;
@@ -404,7 +453,10 @@ public class TransportUIManager : MonoBehaviour
             // Update existing highlight color
             GameObject highlightObj = tileHighlights[key];
             MeshRenderer renderer = highlightObj.GetComponent<MeshRenderer>();
-            renderer.material.color = color;
+            if (renderer.sharedMaterial.HasProperty("_UnlitColor"))
+                renderer.sharedMaterial.SetColor("_UnlitColor", color);
+            else
+                renderer.sharedMaterial.color = color;
         }
     }
 
@@ -412,6 +464,12 @@ public class TransportUIManager : MonoBehaviour
     {
         foreach (var highlight in tileHighlights.Values)
         {
+            if (highlight != null)
+            {
+                var renderer = highlight.GetComponent<MeshRenderer>();
+                if (renderer != null && renderer.sharedMaterial != null)
+                    Destroy(renderer.sharedMaterial);
+            }
             Destroy(highlight);
         }
         tileHighlights.Clear();

@@ -30,6 +30,7 @@ public class UnitVisionManager : MonoBehaviour
     
     [Tooltip("Planet index this manager is for")]
     [SerializeField] private int planetIndex = 0;
+    public int PlanetIndex => planetIndex;
     
     // Cached references
     private TileSystem tileSystem;

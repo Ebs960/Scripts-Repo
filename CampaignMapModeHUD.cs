@@ -7,6 +7,7 @@ using UnityEngine;
 public class CampaignMapModeHUD : MonoBehaviour
 {
     [SerializeField] private TMP_Dropdown modeDropdown;
+    [SerializeField] private TMP_Text legendTitle;
     [SerializeField] private TMP_Text legendText;
     [SerializeField] private TMP_Text hoverText;
     [SerializeField, Min(1)] private int maximumLegendEntries = 8;
@@ -18,6 +19,7 @@ public class CampaignMapModeHUD : MonoBehaviour
 
     private void OnEnable()
     {
+        SetHover(string.Empty);
         InitializeDropdown();
         BindController();
     }
@@ -63,29 +65,35 @@ public class CampaignMapModeHUD : MonoBehaviour
         if (controller != null)
         { controller.MapModeChanged -= OnModeChanged; controller.LegendChanged -= RefreshLegend; controller.HoverInfoChanged -= SetHover; }
         controller = null;
+        SetHover(string.Empty);
     }
 
     private void OnModeSelected(int index) => controller?.SetMode((CampaignMapMode)Mathf.Clamp(index, 0, Labels.Length - 1));
-    private void OnModeChanged(CampaignMapMode mode) { modeDropdown?.SetValueWithoutNotify((int)mode); RefreshLegend(); }
+    private void OnModeChanged(CampaignMapMode mode) { modeDropdown?.SetValueWithoutNotify((int)mode); SetHover(string.Empty); RefreshLegend(); }
     private void SetHover(string value) { if (hoverText != null) hoverText.text = value; }
     private void RefreshLegend()
     {
         if (legendText == null || controller == null) return;
         if (legendPanel != null)
             legendPanel.SetActive(controller.CurrentMode != CampaignMapMode.Normal && controller.Legend.Count > 0);
-        var title = controller.CurrentMode == CampaignMapMode.Diplomacy
-            ? $"DIPLOMACY — Relative to {controller.ReferenceCivilization?.civData?.civName ?? "Player"}"
-            : DisplayName(controller.CurrentMode).ToUpperInvariant();
-        var builder = new StringBuilder("<b>").Append(title).Append("</b>");
+        string title = Labels[Mathf.Clamp((int)controller.CurrentMode, 0, Labels.Length - 1)].ToUpperInvariant();
+        if (legendTitle != null) legendTitle.text = title;
+        var builder = new StringBuilder();
+        if (legendTitle == null) builder.Append("<b>").Append(title).Append("</b>");
+        if (controller.CurrentMode == CampaignMapMode.Diplomacy)
+        {
+            if (builder.Length > 0) builder.Append('\n');
+            builder.Append("Relative to ").Append(controller.ReferenceCivilization?.civData?.civName ?? "Player");
+        }
         int shown=0;
         foreach (var entry in controller.Legend)
         {
             if(shown++>=maximumLegendEntries)break;
-            builder.Append("\n<color=#").Append(ColorUtility.ToHtmlStringRGB(entry.color)).Append(">■</color> ")
+            if (builder.Length > 0) builder.Append('\n');
+            builder.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(entry.color)).Append(">■</color> ")
                 .Append(entry.label).Append("  <color=#A8ADB5>").Append(entry.tileCount).Append("</color>");
         }
         if(controller.Legend.Count>maximumLegendEntries)builder.Append("\n<color=#A8ADB5>+").Append(controller.Legend.Count-maximumLegendEntries).Append(" more</color>");
         legendText.text = builder.ToString();
     }
-    private static string DisplayName(CampaignMapMode mode)=>mode==CampaignMapMode.PoliticalOwnership?"Political":mode.ToString();
 }

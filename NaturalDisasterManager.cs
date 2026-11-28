@@ -28,6 +28,8 @@ public class NaturalDisasterManager : MonoBehaviour
 
     /// <summary>Fired when a disaster triggers: (disaster, planetIndex, primaryTileIndex, affectedTiles).</summary>
     public event System.Action<NaturalDisasterData, int, int, List<int>> OnNaturalDisasterTriggered;
+    /// <summary>Fired before effects are applied so observers can compare the resulting damage.</summary>
+    public event System.Action<NaturalDisasterData, int, int, List<int>> OnNaturalDisasterStarting;
 
     void Awake()
     {
@@ -84,6 +86,7 @@ public class NaturalDisasterManager : MonoBehaviour
             if (tileIndex < 0) return;
 
             var affectedTiles = GetAffectedTiles(tileIndex, disaster.areaRadius, planetIndex);
+            OnNaturalDisasterStarting?.Invoke(disaster, planetIndex, tileIndex, affectedTiles);
             ApplyDisasterEffects(disaster, planetIndex, affectedTiles);
             OnNaturalDisasterTriggered?.Invoke(disaster, planetIndex, tileIndex, affectedTiles);
         }
